@@ -72,10 +72,14 @@ async def chat(msg: ChatMessage):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 @app.post("/load-sales")
 async def load_sales(csv_path: str = "data/weekly_sales.csv"):
     try:
-        df = pd.read_csv(csv_path)
+        full_path = os.path.join(BASE_DIR, csv_path)
+        df = pd.read_csv(full_path)
         sales_context["data"] = df
         sales_context["summary"] = df.to_string(index=False)
         return {"status": "Sales data loaded", "rows": len(df), "columns": list(df.columns)}
