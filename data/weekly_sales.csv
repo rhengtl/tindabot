@@ -1,0 +1,71 @@
+date,product,category,units_sold,unit_price,total_sales
+2026-05-11,Lucky Me Pancit Canton Original,Noodles,48,16.00,768.00
+2026-05-11,Lucky Me Chicken Flavor,Noodles,35,16.00,560.00
+2026-05-11,Sinandomeng Rice (1kg),Rice,20,58.00,1160.00
+2026-05-11,Coca-Cola 1.5L,Softdrinks,18,75.00,1350.00
+2026-05-11,Sprite 1.5L,Softdrinks,12,75.00,900.00
+2026-05-11,Royal Tru-Orange 1.5L,Softdrinks,9,75.00,675.00
+2026-05-11,Century Tuna Hot & Spicy,Canned Goods,22,44.00,968.00
+2026-05-11,Argentina Corned Beef 150g,Canned Goods,17,55.00,935.00
+2026-05-11,Ligo Sardines in Tomato Sauce,Canned Goods,25,28.00,700.00
+2026-05-11,Eden Cheese 160g,Dairy,10,85.00,850.00
+2026-05-12,Lucky Me Pancit Canton Original,Noodles,52,16.00,832.00
+2026-05-12,Lucky Me Chicken Flavor,Noodles,41,16.00,656.00
+2026-05-12,Sinandomeng Rice (1kg),Rice,25,58.00,1450.00
+2026-05-12,Coca-Cola 1.5L,Softdrinks,21,75.00,1575.00
+2026-05-12,Sprite 1.5L,Softdrinks,15,75.00,1125.00
+2026-05-12,Royal Tru-Orange 1.5L,Softdrinks,10,75.00,750.00
+2026-05-12,Century Tuna Hot & Spicy,Canned Goods,28,44.00,1232.00
+2026-05-12,Argentina Corned Beef 150g,Canned Goods,19,55.00,1045.00
+2026-05-12,Ligo Sardines in Tomato Sauce,Canned Goods,30,28.00,840.00
+2026-05-12,Eden Cheese 160g,Dairy,8,85.00,680.00
+2026-05-13,Lucky Me Pancit Canton Original,Noodles,60,16.00,960.00
+2026-05-13,Lucky Me Chicken Flavor,Noodles,44,16.00,704.00
+2026-05-13,Sinandomeng Rice (1kg),Rice,18,58.00,1044.00
+2026-05-13,Coca-Cola 1.5L,Softdrinks,24,75.00,1800.00
+2026-05-13,Sprite 1.5L,Softdrinks,16,75.00,1200.00
+2026-05-13,Royal Tru-Orange 1.5L,Softdrinks,8,75.00,600.00
+2026-05-13,Century Tuna Hot & Spicy,Canned Goods,19,44.00,836.00
+2026-05-13,Argentina Corned Beef 150g,Canned Goods,21,55.00,1155.00
+2026-05-13,Ligo Sardines in Tomato Sauce,Canned Goods,27,28.00,756.00
+2026-05-13,Eden Cheese 160g,Dairy,14,85.00,1190.00
+2026-05-14,Lucky Me Pancit Canton Original,Noodles,55,16.00,880.00
+2026-05-14,Lucky Me Chicken Flavor,Noodles,38,16.00,608.00
+2026-05-14,Sinandomeng Rice (1kg),Rice,22,58.00,1276.00
+2026-05-14,Coca-Cola 1.5L,Softdrinks,30,75.00,2250.00
+2026-05-14,Sprite 1.5L,Softdrinks,20,75.00,1500.00
+2026-05-14,Royal Tru-Orange 1.5L,Softdrinks,14,75.00,1050.00
+2026-05-14,Century Tuna Hot & Spicy,Canned Goods,24,44.00,1056.00
+2026-05-14,Argentina Corned Beef 150g,Canned Goods,16,55.00,880.00
+2026-05-14,Ligo Sardines in Tomato Sauce,Canned Goods,32,28.00,896.00
+2026-05-14,Eden Cheese 160g,Dairy,11,85.00,935.00
+2026-05-15,Lucky Me Pancit Canton Original,Noodles,70,16.00,1120.00
+2026-05-15,Lucky Me Chicken Flavor,Noodles,50,16.00,800.00
+2026-05-15,Sinandomeng Rice (1kg),Rice,30,58.00,1740.00
+2026-05-15,Coca-Cola 1.5L,Softdrinks,40,75.00,3000.00
+2026-05-15,Sprite 1.5L,Softdrinks,28,75.00,2100.00
+2026-05-15,Royal Tru-Orange 1.5L,Softdrinks,20,75.00,1500.00
+2026-05-15,Century Tuna Hot & Spicy,Canned Goods,30,44.00,1320.00
+2026-05-15,Argentina Corned Beef 150g,Canned Goods,25,55.00,1375.00
+2026-05-15,Ligo Sardines in Tomato Sauce,Canned Goods,38,28.00,1064.00
+2026-05-15,Eden Cheese 160g,Dairy,16,85.00,1360.00
+2026-05-16,Lucky Me Pancit Canton Original,Noodles,80,16.00,1280.00
+2026-05-16,Lucky Me Chicken Flavor,Noodles,55,16.00,880.00
+2026-05-16,Sinandomeng Rice (1kg),Rice,35,58.00,2030.00
+2026-05-16,Coca-Cola 1.5L,Softdrinks,45,75.00,3375.00
+2026-05-16,Sprite 1.5L,Softdrinks,30,75.00,2250.00
+2026-05-16,Royal Tru-Orange 1.5L,Softdrinks,22,75.00,1650.00
+2026-05-16,Century Tuna Hot & Spicy,Canned Goods,35,44.00,1540.00
+2026-05-16,Argentina Corned Beef 150g,Canned Goods,28,55.00,1540.00
+2026-05-16,Ligo Sardines in Tomato Sauce,Canned Goods,40,28.00,1120.00
+2026-05-16,Eden Cheese 160g,Dairy,18,85.00,1530.00
+2026-05-17,Lucky Me Pancit Canton Original,Noodles,42,16.00,672.00
+2026-05-17,Lucky Me Chicken Flavor,Noodles,30,16.00,480.00
+2026-05-17,Sinandomeng Rice (1kg),Rice,15,58.00,870.00
+2026-05-17,Coca-Cola 1.5L,Softdrinks,20,75.00,1500.00
+2026-05-17,Sprite 1.5L,Softdrinks,14,75.00,1050.00
+2026-05-17,Royal Tru-Orange 1.5L,Softdrinks,8,75.00,600.00
+2026-05-17,Century Tuna Hot & Spicy,Canned Goods,15,44.00,660.00
+2026-05-17,Argentina Corned Beef 150g,Canned Goods,12,55.00,660.00
+2026-05-17,Ligo Sardines in Tomato Sauce,Canned Goods,18,28.00,504.00
+2026-05-17,Eden Cheese 160g,Dairy,9,85.00,765.00
