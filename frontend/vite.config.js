@@ -8,7 +8,9 @@ export default defineConfig({
     proxy: {
       '/chat': 'http://localhost:8000',
       '/load-sales': 'http://localhost:8000',
+      '/forecast': 'http://localhost:8000',
       '/sales-summary': 'http://localhost:8000',
+
     },
   },
 })
