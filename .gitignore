@@ -27,3 +27,6 @@ Thumbs.db
 
 # Data (optional — remove if you want to track the sample CSV)
 # data/*.csv
+
+# PWA build output
+frontend/dev-dist/
