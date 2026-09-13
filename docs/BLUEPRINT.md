@@ -1,0 +1,337 @@
+# TindaBot — Rebuild Blueprint (Source of Truth)
+
+Status: **approved 2026-09-13**. This document is the validated specification. Any change to a
+rule in §C, §E, or §F must be raised and approved before implementation — do not alter a
+validated formula because a UI scenario looks inconvenient.
+
+Locked decisions: full store companion (inventory + utang + cash counts + expenses) · local-first ·
+Google sign-in for backup (P3) · Supabase + tiny FastAPI for AI · TypeScript · cash tracking is
+**recorded counts only, no inferred revenue**.
+
+---
+
+## A. Product
+
+TindaBot is a **smart listahan** for sari-sari store owners on Android. Before every supplier trip
+it answers *ano ang bibilhin, ilan, kailan, at magkano ang dadalhin*, and it keeps the utang
+list — from data the owner already has (what they bought, what they saw on the shelf).
+
+Principles:
+1. Never require data the owner doesn't naturally have.
+2. Partial, irregular, late input is the normal case, not an error.
+3. Every number the app shows can be explained in one Taglish sentence.
+4. Uncertainty is shown (range, *tantiya*, *bilangin*) — never hidden in a bigger quantity.
+5. The AI drafts and answers; it never computes and never saves.
+
+Primary workflow is **per restock trip** (2–3×/week) with an optional count in between. The app
+does not chase daily engagement; it earns opens by being right at the moment of buying.
+
+## B. Architecture
+
+```
+Phone (PWA): React + TypeScript + Vite + vite-plugin-pwa
+  UI (screens, Zustand)  ←  domain/ (pure TS, no IO, Vitest)  ←  Dexie (IndexedDB)
+  Supabase JS client (auth + sync, P3)          FastAPI proxy (/ai/parse, /ai/chat, P3–P4)
+```
+
+| Layer | Owns | Never does |
+|---|---|---|
+| `domain/` | Event types, total order, derivation, cadence, list, tubo, templates | Storage, network, React |
+| Dexie | Local persistence, sync cursors, device id | Business logic |
+| UI | Screens, derived state in memory | Math |
+| Supabase | Identity, durable storage, RLS isolation, sync | Derivation, AI |
+| FastAPI | Gemini key, JWT check, rate limit, schema-bound Gemini calls | Data storage, business rules |
+| Gemini | Photo/text → drafts; answers from snapshot + client tools | Arithmetic, saving, deciding |
+
+Derivation **always recomputes a product/customer from its full active event list** — never
+incrementally. `navigator.storage.persist()` is requested on first launch.
+
+## C. Data model
+
+### Records (mutable; last-write-wins by client `updated_at`; server adds `server_updated_at`)
+
+```ts
+Store    { id, name, restock_days: Weekday[], next_trip_override: LocalDate|null,
+           multipliers: { payday: 1.3, fri_sat: 1.15 }, updated_at }
+Product  { id, store_id, name, category, unit_label, pack_size, pack_label,
+           sell_price: number|null, archived, updated_at }
+Customer { id, store_id, name, phone: string|null, archived, updated_at }   // P2
+```
+
+### Events (append-only; write-once by `id`; `add`-or-ignore everywhere)
+
+```ts
+Base       { id: ULID, v: 1, store_id, device_id, type, ts: ISO+offset, recorded_at: ISO }
+PURCHASE   { product_id, qty_units, total_cost: number|null, supplier?: string }
+COUNT      { product_id, qty_on_hand }
+ADJUST     { product_id, delta /* negative = removed */, reason: 'sira'|'expired'|'personal'|'iba' }
+UTANG      { customer_id, amount, note?: string }                                   // P2
+BAYAD      { customer_id, amount }                                                  // P2
+EXPENSE    { amount, category: 'kuryente'|'tubig'|'pamasahe'|'load'|'renta'|'iba', note?: string } // P2
+CASH_COUNT { amount }                                                               // P2
+VOID       { target: EventId }   // target must be a non-VOID event
+```
+
+- `qty_units` is always **selling units**, resolved at entry with the product's then-current
+  `pack_size`. Later pack-size edits never rewrite history. `pack_label` is display only.
+- The event `id` is generated when the form opens and regenerated after each successful save;
+  writes use `add` and treat a duplicate key as success. Import and sync pull are add-or-ignore.
+- `ts` = when the fact was true (user-editable). `recorded_at` = device write time, **audit only** —
+  derivation never reads it.
+- Backdated `ts`: linked COUNT (count-at-restock) = its PURCHASE's `ts`; standalone COUNT = chosen
+  day **21:00** local; all other backdated events = chosen day **12:00** local.
+- **Total order** = `(ts, typeRank, id)` with `typeRank(COUNT) = 0`, every other type = 1.
+- **Active set** = non-VOID events with no VOID targeting them. VOID may target only non-VOID
+  events (no chains). A VOID arriving before its target is inert until the target arrives.
+- **Anchor** = last active COUNT in total order. Invariant: a COUNT at position *p* is the sellable
+  stock at that position; every stock event before *p* is reflected in it, every stock event after
+  *p* (including same-`ts` events) is not. ADJUST is assumed *not* reflected in the preceding count.
+- Corrections: "Burahin" → VOID (timeline shows the row struck through, *Binura*, with *Ibalik* =
+  new copy with new id). "I-edit" → VOID + new event (*Binago*). Nothing is ever physically deleted.
+
+### Derived state (memory only, recomputed per product on change)
+
+```ts
+ProductState {
+  tier: 'none'|'cadence'|'counts', confidence: 'none'|'low'|'mid'|'high',
+  anchor: {ts, qty}|null, on_hand_est: number|null, days_since_count: number|null,
+  daily_rate: number|null,          // Tier B rate, or throughput in hybrid state
+  days_left: number|null,
+  cadence: { throughput, typical_units, rebuy: {early, mid, late}, n, cycles }|null,
+  unit_cost: number|null, tubo_per_unit: number|null,
+  flags: Set<'bago'|'needs_count'|'slow'|'dead'|'inconsistent'|'dormant'|'unclear'|'no_cost'|
+             'no_price'|'lugi_check'|'count_mismatch'>
+}
+ListLine     { product_id, tier, urgency: 'red'|'orange'|'yellow', section: 'bilhin_na'|'bilhin'|'wag_muna',
+               buy_packs, buy_units, range?: [packs, packs], cost: number|null, priority, reason, hint? }
+CustomerState{ balance, last_utang_ts, last_bayad_ts, oldest_unpaid_ts }               // P2
+StoreState   { cash_last: {ts, amount}|null, utang_outstanding, weeks: WeekSummary[] }  // P2
+```
+
+## D. UX (P1 scope marked)
+
+Navigation: bottom tabs **Bahay · Paninda · Listahan(P2) · Iba pa** + FAB. P1 FAB: **Bumili · Bilang**.
+
+- **Onboarding (P1):** store name → restock days (or *kapag kailangan*) → add paninda from catalog.
+- **Bahay = the list (P1).** Sticky bar: next trip (or *Pupunta ako ngayon*), ~total, Share.
+  Payday flag (only within 3 days). One count-nudge line (≤5 products: `needs_count`, `tier none`
+  without a count, Tier A listed; at most once a day). Sections **Bilhin na** (red) ·
+  **Bilhin** (orange, non-deferred yellow, Tier A) · **Wag muna** (deferred, collapsed).
+  Row = `name · packs · ₱` / reason. Stale rows: reason becomes *"Bilangin muna →"* and the quantity
+  shows as a range. Tier A rows use pattern wording only. Tap → *bakit* sheet. Footer: total +
+  *"N items walang presyo"*. Empty state: one *Idagdag* button.
+- **Paninda (P1):** by urgency then name; slow/dead/dormant/unclear notes; Idagdag via bundled
+  catalog (search, categories, free name) → pack size, sell price (optional), *ilan ang natira?*
+  (optional COUNT). Detail: state, timeline with Burahin/Ibalik/I-edit, Nasira (ADJUST), Itigil.
+- **Bumili (P1):** *"Kanina: …"* strip → product → qty (box/pack toggle) → total ₱ (prefilled from
+  last cost; sanity prompt if unit cost ≥ sell price or > 5× catalog hint) → *natira bago dinagdag*
+  (optional, linked COUNT) → date *Ngayon / Kahapon / ibang araw* → confirmation
+  *"Natira 10 + bagong bili 48 = 58 ngayon"* → Isa pa / I-save.
+- **Bilang mode (P1):** stalest first, pad accepts *packs + loose*, Laktawan/Susunod, exit anytime.
+- **Iba pa (P1):** I-export / I-import (JSON), Settings (name, restock days, advanced multipliers),
+  monthly backup nudge. P2+: Ulat, Listahan, Tanong kay TindaBot, sign-in.
+- Concepts the user never sees: confidence levels, derived state, event logs, multipliers (hidden
+  under advanced), "forecast". They see *tantiya*, *bilangin*, a range, and *bakit*.
+
+## E. Core logic (all in `domain/`, pure, tested)
+
+### E0. Calendar and shared helpers
+
+```
+today            = device local date; derive on open, after each write, at local midnight
+payday days      = {15, 16, 30, last day of month, 1}
+mult(d)          = max(payday(d) ? 1.3 : 1, Fri/Sat(d) ? 1.15 : 1)
+next_trip        = override ?? next restock_day ≥ today ?? today
+following        = next restock_day > next_trip ?? next_trip + 7
+demand(r, a, b)  = Σ_{d ∈ [a, b)} r · mult(d)          (local dates; demand(r, x, x) = 0)
+τ(r)             = 0.5 · r                               (half a day of demand; rounding tolerance)
+packs(u, r, floor) = max(floor, ceil((u − τ(r)) / pack_size))
+```
+
+### E1. Tier B — counts
+
+```
+samples : consecutive active COUNTs c1 → c2 in total order; days = t2 − t1 (fractional)
+          days < 1            → c2 replaces the anchor; no sample
+          used = q1 + Σ PURCHASE.qty + Σ ADJUST.delta (strictly between in total order) − q2
+          used < 0            → flag inconsistent; no sample; anchor = c2
+          keep samples whose end is ≤ 90 days ago; if ≥ 3 samples, cap each rate at 3 × median
+rate    : Σ rate_i · w_i / Σ w_i,   w_i = days_i · 0.5^(age_days_i / 14)
+confidence : none (no rate) | low (< 2 samples or < 14 d history) | mid (2–3 samples, ≥ 14 d)
+             | high (≥ 4 samples, ≥ 28 d); −1 level if the newest interval was inconsistent or the
+             newest sample ended > 28 d ago
+on_hand : max(0, anchor.qty + Σ PURCHASE.qty + Σ ADJUST.delta (strictly after anchor) − rate · days_since)
+days_left : on_hand / rate   (no multipliers; informational only)
+needs_count : days_since_count > 14, or (urgency ∈ {red, orange} and days_since_count > 7)
+slow    : rate < 0.25/day and days_left > 30      dead : rate ≈ 0 over ≥ 30 d and on_hand > 0
+```
+
+### E2. Tier A — purchase throughput (cadence)
+
+Tier A estimates **purchase throughput** — how fast the owner goes through what they buy. It equals
+sales demand only if the leftover at each purchase is roughly constant and every purchase is
+recorded. It is never described as "you sell X per day." It never knows current inventory, a
+stockout date, days left, or surplus.
+
+```
+applies  : product has no Tier B samples and no anchor (see E3 for precedence)
+window   : PURCHASEs ≤ 120 d, same local date merged (qty summed, ts = first); n = count
+eligible : n ≥ 3 and span(first → last) ≥ 7 d
+cycles   : qty_i / gap_i for i = 0..n−2 (gap in fractional days); keep the last 5
+           n = 3 and max/min ≥ 3 → tier none, flag unclear
+throughput = median(cycles)      typical = median(qty over window)      confidence = low
+rebuy    : early = last + max(1, qty_last / max(cycles))
+           mid   = last + max(1, qty_last / median(cycles))
+           late  = last + max(1, qty_last / min(cycles))
+dormant  : today > mid + 14 d → unlisted; Paninda note "Matagal nang hindi nabibili — nagbebenta ka
+           pa ba?" + [Bilangin] [Itigil]
+listed   : rebuy.mid < following (strict) and not dormant; urgency = orange (never red); section bilhin
+quantity : with restock_days or override:
+             carry = throughput · max(0, days(next_trip, rebuy.mid))         (internal only, never shown)
+             units = max(0, demand(throughput, next_trip, following) − carry)
+             cap   = typical · (n ≥ 6 ? 2 : 1)
+             packs = clamp(packs(units, throughput, 1), 1, ceil(cap / pack_size))
+           no schedule:
+             packs = ceil(typical / pack_size);  hint = ceil(throughput · 7 / pack_size) "para umabot ng 1 linggo"
+hints    : payday ∈ [today, following) → "katapusan — baka kulangin"
+           late − early > 14 d → "hindi pa regular ang bili mo" (instead of a date range)
+display  : on_hand_est, days_left = null. Wording: "karaniwan kang bumibili ulit mga <early>–<late>",
+           "naubos mo ang <typical> sa ~<typical/throughput> araw". Bakit: "Hindi ko alam ang natira —
+           bilangin mo para mas tumpak. Kung madalas kang maubusan, hindi ito makikita sa bili mo."
+```
+
+### E3. Precedence when counts exist
+
+```
+samples ≥ 2                        → Tier B rate
+samples = 1                        → Tier B rate, unless it differs > 3× from throughput (when
+                                     throughput exists) → keep throughput, flag count_mismatch
+                                     ("hindi tugma ang bilang sa dalas ng bili — tama ba?")
+samples = 0, anchor, throughput    → tier 'counts' (hybrid): rate = throughput, on_hand from the real
+                                     anchor, confidence low
+samples = 0, anchor, no throughput → show "N (huling bilang)"; no rate; unlisted
+no anchor                          → Tier A
+```
+
+### E4. Shopping list (Tier B lines)
+
+```
+need     = demand(rate, next_trip, following)
+buffer   = max(1 day of rate, 0.2 · need)
+at_trip  = on_hand − demand(rate, today, next_trip)
+urgency  : red    if at_trip < 0 or (days_left ≤ 1 and rate ≥ 0.5)
+           orange if at_trip < need
+           yellow if at_trip < need + buffer
+           green  otherwise → buy 0, unlisted
+           rate < 0.5/day → cap at orange; precedence red > orange > yellow
+units    = max(0, need + buffer − max(0, at_trip))
+packs    = packs(units, rate, floor = urgency ∈ {red, orange} ? 1 : 0)
+yellow   : units < 0.25 · pack_size → section wag_muna ("sa susunod na"); else max(1, packs)
+range    : if confidence low or needs_count → recompute with rate·0.7 and rate·1.3
+cost     = packs · pack_size · unit_cost   (null → "?", excluded from total, counted as walang presyo)
+priority = max(0, need − at_trip) · (tubo_per_unit ?? sell_price ?? 1)
+Tier A priority = units · (tubo_per_unit ?? sell_price ?? 1)
+banner   : any Tier B line with at_trip < 0 → "N items mauubos bago ang <trip> — bumili ka na bukas?"
+sections : bilhin_na = red · bilhin = orange, non-deferred yellow, Tier A · wag_muna = deferred yellow
+sort     : within section by priority desc
+```
+
+Rounding rationale: τ is half the minimum buffer, expressed in the store's own unit (a day of
+demand). Tier B can never under-cover `need`: `packs·pack_size ≥ units − τ = shortfall + buffer − τ
+≥ shortfall + 0.5 day`. Floors guarantee red/orange/Tier A lines never round to zero.
+
+### E5. Tubo, Ulat (P2), Budget (P2)
+
+```
+unit_cost      = latest PURCHASE with a cost: total_cost / qty_units
+tubo_per_unit  = sell_price − unit_cost;  lugi_check if unit_cost ≥ sell_price (both known)
+Ulat  Naitala  = gastos, nabili, utang given/received/outstanding, cash count (exact pesos)
+      Tantiya  = benta Σ rate·7·sell_price, tubo Σ rate·7·tubo — rounded to ₱10 with "~"
+Budget         : prefill last CASH_COUNT ≤ 2 d old; greedy by section then priority; shrink packs
+                 to ≥ 1; leftovers "kulang ₱Y". Utang never enters the budget.
+```
+
+## F. AI boundaries (P3–P4)
+
+- `/ai/parse`: image or text + product names/pack sizes → `{ drafts[], unreadable[] }` via response
+  schema; client shows editable drafts; save only on *I-save*; images discarded, never stored.
+- `/ai/chat`: stateless proxy. Client sends `{ history, snapshot (≤ 8 KB), round (0..3) }`. Tools run
+  **on the client** against Dexie: `get_product`, `list_events` (returns totals), `get_shopping_list`,
+  `get_week_summary`, `get_customer` (only path carrying customer names). Round 3 forces a text
+  answer. Tool results ≤ 4 KB, schema-checked; malformed/failed → `{error}` → "hindi ko nakuha ang
+  data". Response `{ text, figures[{label, value, source}] }`; the client verifies each figure against
+  its source and labels unverified numbers *"hindi verified"*. Prompt: mirror confidence wording; no
+  number for `none`; *"wala sa listahan ko"* when nothing found. Rate limit 30/min, 300/day.
+- Briefing: templated, deterministic, offline (`domain/briefing.ts`).
+- Gemini never computes, saves, sees the raw event log, sees names unasked, or runs offline.
+
+## G. Roadmap
+
+- **P1 Bahay** (local, offline, no account) — `domain/` + tests first (reference oracle, goldens,
+  property tests), then Dexie + persist + catalog, onboarding, Bahay, Paninda + detail + Nasira,
+  Bumili, Bilang mode, *bakit*, Share, export/import, backup nudge, settings, demo store.
+  **Done when** the validated scenarios behave as specified on an Android phone in airplane mode
+  after a refresh.
+- **P2 Listahan at Pera** (local): UTANG/BAYAD/EXPENSE/CASH_COUNT, Customers, Listahan + Paalala,
+  budget mode, Ulat.
+- **P3 Cloud at Kamera:** Supabase (`stores`, `store_members`, `products`, `customers`, `events` with
+  `server_seq`), RLS by membership, events INSERT-only, records no DELETE, owner trigger, Google
+  sign-in claiming the local store, push/pull, clock-skew warning, `/ai/parse`, receipt camera.
+- **P4 Katulong:** Ilista text/voice via parse, `/ai/chat` with client tools, briefing card.
+- **P5 Abot:** household second device, push via Edge Function running `domain/`, supplier price
+  memory, CSV import, tally (`SALE`, additive), English toggle, multi-store.
+
+## H. Migration / reuse
+
+Reused (adapted): urgency colours, Taglish stockout strings, persona prompt, `peso()`, markdown
+bubble, sample CSV → demo events, Vite/React scaffold. Discarded: `backend/main.py`,
+`backend/forecaster.py`, wizard components, `SummaryCard`, Prophet/pandas deps, notebooks.
+Branch `rebuild`; `main` stays runnable until P1's done-when.
+
+## I. Validated scenarios (test goldens)
+
+Constants: Coke case = 12 @ ₱780, sells ₱75. Today Fri 2026-05-29. Restock Wed & Sat → next trip
+Sat 30, following Wed Jun 3; horizon multipliers 1.3, 1.3, 1.3, 1.0 (factor 4.9).
+
+| Scenario | Cycles → throughput | rebuy e/m/l | Listed | Packs |
+|---|---|---|---|---|
+| a. 2 cases every 8 d (1 case always left) | 3,3,3 → 3.0 | Jun 3 ×3 | no (mid = following) | — |
+| b. other supplier one cycle | 3,1.5,3,3,3 → 3.0 | May 30 / May 30 / Jun 3 | yes | 2 |
+| c. closed 6 days | 3,3,1.2,3,3 → 3.0 | Jun 1 / Jun 1 / Jun 7 | yes | 1 (carry 6) |
+| d. demand doubles, 2 new cycles | 3,3,6,6,6 → 6.0 | May 30 / May 30 / Jun 1 | yes | 2 (cap) |
+| d2. doubles, 3 new cycles | 6×5 → 6.0 | May 30 | yes | 2 (cap) |
+| e. halves, 2 new cycles | 3,3,3,1.5,1.5 → 3.0 | Jun 2 / Jun 2 / Jun 6 | yes | 1 (carry 9) |
+| f. slow irregular (box 24) | 1.2,0.69,1.2 → 1.2 | Jun 18 / Jun 18 / Jul 3 | no | — |
+| g. promo 3 cases last | 3×4 → 3.0 | Jun 3 | no | — |
+| h. pack 24→30 | 3,3,3 → 3.0 | Jun 7 | no | — |
+| i. 3 late entries dated today | 3,3,3,0.8 → 3.0 | Jun 10 / Jun 10 / Jul 13 | no | — |
+| j. n=3 span 7 d (gaps 3,4) | 4,3 → 3.5 | Jun 1 / Jun 1 / Jun 2 | yes | 1 |
+| k. n=3 cycle exactly 3× | 3, 9 | — | unclear | — |
+| l. n=3 cycle 3.1× | 3, 9.25 | — | unclear | — |
+| A1 regular n=6 | 3.0 | May 30 | yes | 2 |
+| A1 n=5 | 3.0 | May 30 | yes | 1 (cap 1×) |
+| A9 no schedule | 3.0 | May 30 | yes | 1, hint 2 |
+| trips daily | 3.0 | May 30 | no today | — |
+| trips every 2 d | 3.0 | May 30 | yes | 1 |
+| trips every 7 d (Sat) | 3.0 | May 30 | yes | 2 |
+| override Jun 12 | 3.0 | May 30 | yes | 2 |
+| payday after trip (today Jun 8, Wed/Sat) | 3.0 | Jun 8 | yes | 1 |
+
+Tier B: **S1** Lucky Me (box 24 @ ₱330, ₱16): samples 12.00, 12.75, 12.33, 15.75; weights 1.576,
+2.562, 2.229, 3.623 → rate 13.63 (mid); on-hand 35.7; at_trip 20.1; need 66.8; buffer 13.63;
+units 60.3 → 3 box ₱990; orange; priority 105. **S3** inconsistent then backdated fix → 7.5/day.
+**S4** Sprite rate 3.0, anchor 20 (May 10) + 12 (May 13): on-hand 0, at_trip −3.45 red,
+needs_count, units 17.7 → 2, range 1–2; after count 9: 12.15 → 1. **S6** Eden rate 0.2: on-hand 40
+→ green unlisted, slow; on-hand 0 → red capped orange → 1 box. Rounding (pack 12, rate 3):
+13.5 → 1, 13.51 → 2, 25.5 → 2, 25.51 → 3, 37.5 → 3, 37.51 → 4.
+
+## J. Accepted limitations (must stay visible in *bakit*/help wording)
+
+1. Unrecorded stock makes Tier A early by `Δstock / throughput` days; bounded (never red, ≤ 1–2×
+   habit); fixed by one count.
+2. A store that habitually runs out is told its habit, not its demand — purchase history cannot see
+   lost sales. Only counts can.
+3. Late entries dated "today" push Tier A late by roughly the true age of the merged purchases.
+4. Demand shifts lag up to 3 cycles; a halving shows as an early nudge for one or two cycles.
+5. With fewer than 6 purchases Tier A never exceeds habit; payday is only a hint.
+6. Tier B: a purchase entered with the wrong date distorts two samples in opposite directions.
