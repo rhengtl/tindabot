@@ -1,0 +1,1671 @@
+{
+ "A1": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "A1_n5": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "A2": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    6.0
+   ],
+   "rebuy": [
+    "2026-05-27",
+    "2026-05-29",
+    "2026-05-29"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "A3": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-11",
+    "2026-06-11",
+    "2026-06-11"
+   ],
+   "dormant": false
+  }
+ },
+ "A4": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    1.5,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-06-03"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "A5": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 4,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-17",
+    "2026-05-17",
+    "2026-05-17"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "A5_dormant": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "dormant"
+  ],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-06-03",
+  "following": "2026-06-06",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 4,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-17",
+    "2026-05-17",
+    "2026-05-17"
+   ],
+   "dormant": true
+  }
+ },
+ "A7": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "dormant"
+  ],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 0.6015037593984962,
+   "typical": 12,
+   "n": 3,
+   "cycles": [
+    0.631578947368421,
+    0.5714285714285714
+   ],
+   "rebuy": [
+    "2026-04-29",
+    "2026-04-30",
+    "2026-05-01"
+   ],
+   "dormant": true
+  }
+ },
+ "A8": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 3,
+   "cycles": [
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-29",
+    "2026-05-29",
+    "2026-05-29"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "A8b": {
+  "tier": "none",
+  "confidence": "none",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "unclear"
+  ],
+  "cadence_status": "unclear",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false
+ },
+ "A9": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-29",
+  "following": "2026-06-05",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 12.0,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": 2,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "A10": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 2.4,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    2.4,
+    2.4,
+    2.4,
+    2.4
+   ],
+   "rebuy": [
+    "2026-05-29",
+    "2026-05-29",
+    "2026-05-29"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 11.76,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "A10b": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 2.4,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    2.4,
+    2.4,
+    2.4,
+    2.4
+   ],
+   "rebuy": [
+    "2026-05-31",
+    "2026-05-31",
+    "2026-05-31"
+   ],
+   "dormant": false
+  },
+  "carry": 2.4,
+  "units": 9.36,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "adv_a": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 24.0,
+   "n": 4,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-03",
+    "2026-06-03",
+    "2026-06-03"
+   ],
+   "dormant": false
+  }
+ },
+ "adv_b": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    1.5,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-06-03"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 14.700000000000001,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "adv_c": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    1.2,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-01",
+    "2026-06-01",
+    "2026-06-07"
+   ],
+   "dormant": false
+  },
+  "carry": 6.0,
+  "units": 8.700000000000001,
+  "cap_packs": 2,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "adv_d": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 6.0,
+   "typical": 12.0,
+   "n": 8,
+   "cycles": [
+    3.0,
+    3.0,
+    6.0,
+    6.0,
+    6.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-06-01"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 29.400000000000002,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "adv_d2": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 6.0,
+   "typical": 12,
+   "n": 9,
+   "cycles": [
+    6.0,
+    6.0,
+    6.0,
+    6.0,
+    6.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 29.400000000000002,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "adv_e": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    1.5,
+    1.5
+   ],
+   "rebuy": [
+    "2026-06-02",
+    "2026-06-02",
+    "2026-06-06"
+   ],
+   "dormant": false
+  },
+  "carry": 9.0,
+  "units": 5.700000000000001,
+  "cap_packs": 2,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "adv_f": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 16.666666666666668,
+  "tubo": 3.333333333333332,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 1.2,
+   "typical": 24.0,
+   "n": 4,
+   "cycles": [
+    1.2,
+    0.6857142857142857,
+    1.2
+   ],
+   "rebuy": [
+    "2026-06-18",
+    "2026-06-18",
+    "2026-07-03"
+   ],
+   "dormant": false
+  }
+ },
+ "adv_g": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-03",
+    "2026-06-03",
+    "2026-06-03"
+   ],
+   "dormant": false
+  }
+ },
+ "adv_h": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 27.0,
+   "n": 4,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-07",
+    "2026-06-07",
+    "2026-06-07"
+   ],
+   "dormant": false
+  }
+ },
+ "adv_i": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 5,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    0.8
+   ],
+   "rebuy": [
+    "2026-06-10",
+    "2026-06-10",
+    "2026-07-13"
+   ],
+   "dormant": false
+  }
+ },
+ "adv_j": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.5,
+   "typical": 12,
+   "n": 3,
+   "cycles": [
+    4.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-01",
+    "2026-06-01",
+    "2026-06-02"
+   ],
+   "dormant": false
+  },
+  "carry": 8.50000000001736,
+  "units": 8.649999999982638,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "adv_k": {
+  "tier": "none",
+  "confidence": "none",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "unclear"
+  ],
+  "cadence_status": "unclear",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false
+ },
+ "adv_l": {
+  "tier": "none",
+  "confidence": "none",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "unclear"
+  ],
+  "cadence_status": "unclear",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false
+ },
+ "trip_1d": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-29",
+  "following": "2026-05-30",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  }
+ },
+ "trip_2d": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-05-31",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 3.9000000000000004,
+  "cap_packs": 2,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "trip_7d": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-06",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 24.150000000000002,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "trip_override": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-06-12",
+  "following": "2026-06-19",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-30"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 23.7,
+  "cap_packs": 2,
+  "packs": 2,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 1560.0
+ },
+ "payday_after": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-06-10",
+  "following": "2026-06-13",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 6,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-08",
+    "2026-06-08",
+    "2026-06-08"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 9.45,
+  "cap_packs": 2,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 780.0
+ },
+ "units_guard": {
+  "tier": "cadence",
+  "confidence": "low",
+  "rate": null,
+  "on_hand": null,
+  "days_since_count": null,
+  "days_left": null,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 6.0,
+   "typical": 24,
+   "n": 5,
+   "cycles": [
+    6.0,
+    6.0,
+    6.0,
+    6.0
+   ],
+   "rebuy": [
+    "2026-05-26",
+    "2026-05-26",
+    "2026-05-26"
+   ],
+   "dormant": false
+  },
+  "carry": 0.0,
+  "units": 29.400000000000002,
+  "cap_packs": 1,
+  "packs": 1,
+  "weekly_hint": null,
+  "section": "bilhin",
+  "urgency": "orange",
+  "cost": 330.0
+ },
+ "S1": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 13.626678332557896,
+  "on_hand": 35.74664333488421,
+  "days_since_count": 2.0,
+  "days_left": 2.6232837132051188,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [
+   {
+    "rate": 12.0,
+    "days": 3.0,
+    "capped": 12.0
+   },
+   {
+    "rate": 12.75,
+    "days": 4.0,
+    "capped": 12.75
+   },
+   {
+    "rate": 12.333333333333334,
+    "days": 3.0,
+    "capped": 12.333333333333334
+   },
+   {
+    "rate": 15.75,
+    "days": 4.0,
+    "capped": 15.75
+   }
+  ],
+  "weights": [
+   1.5761349579798292,
+   2.561773379528545,
+   2.2289914337054224,
+   3.622894657055627
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 14.0,
+   "typical": 48,
+   "n": 5,
+   "cycles": [
+    16.0,
+    12.0,
+    16.0,
+    12.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-31"
+   ],
+   "dormant": false
+  },
+  "need": 66.7707238295337,
+  "buffer": 13.626678332557896,
+  "at_trip": 20.075963252442634,
+  "urgency": "orange",
+  "units": 60.32143890964896,
+  "packs": 3,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin",
+  "priority": 105.06321129845489,
+  "before_trip": false,
+  "cost": 990.0
+ },
+ "S3_before": {
+  "tier": "counts",
+  "confidence": "none",
+  "rate": null,
+  "on_hand": 40.0,
+  "days_since_count": 8.541666666666666,
+  "days_left": null,
+  "unit_cost": null,
+  "tubo": null,
+  "flags": [
+   "inconsistent",
+   "no_cost"
+  ],
+  "cadence_status": "n<3",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false
+ },
+ "S3_after": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 7.5,
+  "on_hand": 0.0,
+  "days_since_count": 8.541666666666666,
+  "days_left": 0.0,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "n<3",
+  "samples": [
+   {
+    "rate": 7.5,
+    "days": 4.0,
+    "capped": 7.5
+   }
+  ],
+  "weights": [
+   2.620570555807395
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "need": 36.75,
+  "buffer": 7.5,
+  "at_trip": -8.625,
+  "urgency": "red",
+  "units": 44.25,
+  "packs": 2,
+  "deferred": false,
+  "needs_count": true,
+  "range": [
+   2,
+   3
+  ],
+  "section": "bilhin_na",
+  "priority": 102.09375,
+  "before_trip": true,
+  "cost": 660.0
+ },
+ "S4_stale": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 3.0,
+  "on_hand": 0.0,
+  "days_since_count": 18.541666666666668,
+  "days_left": 0.0,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "needs_count"
+  ],
+  "cadence_status": "n<3",
+  "samples": [
+   {
+    "rate": 3.0,
+    "days": 6.0,
+    "capped": 3.0
+   },
+   {
+    "rate": 3.0,
+    "days": 14.0,
+    "capped": 3.0
+   }
+  ],
+  "weights": [
+   1.1979417335007847,
+   5.590394756336995
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "need": 14.700000000000001,
+  "buffer": 3.0,
+  "at_trip": -3.4499999999999997,
+  "urgency": "red",
+  "units": 17.700000000000003,
+  "packs": 2,
+  "deferred": false,
+  "needs_count": true,
+  "range": [
+   1,
+   2
+  ],
+  "section": "bilhin_na",
+  "priority": 181.50000000000003,
+  "before_trip": true,
+  "cost": 1560.0
+ },
+ "S4_after_count": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 1.7155345746537982,
+  "on_hand": 8.928519392722759,
+  "days_since_count": 0.041666666666666664,
+  "days_left": 5.2045114826814665,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "n<3",
+  "samples": [
+   {
+    "rate": 3.0,
+    "days": 6.0,
+    "capped": 3.0
+   },
+   {
+    "rate": 3.0,
+    "days": 14.0,
+    "capped": 3.0
+   },
+   {
+    "rate": 1.2432432432432432,
+    "days": 18.5,
+    "capped": 1.2432432432432432
+   }
+  ],
+  "weights": [
+   1.1979417335007847,
+   5.590394756336995,
+   18.461874984601437
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "need": 8.40611941580361,
+  "buffer": 1.7155345746537982,
+  "at_trip": 6.955654631870891,
+  "urgency": "orange",
+  "units": 3.165999358586518,
+  "packs": 1,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin",
+  "priority": 14.504647839327198,
+  "before_trip": false,
+  "cost": 780.0
+ },
+ "S6_slow": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 0.2033898305084746,
+  "on_hand": 39.99152542372882,
+  "days_since_count": 0.041666666666666664,
+  "days_left": 196.625,
+  "unit_cost": 85.0,
+  "tubo": 12.0,
+  "flags": [
+   "slow"
+  ],
+  "cadence_status": "n<3",
+  "samples": [
+   {
+    "rate": 0.2033898305084746,
+    "days": 29.5,
+    "capped": 0.2033898305084746
+   }
+  ],
+  "weights": [
+   29.439206056526615
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false,
+  "need": 0.9966101694915256,
+  "buffer": 0.2033898305084746,
+  "at_trip": 39.75762711864407,
+  "urgency": "green",
+  "units": 0.0
+ },
+ "S6_zero": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 0.2033898305084746,
+  "on_hand": 0.0,
+  "days_since_count": 0.041666666666666664,
+  "days_left": 0.0,
+  "unit_cost": 85.0,
+  "tubo": 12.0,
+  "flags": [],
+  "cadence_status": "n<3",
+  "samples": [
+   {
+    "rate": 0.2033898305084746,
+    "days": 29.5,
+    "capped": 0.2033898305084746
+   }
+  ],
+  "weights": [
+   29.439206056526615
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "need": 0.9966101694915256,
+  "buffer": 0.2033898305084746,
+  "at_trip": -0.23389830508474577,
+  "urgency": "orange",
+  "units": 1.2000000000000002,
+  "packs": 1,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin",
+  "priority": 14.766101694915257,
+  "before_trip": true,
+  "cost": 1020.0
+ },
+ "T1_hybrid": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 3.0,
+  "on_hand": 10.0,
+  "days_since_count": 2.0,
+  "days_left": 3.3333333333333335,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-06-03",
+  "following": "2026-06-06",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 7,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0638297872340425
+   ],
+   "rebuy": [
+    "2026-06-03",
+    "2026-06-03",
+    "2026-06-03"
+   ],
+   "dormant": false
+  },
+  "need": 9.45,
+  "buffer": 3.0,
+  "at_trip": 3.0999999999999996,
+  "urgency": "orange",
+  "units": 9.35,
+  "packs": 1,
+  "deferred": false,
+  "needs_count": false,
+  "range": [
+   0,
+   2
+  ],
+  "section": "bilhin",
+  "priority": 63.5,
+  "before_trip": false,
+  "cost": 780.0
+ },
+ "T2_one_sample": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 3.5,
+  "on_hand": 13.854166666666666,
+  "days_since_count": 0.041666666666666664,
+  "days_left": 3.958333333333333,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [
+   {
+    "rate": 3.5,
+    "days": 4.0,
+    "capped": 3.5
+   }
+  ],
+  "weights": [
+   3.9917567534273375
+  ],
+  "next_trip": "2026-06-03",
+  "following": "2026-06-06",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 8,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0638297872340425,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-07",
+    "2026-06-07",
+    "2026-06-07"
+   ],
+   "dormant": false
+  },
+  "need": 11.024999999999999,
+  "buffer": 3.5,
+  "at_trip": 13.854166666666666,
+  "urgency": "yellow",
+  "units": 0.6708333333333325,
+  "packs": 0,
+  "deferred": true,
+  "needs_count": false,
+  "range": null,
+  "section": "wag_muna",
+  "priority": 0.0,
+  "before_trip": false,
+  "cost": null
+ },
+ "T3_mismatch": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 3.0,
+  "on_hand": 27.875,
+  "days_since_count": 0.041666666666666664,
+  "days_left": 9.291666666666666,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [
+   "count_mismatch"
+  ],
+  "cadence_status": "ok",
+  "samples": [
+   {
+    "rate": 0.0,
+    "days": 4.0,
+    "capped": 0.0
+   }
+  ],
+  "weights": [
+   3.9917567534273375
+  ],
+  "next_trip": "2026-06-03",
+  "following": "2026-06-06",
+  "listed": false,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12.0,
+   "n": 8,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0638297872340425,
+    3.0
+   ],
+   "rebuy": [
+    "2026-06-07",
+    "2026-06-07",
+    "2026-06-07"
+   ],
+   "dormant": false
+  },
+  "need": 9.45,
+  "buffer": 3.0,
+  "at_trip": 27.875,
+  "urgency": "green",
+  "units": 0.0
+ }
+}
