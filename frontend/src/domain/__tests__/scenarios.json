@@ -1,0 +1,2423 @@
+{
+ "tz": "Asia/Manila",
+ "scenarios": [
+  {
+   "id": "A1",
+   "kind": "tierA",
+   "note": "regular n=6",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1-005"
+    }
+   ]
+  },
+  {
+   "id": "A1_n5",
+   "kind": "tierA",
+   "note": "regular n=5 \u2192 cap 1x",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1_n5-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1_n5-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1_n5-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1_n5-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A1_n5-004"
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "kind": "tierA",
+   "note": "promo irregular quantities (cycles 3,3,3,6 \u2192 median 3)",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A2-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-05T12:00:00+08:00",
+     "qty_units": 36,
+     "total_cost": 2340,
+     "id": "A2-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-17T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A2-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-21T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 1560,
+     "id": "A2-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-25T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A2-004"
+    }
+   ]
+  },
+  {
+   "id": "A3",
+   "kind": "tierA",
+   "note": "one huge last buy",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A3-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A3-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A3-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A3-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 60,
+     "total_cost": 3900,
+     "id": "A3-004"
+    }
+   ]
+  },
+  {
+   "id": "A4",
+   "kind": "tierA",
+   "note": "skipped purchase",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A4-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A4-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A4-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A4-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A4-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A4-005"
+    }
+   ]
+  },
+  {
+   "id": "A5",
+   "kind": "tierA",
+   "note": "long silence, not yet dormant",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-05T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-09T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5-003"
+    }
+   ]
+  },
+  {
+   "id": "A5_dormant",
+   "kind": "tierA",
+   "note": "long silence \u2192 dormant",
+   "now": "2026-06-01T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5_dormant-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-05T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5_dormant-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-09T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5_dormant-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A5_dormant-003"
+    }
+   ]
+  },
+  {
+   "id": "A7",
+   "kind": "tierA",
+   "note": "probably dead \u2192 dormant",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-03-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A7-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-03-20T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A7-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A7-002"
+    }
+   ]
+  },
+  {
+   "id": "A8",
+   "kind": "tierA",
+   "note": "minimum 3, clear",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-17T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A8-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-21T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A8-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-25T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A8-002"
+    }
+   ]
+  },
+  {
+   "id": "A8b",
+   "kind": "tierA",
+   "note": "minimum 3, unclear ratio 7",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-17T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A8b-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A8b-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-25T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A8b-002"
+    }
+   ]
+  },
+  {
+   "id": "A9",
+   "kind": "tierA",
+   "note": "no schedule",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A9-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A9-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A9-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A9-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A9-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A9-005"
+    }
+   ]
+  },
+  {
+   "id": "A10",
+   "kind": "tierA",
+   "note": "gap 5, rebuy today",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-04T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-09T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-19T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-24T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10-004"
+    }
+   ]
+  },
+  {
+   "id": "A10b",
+   "kind": "tierA",
+   "note": "gap 5, rebuy after trip",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10b-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-11T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10b-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-16T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10b-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-21T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10b-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "A10b-004"
+    }
+   ]
+  },
+  {
+   "id": "adv_a",
+   "kind": "tierA",
+   "note": "2 cases, 1 case always left",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 1560,
+     "id": "adv_a-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 1560,
+     "id": "adv_a-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 1560,
+     "id": "adv_a-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 1560,
+     "id": "adv_a-003"
+    }
+   ]
+  },
+  {
+   "id": "adv_b",
+   "kind": "tierA",
+   "note": "other supplier one cycle",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_b-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_b-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_b-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_b-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_b-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_b-005"
+    }
+   ]
+  },
+  {
+   "id": "adv_c",
+   "kind": "tierA",
+   "note": "closed 6 days",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_c-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_c-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_c-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-20T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_c-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-24T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_c-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-28T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_c-005"
+    }
+   ]
+  },
+  {
+   "id": "adv_d",
+   "kind": "tierA",
+   "note": "demand doubles, 2 new cycles",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-24T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-005"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-28T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d-007"
+    }
+   ]
+  },
+  {
+   "id": "adv_d2",
+   "kind": "tierA",
+   "note": "demand doubles, 3 new cycles",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-20T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-005"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-24T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-007"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-28T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_d2-008"
+    }
+   ]
+  },
+  {
+   "id": "adv_e",
+   "kind": "tierA",
+   "note": "demand halves, 2 new cycles",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_e-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-05T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_e-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-09T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_e-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_e-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-21T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_e-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-29T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_e-005"
+    }
+   ]
+  },
+  {
+   "id": "adv_f",
+   "kind": "tierA",
+   "note": "slow irregular",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 20,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-03-15T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 400,
+     "id": "adv_f-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-04T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 400,
+     "id": "adv_f-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-09T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 400,
+     "id": "adv_f-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-29T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 400,
+     "id": "adv_f-003"
+    }
+   ]
+  },
+  {
+   "id": "adv_g",
+   "kind": "tierA",
+   "note": "promo 3 cases last",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_g-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_g-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_g-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_g-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 36,
+     "total_cost": 2340,
+     "id": "adv_g-004"
+    }
+   ]
+  },
+  {
+   "id": "adv_h",
+   "kind": "tierA",
+   "note": "pack change 24\u219230",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 30,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 330.0,
+     "id": "adv_h-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 330.0,
+     "id": "adv_h-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 30,
+     "total_cost": 412.5,
+     "id": "adv_h-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-28T12:00:00+08:00",
+     "qty_units": 30,
+     "total_cost": 412.5,
+     "id": "adv_h-003"
+    }
+   ]
+  },
+  {
+   "id": "adv_i",
+   "kind": "tierA",
+   "note": "3 late entries dated today (merged)",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-29T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-29T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-005"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-29T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_i-006"
+    }
+   ]
+  },
+  {
+   "id": "adv_j",
+   "kind": "tierA",
+   "note": "n=3 spanning exactly 7 d",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_j-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-25T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_j-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-29T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_j-002"
+    }
+   ]
+  },
+  {
+   "id": "adv_k",
+   "kind": "tierA",
+   "note": "n=3 cycle exactly 3\u00d7",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-17T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_k-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-21T12:00:00+08:00",
+     "qty_units": 36,
+     "total_cost": 2340,
+     "id": "adv_k-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-25T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_k-002"
+    }
+   ]
+  },
+  {
+   "id": "adv_l",
+   "kind": "tierA",
+   "note": "n=3 cycle 3.08\u00d7",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-17T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_l-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-21T12:00:00+08:00",
+     "qty_units": 37,
+     "total_cost": 2405,
+     "id": "adv_l-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-25T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "adv_l-002"
+    }
+   ]
+  },
+  {
+   "id": "trip_1d",
+   "kind": "tierA",
+   "note": "trips daily \u2192 not listed today",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-005"
+    }
+   ]
+  },
+  {
+   "id": "trip_2d",
+   "kind": "tierA",
+   "note": "trips every 2 d",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     0,
+     2,
+     4,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-005"
+    }
+   ]
+  },
+  {
+   "id": "trip_7d",
+   "kind": "tierA",
+   "note": "trips every 7 d",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-005"
+    }
+   ]
+  },
+  {
+   "id": "trip_override",
+   "kind": "tierA",
+   "note": "one-off trip Jun 12",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [],
+    "next_trip_override": "2026-06-12"
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "trip_1d-005"
+    }
+   ]
+  },
+  {
+   "id": "payday_after",
+   "kind": "tierA",
+   "note": "payday after trip (Jun 10 trip)",
+   "now": "2026-06-08T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-15T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "payday_after-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-19T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "payday_after-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-23T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "payday_after-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-27T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "payday_after-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-31T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "payday_after-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-06-04T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "payday_after-005"
+    }
+   ]
+  },
+  {
+   "id": "units_guard",
+   "kind": "tierA",
+   "note": "1,1,1,5,1 boxes \u2192 throughput 6.0 units/day",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-20T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 330.0,
+     "id": "units_guard-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-24T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 330.0,
+     "id": "units_guard-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-28T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 330.0,
+     "id": "units_guard-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-02T12:00:00+08:00",
+     "qty_units": 120,
+     "total_cost": 1650.0,
+     "id": "units_guard-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 24,
+     "total_cost": 330.0,
+     "id": "units_guard-004"
+    }
+   ]
+  },
+  {
+   "id": "S1",
+   "kind": "tierB",
+   "note": "Lucky Me count-at-restock, payday weekend",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_on_hand": 10,
+     "id": "S1-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-001"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_on_hand": 22,
+     "id": "S1-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-003"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_on_hand": 19,
+     "id": "S1-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_on_hand": 30,
+     "id": "S1-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-007"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_on_hand": 15,
+     "id": "S1-008"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-009"
+    }
+   ]
+  },
+  {
+   "id": "S3_before",
+   "kind": "tierB",
+   "note": "forgot purchase \u2192 inconsistent",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-16T21:00:00+08:00",
+     "qty_on_hand": 22,
+     "id": "S3_before-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-20T21:00:00+08:00",
+     "qty_on_hand": 40,
+     "id": "S3_before-001"
+    }
+   ]
+  },
+  {
+   "id": "S3_after",
+   "kind": "tierB",
+   "note": "backdated fix \u2192 7.5/day",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-16T21:00:00+08:00",
+     "qty_on_hand": 22,
+     "id": "S3_before-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-20T21:00:00+08:00",
+     "qty_on_hand": 40,
+     "id": "S3_before-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-17T12:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S3_after-002"
+    }
+   ]
+  },
+  {
+   "id": "S4_stale",
+   "kind": "tierB",
+   "note": "rate 3.0 mid; stale anchor; projected 0",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-04-20T21:00:00+08:00",
+     "qty_on_hand": 44,
+     "id": "S4_stale-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-04-26T21:00:00+08:00",
+     "qty_on_hand": 26,
+     "id": "S4_stale-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-28T12:00:00+08:00",
+     "qty_units": 36,
+     "total_cost": 2340,
+     "id": "S4_stale-002"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-10T21:00:00+08:00",
+     "qty_on_hand": 20,
+     "id": "S4_stale-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "S4_stale-004"
+    }
+   ]
+  },
+  {
+   "id": "S4_after_count",
+   "kind": "tierB",
+   "note": "count 9 this morning (new sample enters)",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-04-20T21:00:00+08:00",
+     "qty_on_hand": 44,
+     "id": "S4_stale-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-04-26T21:00:00+08:00",
+     "qty_on_hand": 26,
+     "id": "S4_stale-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-28T12:00:00+08:00",
+     "qty_units": 36,
+     "total_cost": 2340,
+     "id": "S4_stale-002"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-10T21:00:00+08:00",
+     "qty_on_hand": 20,
+     "id": "S4_stale-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "S4_stale-004"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-29T09:00:00+08:00",
+     "qty_on_hand": 9,
+     "id": "S4_after_count-005"
+    }
+   ]
+  },
+  {
+   "id": "S6_slow",
+   "kind": "tierB",
+   "note": "rate 0.2, on-hand 40 \u2192 green/slow",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 97,
+    "unit_label": "piraso",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 1020,
+     "id": "S6_slow-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-04-29T21:00:00+08:00",
+     "qty_on_hand": 46,
+     "id": "S6_slow-001"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-29T09:00:00+08:00",
+     "qty_on_hand": 40,
+     "id": "S6_slow-002"
+    }
+   ]
+  },
+  {
+   "id": "S6_zero",
+   "kind": "tierB",
+   "note": "rate 0.2, on-hand 0 \u2192 capped orange, 1 box",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 97,
+    "unit_label": "piraso",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-01T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 1020,
+     "id": "S6_slow-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-04-29T21:00:00+08:00",
+     "qty_on_hand": 6,
+     "id": "S6_zero-001"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-29T09:00:00+08:00",
+     "qty_on_hand": 0,
+     "id": "S6_zero-002"
+    }
+   ]
+  },
+  {
+   "id": "T1_hybrid",
+   "kind": "tierB",
+   "note": "first count \u2192 hybrid (anchor + throughput)",
+   "now": "2026-06-01T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_on_hand": 4,
+     "id": "T1_hybrid-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-007"
+    }
+   ]
+  },
+  {
+   "id": "T2_one_sample",
+   "kind": "tierB",
+   "note": "second count \u2192 single sample 3.5",
+   "now": "2026-06-03T11:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_on_hand": 4,
+     "id": "T1_hybrid-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-007"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-06-03T10:00:00+08:00",
+     "qty_on_hand": 2,
+     "id": "T2_one_sample-008"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-06-03T10:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T2_one_sample-009"
+    }
+   ]
+  },
+  {
+   "id": "T3_mismatch",
+   "kind": "tierB",
+   "note": "Jun 3 count included the new case \u2192 sample 0/day \u2192 >3x off throughput \u2192 count_mismatch, keep throughput",
+   "now": "2026-06-03T11:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_on_hand": 4,
+     "id": "T3_mismatch-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T3_mismatch-007"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-06-03T10:00:00+08:00",
+     "qty_on_hand": 16,
+     "id": "T3_mismatch-008"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-06-03T10:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T3_mismatch-009"
+    }
+   ]
+  }
+ ]
+}
