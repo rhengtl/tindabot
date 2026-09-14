@@ -9,7 +9,6 @@ export interface CatalogItem {
   pack_size: number
   pack_label: string
   cost_hint: number | null // per selling unit, approximate
-  aliases?: string[] // what owners actually type: "coke", "canton", "bigas"
 }
 
 const i = (name: string, category: string, unit_label: string, pack_size: number, pack_label: string, cost_hint: number | null = null): CatalogItem => ({
@@ -127,61 +126,8 @@ export const CATALOG: CatalogItem[] = [
   i('Charcoal (bag)', 'Itlog at iba pa', 'bag', 1, 'bag', 40),
 ]
 
-const ALIASES: Record<string, string[]> = {
-  'Coca-Cola': ['coke', 'cocacola', 'coca cola'],
-  'Sprite': ['sprite'],
-  'Royal Tru-Orange': ['royal', 'tru orange'],
-  'Lucky Me Pancit Canton': ['canton', 'pancit canton', 'luckyme'],
-  'Lucky Me': ['luckyme', 'mami'],
-  'Sinandomeng': ['bigas', 'rice'],
-  'Dinorado': ['bigas', 'rice'],
-  'Jasmine': ['bigas', 'rice'],
-  'Well-milled': ['bigas', 'rice'],
-  'Bear Brand': ['bearbrand', 'gatas'],
-  'Alaska': ['gatas', 'milk'],
-  'Nescafé': ['nescafe', 'kape', 'coffee'],
-  'Kopiko': ['kape', 'coffee'],
-  'Great Taste': ['kape', 'coffee'],
-  'San Mig Coffee': ['kape', 'coffee'],
-  'Century Tuna': ['tuna'],
-  'Ligo': ['sardinas', 'sardines'],
-  'Mega Sardines': ['sardinas'],
-  '555': ['sardinas'],
-  'Youngstown': ['sardinas'],
-  'Argentina': ['corned beef', 'karne'],
-  'Purefoods': ['corned beef'],
-  'CDO Karne': ['corned beef', 'karne norte'],
-  'Marlboro': ['yosi', 'sigarilyo'],
-  'Fortune': ['yosi', 'sigarilyo'],
-  'Mighty': ['yosi', 'sigarilyo'],
-  'Winston': ['yosi', 'sigarilyo'],
-  'Itlog': ['egg', 'eggs'],
-  'Safeguard': ['sabon'],
-  'Tide': ['sabon', 'panlaba'],
-  'Surf': ['sabon', 'panlaba'],
-  'Ariel': ['sabon', 'panlaba'],
-  'Asukal': ['sugar'],
-  'Asin': ['salt'],
-  'Cooking Oil': ['mantika'],
-  'Silver Swan': ['toyo'],
-  'Datu Puti Vinegar': ['suka'],
-  'Datu Puti Patis': ['patis'],
-}
-
-const norm = (x: string) => x.toLowerCase().replace(/[-–_.]/g, ' ').replace(/\s+/g, ' ').trim()
-
-function aliasesFor(name: string): string[] {
-  const out: string[] = []
-  for (const [prefix, list] of Object.entries(ALIASES)) if (name.startsWith(prefix)) out.push(...list)
-  return out
-}
-
 export function searchCatalog(q: string): CatalogItem[] {
-  const s = norm(q)
+  const s = q.trim().toLowerCase()
   if (!s) return CATALOG
-  const terms = s.split(' ')
-  return CATALOG.filter((c) => {
-    const hay = [norm(c.name), norm(c.category), ...aliasesFor(c.name).map(norm), ...(c.aliases ?? []).map(norm)].join(' | ')
-    return terms.every((t) => hay.includes(t))
-  })
+  return CATALOG.filter((c) => c.name.toLowerCase().includes(s) || c.category.toLowerCase().includes(s))
 }
