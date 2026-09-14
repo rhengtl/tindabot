@@ -144,7 +144,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
           </button>
           <button
             type="button"
-            className="muted icon-btn"
+            className="muted"
             aria-label="isara"
             onClick={() => {
               setMeta('nudge_dismissed', today)
