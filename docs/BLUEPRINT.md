@@ -110,7 +110,8 @@ StoreState   { cash_last: {ts, amount}|null, utang_outstanding, weeks: WeekSumma
 
 ## D. UX (P1 scope marked)
 
-Navigation: bottom tabs **Bahay · Paninda · Listahan(P2) · Iba pa** + FAB. P1 FAB: **Bumili · Bilang**.
+Navigation: bottom tabs **Bahay · Paninda · Listahan(P2) · Iba pa** + FAB. P1 FAB: **Bumili · Bilang**;
+P2 adds **Utang · Bayad · Gastos · Pera** (decided 2026-09-14, see §E6).
 
 - **Onboarding (P1):** store name → restock days (or *kapag kailangan*) → add paninda from catalog.
 - **Bahay = the list (P1).** Sticky bar: next trip (or *Pupunta ako ngayon*), ~total, Share.

@@ -73,3 +73,9 @@ Fixed: the "Dala ko ₱" input and the "Wag muna" toggle were 23 px / 18 px tall
 size); the archived-customer counter said "may utang pa" for a credit balance (now "may balanse
 pa"). P1 spots re-checked: Paninda, catalog "coke", Bumili confirmation, Bilang numpad, Bahay
 rows.
+
+Not re-tested and unchanged from the P1 limitations above: home-screen install / standalone
+(WebAPK) behaviour — the realme launcher still does not place the Brave shortcut; a real
+share-sheet target for the export (the share was intercepted to capture the file); Chrome for
+Android (user-disabled on this phone). Backdating used real *Kahapon* taps and a programmatically
+set `input[type=date]`; the native date picker itself was exercised in P1 only.
