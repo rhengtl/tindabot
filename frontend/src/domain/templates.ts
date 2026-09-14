@@ -61,13 +61,9 @@ export interface TierBReasonInput {
   payday_in_horizon: boolean
   deferred: boolean
   slow: boolean
-  inconsistent: boolean
 }
 
 export function tierBReason(i: TierBReasonInput): string {
-  if (i.inconsistent) {
-    return 'Mas marami ang nabilang kaysa inaasahan — may hindi na-record na bili? Idagdag sa Bumili. Tantiya lang ito.'
-  }
   if (i.needs_count) {
     return `Bilangin muna — ${Math.floor(i.days_since_count)} araw nang hindi nabibilang. Tantiya lang ito.`
   }
@@ -121,7 +117,7 @@ export function tierAReason(i: TierAReasonInput): string {
 export function tierAHint(i: TierAReasonInput): string | null {
   const parts: string[] = []
   if (i.no_schedule && i.weekly_hint_label) parts.push(`Para umabot ng 1 linggo: ${i.weekly_hint_label}.`)
-  if (i.payday_in_horizon) parts.push(i.cap_reached ? 'Katapusan/kinsenas — baka kulangin; ikaw ang bahala.' : 'Katapusan/kinsenas — baka mas marami ang bibili.')
+  if (i.payday_in_horizon) parts.push(i.cap_reached ? 'Katapusan/kinsenas — baka kulangin; ikaw ang bahala.' : 'Katapusan/kinsenas — mas mabenta.')
   return parts.length ? parts.join(' ') : null
 }
 
