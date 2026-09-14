@@ -24,3 +24,28 @@ list rows/nudge/✕ touch targets < 44 px; persist-storage hint wording.
 Known: `navigator.storage.persisted()` is false for the shortcut install on this emulator — the
 app relies on the monthly export nudge; Chrome grants persistence to WebAPK installs / engaged
 sites on real devices. Home-screen icon is a plain amber square (no glyph).
+
+## Physical device (2026-09-14)
+
+realme RMX3710 (realme C55), Android 15 / API 35, 1080×2400 @ 408 dpi, USB debugging. Chrome is
+user-disabled on this phone, so the run used **Brave 1.94.121 (Chromium 152.0.7977.83)**. Same
+setup: `vite preview --host 0.0.0.0 --port 4173` + `adb reverse tcp:4173 tcp:4173`; real taps via
+`adb shell input`, state read via CDP (`adb forward tcp:9222 localabstract:chrome_devtools_remote`).
+
+Passed on the phone: onboarding, catalog search ("coke"), custom 70-char name, Bumili with natira
++ Kahapon + confirmation sum + lugi prompt, Gboard numeric keyboard on ₱/natira fields (viewport
+shrinks 794→510 px, focused field stays visible), native date picker on "Ibang araw", Bilang numpad
+by real taps, Paninda/detail, Burahin/Ibalik, native `confirm` dialog, export → import ×2
+(57/57/57), refresh, Brave close/reopen, app switch (tab state kept), force-stop, offline relaunch
+with airplane mode on **and** `adb reverse` removed (SW-served, 11 products / 6 rows intact),
+swipe scrolling, no horizontal overflow (423/423) on all tabs, Tier A never red / no on-hand
+wording / limitation text in bakit, no-data row shows "?".
+
+Fixed: `.btn.ghost` ("Itinigil na paninda", "Tapos", "Subukan ang demo", "Ipakita") and `.chip`
+(restock-day pills) were 40 px tall — raised to the tap size. Service-worker `autoUpdate`
+delivered the rebuilt assets to the phone with data intact.
+
+Not verifiable here: Brave offers "Install app" and registers the shortcut as standalone
+(`webapp_display_mode=3`), but the realme launcher never places the icon (also when added by
+hand), so standalone/WebAPK behaviour and `persisted()` for an installed app remain untested on a
+physical phone; in-tab `persisted()` is false.

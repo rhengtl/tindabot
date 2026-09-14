@@ -84,7 +84,7 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 }
 .btn.primary { background: var(--brand); color: #fff; width: 100%; }
 .btn.secondary { background: var(--brand-soft); color: var(--brand-dark); }
-.btn.ghost { color: var(--brand-dark); text-decoration: underline; min-height: 40px; }
+.btn.ghost { color: var(--brand-dark); text-decoration: underline; min-height: var(--tap); }
 .btn.danger { background: var(--red-soft); color: var(--red); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn.sm { min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
@@ -97,7 +97,7 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 }
 .field input:focus { outline: 2px solid var(--brand); border-color: transparent; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { min-height: 40px; padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 600; }
+.chip { min-height: 44px; padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 600; }
 .chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
 
 .line { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line); align-items: flex-start; }
