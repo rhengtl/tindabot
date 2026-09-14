@@ -65,6 +65,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
 .card.soft { background: var(--brand-soft); border-color: transparent; }
+.card.soft > button.grow { min-height: 44px; }
+.icon-btn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; }
 .card.flag { background: var(--yellow-soft); border-color: transparent; font-weight: 600; }
 .row { display: flex; align-items: center; gap: 10px; }
 .row.between { justify-content: space-between; }
@@ -82,10 +84,10 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 }
 .btn.primary { background: var(--brand); color: #fff; width: 100%; }
 .btn.secondary { background: var(--brand-soft); color: var(--brand-dark); }
-.btn.ghost { color: var(--brand-dark); text-decoration: underline; min-height: 40px; }
+.btn.ghost { color: var(--brand-dark); text-decoration: underline; min-height: var(--tap); }
 .btn.danger { background: var(--red-soft); color: var(--red); }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.btn.sm { min-height: 40px; padding: 6px 12px; font-size: 0.9rem; }
+.btn.sm { min-height: 44px; padding: 6px 12px; font-size: 0.9rem; }
 
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
@@ -95,17 +97,18 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 }
 .field input:focus { outline: 2px solid var(--brand); border-color: transparent; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { min-height: 40px; padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 600; }
+.chip { min-height: 44px; padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 600; }
 .chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
 
-.line { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); align-items: flex-start; }
-.line .line-cta { flex-basis: 100%; text-align: left; padding-left: 20px; color: var(--brand-dark); font-weight: 700; font-size: 0.9rem; min-height: 32px; }
+.line { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line); align-items: flex-start; }
+.line > button.grow { min-height: var(--tap); padding: 8px 0; }
+.line .line-cta { flex-basis: 100%; text-align: left; padding-left: 20px; color: var(--brand-dark); font-weight: 700; font-size: 0.9rem; min-height: 44px; }
 .line:first-child { border-top: none; }
 .line .name { font-weight: 700; }
 .line .qty { font-weight: 800; white-space: nowrap; }
 .line .reason { color: var(--muted); font-size: 0.82rem; margin-top: 2px; line-height: 1.35; }
 .line .cta { color: var(--brand-dark); font-weight: 700; }
-.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 18px; flex-shrink: 0; }
 .dot.red { background: var(--red); } .dot.orange { background: var(--orange); }
 .dot.yellow { background: var(--yellow); } .dot.green { background: var(--green); } .dot.grey { background: #ccc; }
 .badge { font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
