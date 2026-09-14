@@ -165,6 +165,7 @@ function tierBLine(p: Product, s: ProductState, c: Ctx): ListLine | null {
     payday_in_horizon: c.payday_in_horizon,
     deferred,
     slow: rate < SLOW_URGENCY_RATE,
+    inconsistent: s.flags.has('inconsistent'),
   })
 
   return {
