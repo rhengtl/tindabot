@@ -118,7 +118,10 @@ Navigation: bottom tabs **Bahay · Paninda · Listahan(P2) · Iba pa** + FAB. P1
   without a count, Tier A listed; at most once a day). Sections **Bilhin na** (red) ·
   **Bilhin** (orange, non-deferred yellow, Tier A) · **Wag muna** (deferred, collapsed).
   Row = `name · packs · ₱` / reason. Stale rows: reason becomes *"Bilangin muna →"* and the quantity
-  shows as a range. Tier A rows use pattern wording only. Tap → *bakit* sheet. Footer: total +
+  shows as a range. A range whose low end is 0 (the 0.7× rate recomputation lands on a deferred
+  yellow line) is shown as *"hanggang N <pack>"* — "up to N", deliberately naming no lower bound,
+  because at the low end nothing may be needed yet. The line's recommended `buy_packs` is still
+  the base-rate value; the range only communicates uncertainty. Tier A rows use pattern wording only. Tap → *bakit* sheet. Footer: total +
   *"N items walang presyo"*. Empty state: one *Idagdag* button.
 - **Paninda (P1):** by urgency then name; slow/dead/dormant/unclear notes; Idagdag via bundled
   catalog (search, categories, free name) → pack size, sell price (optional), *ilan ang natira?*
@@ -159,7 +162,8 @@ samples : consecutive active COUNTs c1 → c2 in total order; days = t2 − t1 (
 rate    : Σ rate_i · w_i / Σ w_i,   w_i = days_i · 0.5^(age_days_i / 14)
 confidence : none (no rate) | low (< 2 samples or < 14 d history) | mid (2–3 samples, ≥ 14 d)
              | high (≥ 4 samples, ≥ 28 d); −1 level if the newest interval was inconsistent or the
-             newest sample ended > 28 d ago
+             newest sample ended > 28 d ago. The downgrade floors at `low`: `none` means "no rate",
+             so a product that has a rate is never reported as `none` (deliberate, not incidental)
 on_hand : max(0, anchor.qty + Σ PURCHASE.qty + Σ ADJUST.delta (strictly after anchor) − rate · days_since)
 days_left : on_hand / rate   (no multipliers; informational only)
 needs_count : days_since_count > 14, or (urgency ∈ {red, orange} and days_since_count > 7)
@@ -317,11 +321,26 @@ Sat 30, following Wed Jun 3; horizon multipliers 1.3, 1.3, 1.3, 1.0 (factor 4.9)
 | override Jun 12 | 3.0 | May 30 | yes | 2 |
 | payday after trip (today Jun 8, Wed/Sat) | 3.0 | Jun 8 | yes | 1 |
 
+**Transition goldens.** T1 (A1 history + linked COUNT 4 / PURCHASE 12 on May 30, now Jun 1):
+hybrid — tier counts, no samples, rate = throughput 3.0, on-hand from the real anchor, 1 case.
+T2 (+ linked COUNT 2 / PURCHASE 12 on Jun 3, now Jun 3 11:00): one sample (4+12−2)/4 = 3.5 →
+Tier B rate 3.5, no mismatch. **T3** (A1 + COUNT 4 / PURCHASE 12 on May 30, then COUNT **16** /
+PURCHASE 12 on Jun 3 — the owner included the new case in the Jun 3 count): sample
+(4+12−16)/4 = 0/day → > 3× off throughput → `count_mismatch`, rate stays 3.0. *An earlier draft
+of this scenario used COUNT 16 on May 30 and COUNT 14 on Jun 3, which yields (16+12−14)/4 =
+3.5/day — only a 1.2× deviation, which the guard correctly does not flag; that data tested
+nothing. The guard fires only when a single sample deviates > 3× from throughput.*
+
 Tier B: **S1** Lucky Me (box 24 @ ₱330, ₱16): samples 12.00, 12.75, 12.33, 15.75; weights 1.576,
 2.562, 2.229, 3.623 → rate 13.63 (mid); on-hand 35.7; at_trip 20.1; need 66.8; buffer 13.63;
 units 60.3 → 3 box ₱990; orange; priority 105. **S3** inconsistent then backdated fix → 7.5/day.
-**S4** Sprite rate 3.0, anchor 20 (May 10) + 12 (May 13): on-hand 0, at_trip −3.45 red,
-needs_count, units 17.7 → 2, range 1–2; after count 9: 12.15 → 1. **S6** Eden rate 0.2: on-hand 40
+**S4** Sprite (events: COUNT 44 Apr 20, COUNT 26 Apr 26, PURCHASE 36 Apr 28, COUNT 20 May 10,
+PURCHASE 12 May 13 → two 3.0/day samples, mid): on-hand 0, at_trip −3.45 red, needs_count,
+units 17.7 → 2, range 1–2. **After COUNT 9 on May 29 09:00** the rules add a third sample
+(20+12−9)/18.5 d = 1.24/day; the recency-weighted rate becomes **1.72/day** (not 3.0 — the
+earlier prose held the rate fixed for exposition), at_trip 7.0, need 8.4, buffer 1.7 → units 3.1
+→ **1 case**, orange. The illustrative "12.15 → 1" figure assumed a fixed rate and is superseded
+by the golden. **S6** Eden rate 0.2: on-hand 40
 → green unlisted, slow; on-hand 0 → red capped orange → 1 box. Rounding (pack 12, rate 3):
 13.5 → 1, 13.51 → 2, 25.5 → 2, 25.51 → 3, 37.5 → 3, 37.51 → 4.
 
