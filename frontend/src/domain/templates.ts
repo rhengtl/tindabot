@@ -33,6 +33,12 @@ export function peso(v: number): string {
   return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+/** Recorded money (P2): exact pesos, centavos shown only when present. */
+export function pesoExact(v: number): string {
+  const cents = Math.round(Math.abs(v) * 100) % 100 !== 0
+  return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: 2 })
+}
+
 /** Estimates are rounded to ₱10 and prefixed with "~". */
 export function pesoEstimate(v: number): string {
   return '~' + peso(Math.round(v / 10) * 10)

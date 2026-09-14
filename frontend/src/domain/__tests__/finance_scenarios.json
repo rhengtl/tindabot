@@ -1,0 +1,1274 @@
+{
+ "scenarios": [
+  {
+   "id": "F1_fifo",
+   "note": "two utang, one partial payment → oldest unpaid is the second utang",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0001",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "E0002",
+     "type": "UTANG",
+     "ts": "2026-09-05T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 50,
+     "note": "gatas"
+    },
+    {
+     "id": "E0003",
+     "type": "BAYAD",
+     "ts": "2026-09-10T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 120
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 30.0,
+      "total_utang": 150.0,
+      "total_bayad": 120.0,
+      "last_utang_ts": "2026-09-05T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-10T12:00:00+08:00",
+      "oldest_unpaid_ts": "2026-09-05T12:00:00+08:00"
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 30.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 30.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 120.0,
+       "cash_count": null,
+       "outstanding_end": 30.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 150.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 150.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F2_overpay",
+   "note": "payment exceeds utang → negative balance (sobra), no oldest unpaid",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0004",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "E0005",
+     "type": "BAYAD",
+     "ts": "2026-09-02T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 150
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": -50.0,
+      "total_utang": 100.0,
+      "total_bayad": 150.0,
+      "last_utang_ts": "2026-09-01T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-02T12:00:00+08:00",
+      "oldest_unpaid_ts": null
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 0.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 100.0,
+       "utang_received": 150.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F3_prepay",
+   "note": "payment before any utang counts as credit (FIFO over all payments)",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0006",
+     "type": "BAYAD",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "E0007",
+     "type": "UTANG",
+     "ts": "2026-09-03T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 60
+    },
+    {
+     "id": "E0008",
+     "type": "UTANG",
+     "ts": "2026-09-08T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 70
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 30.0,
+      "total_utang": 130.0,
+      "total_bayad": 100.0,
+      "last_utang_ts": "2026-09-08T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-01T12:00:00+08:00",
+      "oldest_unpaid_ts": "2026-09-08T12:00:00+08:00"
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 30.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 30.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 70.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 30.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 60.0,
+       "utang_received": 100.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F4_void",
+   "note": "VOID removes an utang; VOID listed before its target",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0010",
+     "type": "VOID",
+     "ts": "2026-09-12T12:00:00+08:00",
+     "target": "E0009"
+    },
+    {
+     "id": "E0011",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "E0009",
+     "type": "UTANG",
+     "ts": "2026-09-04T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 200
+    },
+    {
+     "id": "E0012",
+     "type": "BAYAD",
+     "ts": "2026-09-10T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 0.0,
+      "total_utang": 100.0,
+      "total_bayad": 100.0,
+      "last_utang_ts": "2026-09-01T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-10T12:00:00+08:00",
+      "oldest_unpaid_ts": null
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 0.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 100.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 100.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 100.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F5_same_ts",
+   "note": "utang and bayad at the same ts → id order; balance unaffected",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "ZZ01",
+     "type": "BAYAD",
+     "ts": "2026-09-05T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "AA01",
+     "type": "UTANG",
+     "ts": "2026-09-05T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "AA02",
+     "type": "UTANG",
+     "ts": "2026-09-05T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 40
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 40.0,
+      "total_utang": 140.0,
+      "total_bayad": 100.0,
+      "last_utang_ts": "2026-09-05T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-05T12:00:00+08:00",
+      "oldest_unpaid_ts": "2026-09-05T12:00:00+08:00"
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 40.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 40.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 40.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 140.0,
+       "utang_received": 100.0,
+       "cash_count": null,
+       "outstanding_end": 40.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F6_outstanding",
+   "note": "three customers: 30 + (−50 → 0) + 200 = 230",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0016",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "E0017",
+     "type": "UTANG",
+     "ts": "2026-09-05T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 50
+    },
+    {
+     "id": "E0018",
+     "type": "BAYAD",
+     "ts": "2026-09-10T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 120
+    },
+    {
+     "id": "E0019",
+     "type": "UTANG",
+     "ts": "2026-09-02T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000002",
+     "amount": 100
+    },
+    {
+     "id": "E0020",
+     "type": "BAYAD",
+     "ts": "2026-09-03T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000002",
+     "amount": 150
+    },
+    {
+     "id": "E0021",
+     "type": "UTANG",
+     "ts": "2026-08-20T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000003",
+     "amount": 200
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000003": {
+      "customer_id": "CUST0000000000000000000003",
+      "balance": 200.0,
+      "total_utang": 200.0,
+      "total_bayad": 0.0,
+      "last_utang_ts": "2026-08-20T12:00:00+08:00",
+      "last_bayad_ts": null,
+      "oldest_unpaid_ts": "2026-08-20T12:00:00+08:00"
+     },
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 30.0,
+      "total_utang": 150.0,
+      "total_bayad": 120.0,
+      "last_utang_ts": "2026-09-05T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-10T12:00:00+08:00",
+      "oldest_unpaid_ts": "2026-09-05T12:00:00+08:00"
+     },
+     "CUST0000000000000000000002": {
+      "customer_id": "CUST0000000000000000000002",
+      "balance": -50.0,
+      "total_utang": 100.0,
+      "total_bayad": 150.0,
+      "last_utang_ts": "2026-09-02T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-03T12:00:00+08:00",
+      "oldest_unpaid_ts": null
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 230.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 230.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 120.0,
+       "cash_count": null,
+       "outstanding_end": 230.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 250.0,
+       "utang_received": 150.0,
+       "cash_count": null,
+       "outstanding_end": 350.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 200.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F7_weeks",
+   "note": "four Mon–Sun weeks, cash count last-wins within a week, outstanding as of week end",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0022",
+     "type": "EXPENSE",
+     "ts": "2026-09-14T09:00:00+08:00",
+     "amount": 45.5,
+     "category": "kuryente"
+    },
+    {
+     "id": "E0023",
+     "type": "EXPENSE",
+     "ts": "2026-09-08T12:00:00+08:00",
+     "amount": 100,
+     "category": "pamasahe"
+    },
+    {
+     "id": "E0024",
+     "type": "PURCHASE",
+     "ts": "2026-09-09T12:00:00+08:00",
+     "product_id": "PROD00000000000000000000001",
+     "qty_units": 12,
+     "total_cost": 780
+    },
+    {
+     "id": "E0025",
+     "type": "PURCHASE",
+     "ts": "2026-09-09T13:00:00+08:00",
+     "product_id": "PROD00000000000000000000001",
+     "qty_units": 12,
+     "total_cost": null
+    },
+    {
+     "id": "E0026",
+     "type": "UTANG",
+     "ts": "2026-09-02T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "E0027",
+     "type": "BAYAD",
+     "ts": "2026-09-16T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 40
+    },
+    {
+     "id": "E0028",
+     "type": "CASH_COUNT",
+     "ts": "2026-09-08T09:00:00+08:00",
+     "amount": 1500
+    },
+    {
+     "id": "E0029",
+     "type": "CASH_COUNT",
+     "ts": "2026-09-13T20:00:00+08:00",
+     "amount": 1200
+    },
+    {
+     "id": "E0030",
+     "type": "CASH_COUNT",
+     "ts": "2026-09-14T08:00:00+08:00",
+     "amount": 900
+    }
+   ],
+   "rates": [
+    {
+     "tier": "counts",
+     "rate": 3.0,
+     "sell_price": 75,
+     "tubo": 10
+    },
+    {
+     "tier": "counts",
+     "rate": 1.5,
+     "sell_price": null,
+     "tubo": null
+    },
+    {
+     "tier": "cadence",
+     "rate": null,
+     "sell_price": 20,
+     "tubo": 5
+    },
+    {
+     "tier": "counts",
+     "rate": 0.5,
+     "sell_price": 16,
+     "tubo": 3.5
+    }
+   ],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 60.0,
+      "total_utang": 100.0,
+      "total_bayad": 40.0,
+      "last_utang_ts": "2026-09-02T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-16T12:00:00+08:00",
+      "oldest_unpaid_ts": "2026-09-02T12:00:00+08:00"
+     }
+    },
+    "store": {
+     "cash_last": {
+      "ts": "2026-09-14T08:00:00+08:00",
+      "amount": 900
+     },
+     "utang_outstanding": 60.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 45.5,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 40.0,
+       "cash_count": 900,
+       "outstanding_end": 60.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 100.0,
+       "nabili": 780.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": 1200,
+       "outstanding_end": 100.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 100.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 100.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 1631.0,
+      "tubo": 222.25,
+      "products": 2,
+      "skipped": 1
+     },
+     "budget_prefill": 900
+    }
+   }
+  },
+  {
+   "id": "F8_stale_cash",
+   "note": "last cash count 3 days old → no budget prefill",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0031",
+     "type": "CASH_COUNT",
+     "ts": "2026-09-11T09:00:00+08:00",
+     "amount": 2000
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {},
+    "store": {
+     "cash_last": {
+      "ts": "2026-09-11T09:00:00+08:00",
+      "amount": 2000
+     },
+     "utang_outstanding": 0.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": 2000,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F9_decimals",
+   "note": "two-decimal amounts sum exactly",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "E0032",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 10.1
+    },
+    {
+     "id": "E0033",
+     "type": "UTANG",
+     "ts": "2026-09-02T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 20.2
+    },
+    {
+     "id": "E0034",
+     "type": "BAYAD",
+     "ts": "2026-09-03T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 30.3
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 0.0,
+      "total_utang": 30.3,
+      "total_bayad": 30.3,
+      "last_utang_ts": "2026-09-02T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-03T12:00:00+08:00",
+      "oldest_unpaid_ts": null
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 0.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 30.3,
+       "utang_received": 30.3,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  },
+  {
+   "id": "F10_budget",
+   "note": "greedy by section then priority; ≥ 1 pack each; kulang = total − budget",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [],
+   "rates": [],
+   "expect": {
+    "customers": {},
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 0.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    },
+    "budget": {
+     "budget": 1100,
+     "lines": [
+      {
+       "product_id": "P_B",
+       "packs": 2,
+       "reduced": false,
+       "spend": 1000.0
+      },
+      {
+       "product_id": "P_A",
+       "packs": 1,
+       "reduced": true,
+       "spend": 100.0
+      },
+      {
+       "product_id": "P_C",
+       "packs": 1,
+       "reduced": true,
+       "spend": 50.0
+      }
+     ],
+     "kulang": 400.0,
+     "spent": 1150.0
+    }
+   },
+   "budget": 1100,
+   "lines": [
+    {
+     "product_id": "P_A",
+     "section": "bilhin_na",
+     "priority": 5,
+     "buy_packs": 3,
+     "cost": 300
+    },
+    {
+     "product_id": "P_B",
+     "section": "bilhin_na",
+     "priority": 9,
+     "buy_packs": 2,
+     "cost": 1000
+    },
+    {
+     "product_id": "P_C",
+     "section": "bilhin",
+     "priority": 7,
+     "buy_packs": 4,
+     "cost": 200
+    },
+    {
+     "product_id": "P_D",
+     "section": "bilhin",
+     "priority": 1,
+     "buy_packs": 2,
+     "cost": null
+    },
+    {
+     "product_id": "P_E",
+     "section": "wag_muna",
+     "priority": 8,
+     "buy_packs": 1,
+     "cost": 50
+    }
+   ],
+   "total_known_cost": 1500
+  },
+  {
+   "id": "F11_budget_enough",
+   "note": "budget covers everything → nothing reduced, kulang 0",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [],
+   "rates": [],
+   "expect": {
+    "customers": {},
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 0.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    },
+    "budget": {
+     "budget": 5000,
+     "lines": [
+      {
+       "product_id": "P_A",
+       "packs": 3,
+       "reduced": false,
+       "spend": 300.0
+      },
+      {
+       "product_id": "P_B",
+       "packs": 2,
+       "reduced": false,
+       "spend": 1000.0
+      }
+     ],
+     "kulang": 0.0,
+     "spent": 1300.0
+    }
+   },
+   "budget": 5000,
+   "lines": [
+    {
+     "product_id": "P_A",
+     "section": "bilhin_na",
+     "priority": 5,
+     "buy_packs": 3,
+     "cost": 300
+    },
+    {
+     "product_id": "P_B",
+     "section": "bilhin",
+     "priority": 9,
+     "buy_packs": 2,
+     "cost": 1000
+    }
+   ],
+   "total_known_cost": 1500
+  },
+  {
+   "id": "F12_duplicate_ids",
+   "note": "duplicate event ids are ignored (write-once)",
+   "now": "2026-09-14T15:00:00+08:00",
+   "events": [
+    {
+     "id": "DUP1",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "DUP1",
+     "type": "UTANG",
+     "ts": "2026-09-01T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 100
+    },
+    {
+     "id": "DUP2",
+     "type": "BAYAD",
+     "ts": "2026-09-02T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 30
+    },
+    {
+     "id": "DUP2",
+     "type": "BAYAD",
+     "ts": "2026-09-02T12:00:00+08:00",
+     "customer_id": "CUST0000000000000000000001",
+     "amount": 30
+    }
+   ],
+   "rates": [],
+   "expect": {
+    "customers": {
+     "CUST0000000000000000000001": {
+      "customer_id": "CUST0000000000000000000001",
+      "balance": 70.0,
+      "total_utang": 100.0,
+      "total_bayad": 30.0,
+      "last_utang_ts": "2026-09-01T12:00:00+08:00",
+      "last_bayad_ts": "2026-09-02T12:00:00+08:00",
+      "oldest_unpaid_ts": "2026-09-01T12:00:00+08:00"
+     }
+    },
+    "store": {
+     "cash_last": null,
+     "utang_outstanding": 70.0,
+     "weeks": [
+      {
+       "start": "2026-09-14",
+       "end": "2026-09-20",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 70.0
+      },
+      {
+       "start": "2026-09-07",
+       "end": "2026-09-13",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 70.0
+      },
+      {
+       "start": "2026-08-31",
+       "end": "2026-09-06",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 100.0,
+       "utang_received": 30.0,
+       "cash_count": null,
+       "outstanding_end": 70.0
+      },
+      {
+       "start": "2026-08-24",
+       "end": "2026-08-30",
+       "gastos": 0.0,
+       "nabili": 0.0,
+       "utang_given": 0.0,
+       "utang_received": 0.0,
+       "cash_count": null,
+       "outstanding_end": 0.0
+      }
+     ],
+     "tantiya": {
+      "benta": 0.0,
+      "tubo": 0.0,
+      "products": 0,
+      "skipped": 0
+     },
+     "budget_prefill": null
+    }
+   }
+  }
+ ]
+}

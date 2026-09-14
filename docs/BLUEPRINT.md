@@ -255,6 +255,43 @@ Budget         : prefill last CASH_COUNT ≤ 2 d old; greedy by section then pri
                  to ≥ 1; leftovers "kulang ₱Y". Utang never enters the budget.
 ```
 
+### E6. Pera at Utang (P2 — decided 2026-09-14, additions only)
+
+All four finance events are ordinary events: write-once, VOID-able, `typeRank = 1`, backdated
+`ts` = chosen day 12:00. Amounts are pesos `> 0` with at most 2 decimals, validated at entry only;
+derivation trusts stored events. Derivation recomputes a customer / the store from the full
+active event list (total order), never incrementally.
+
+```
+CustomerState  balance          = Σ UTANG.amount − Σ BAYAD.amount   (negative allowed = sobra/advance,
+                                  shown as "sobra ₱X", never hidden)
+               oldest_unpaid_ts = ts of the first UTANG (total order) whose cumulative UTANG sum
+                                  exceeds Σ BAYAD (FIFO: every payment covers the oldest utang first,
+                                  regardless of when it was made); null when balance ≤ 0
+               last_utang_ts / last_bayad_ts = latest active event of each type, or null
+StoreState     cash_last        = latest active CASH_COUNT {ts, amount} or null (counts only — no
+                                  inferred revenue, no cash delta)
+               utang_outstanding= Σ max(0, balance) over EVERY customer with events, archived included
+                                  (overpayments never offset other customers' debt)
+               weeks[4]         = Monday 00:00 local → Sunday, current week first; per week:
+                                  gastos = Σ EXPENSE, nabili = Σ PURCHASE.total_cost (non-null),
+                                  utang_given = Σ UTANG, utang_received = Σ BAYAD,
+                                  cash_count = last CASH_COUNT amount dated in the week or null,
+                                  outstanding_end = utang_outstanding using events with ts ≤ week end
+               tantiya          = { benta: Σ rate·7·sell_price, tubo: Σ rate·7·tubo_per_unit }
+                                  over products with tier = counts and daily_rate > 0 only (Tier A
+                                  throughput is excluded — not confirmed sales); products lacking
+                                  sell_price / tubo are skipped and counted; UI shows ~₱ rounded to 10
+Budget         input = "Dala ko ₱" on Bahay, prefilled from cash_last only if ≤ 2 d old, else empty;
+                       lines in bilhin_na then bilhin, by priority desc; unknown-cost lines skipped;
+                       packs = max(1, min(buy_packs, floor(remaining / cost_per_pack))), remaining −= spend
+                       (may go negative — every listed line keeps ≥ 1 pack);
+                       kulang = max(0, total_known_cost − budget). Utang never enters the budget.
+Customer       archiving keeps events and balance; an archived customer with balance ≠ 0 stays
+                       visible in a collapsed list until settled.
+Paalala        deferred — not defined in P2.
+```
+
 ## F. AI boundaries (P3–P4)
 
 - `/ai/parse`: image or text + product names/pack sizes → `{ drafts[], unreadable[] }` via response

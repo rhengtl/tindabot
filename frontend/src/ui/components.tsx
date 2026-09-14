@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 
 // ---------- Sheet (bottom modal) ----------
 export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
@@ -23,9 +23,11 @@ export function Sheet({ open, onClose, children }: { open: boolean; onClose: () 
 const ToastCtx = createContext<(msg: string) => void>(() => {})
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [msg, setMsg] = useState<string | null>(null)
+  const timer = useRef<number | null>(null)
   const show = useCallback((m: string) => {
     setMsg(m)
-    window.setTimeout(() => setMsg(null), 2600)
+    if (timer.current !== null) window.clearTimeout(timer.current) // a newer toast keeps its full duration
+    timer.current = window.setTimeout(() => setMsg(null), 2600)
   }, [])
   return (
     <ToastCtx.Provider value={show}>

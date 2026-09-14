@@ -294,10 +294,10 @@ describe('export / import', () => {
     const events = toEvents(s.events)
     const v: VoidEvent = { ...(ev('VOID', '2026-05-29T09:00:00+08:00', 'V1', {}) as any), target: events[0]!.id }
     const all: DomainEvent[] = [...events, v]
-    const file = buildExport({ store, products: [product], events: all }, DEVICE_ID, '2026-05-29T10:00:00+08:00')
+    const file = buildExport({ store, products: [product], customers: [], events: all }, DEVICE_ID, '2026-05-29T10:00:00+08:00')
     const json = JSON.parse(JSON.stringify(file))
     // import into an empty store with the same id
-    const empty = { store: { ...store, updated_at: '2025-01-01T00:00:00+08:00' }, products: [], events: [] }
+    const empty = { store: { ...store, updated_at: '2025-01-01T00:00:00+08:00' }, products: [], customers: [], events: [] }
     const m1 = mergeImport(empty, json)
     expect(m1.added_events).toBe(all.length)
     expect(m1.snapshot.events.map((e) => e.id).sort()).toEqual(all.map((e) => e.id).sort())
@@ -314,8 +314,8 @@ describe('export / import', () => {
   })
   it('refuses a different store id', () => {
     const store = makeStore([], null)
-    const file = buildExport({ store: { ...store, id: 'OTHER' }, products: [], events: [] }, DEVICE_ID, '2026-01-01T00:00:00+08:00')
-    expect(() => mergeImport({ store, products: [], events: [] }, file)).toThrow()
+    const file = buildExport({ store: { ...store, id: 'OTHER' }, products: [], customers: [], events: [] }, DEVICE_ID, '2026-01-01T00:00:00+08:00')
+    expect(() => mergeImport({ store, products: [], customers: [], events: [] }, file)).toThrow()
   })
 })
 

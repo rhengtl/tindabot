@@ -2,7 +2,7 @@
 // records-LWW semantics from BLUEPRINT §C.
 
 import Dexie from 'dexie'
-import { type DomainEvent, type ExportFile, type Product, type Snapshot, type Store, mergeImport, ulid } from '../domain'
+import { type Customer, type DomainEvent, type ExportFile, type Product, type Snapshot, type Store, mergeImport, ulid } from '../domain'
 import { db, type StoredEvent } from './db'
 
 export async function getMeta(key: string): Promise<string | null> {
@@ -52,6 +52,10 @@ export async function saveProduct(p: Product): Promise<void> {
   await db.products.put({ ...p, updated_at: new Date().toISOString() })
 }
 
+export async function saveCustomer(c: Customer): Promise<void> {
+  await db.customers.put({ ...c, updated_at: new Date().toISOString() })
+}
+
 /**
  * Write-once: a duplicate id is treated as success (idempotent form submits, re-imports, sync
  * pulls). Never overwrites.
@@ -76,40 +80,45 @@ export async function loadSnapshot(storeId: string): Promise<Snapshot | null> {
   const store = await db.stores.get(storeId)
   if (!store) return null
   const products = await db.products.where('store_id').equals(storeId).toArray()
+  const customers = await db.customers.where('store_id').equals(storeId).toArray()
   const rows = await db.events.where('store_id').equals(storeId).toArray()
   const events = rows.map((r) => {
     const { synced_at: _s, ...e } = r as StoredEvent
     return e as DomainEvent
   })
-  return { store, products, events }
+  return { store, products, customers, events }
 }
 
 /** Import into the current store (same id) or replace the current store entirely. */
-export async function importFile(file: ExportFile, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number }> {
+export async function importFile(file: ExportFile, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number; updated_customers: number }> {
+  const customers = file.customers ?? [] // P1 export files have an empty (or missing) customers array
   if (mode === 'replace') {
-    await db.transaction('rw', [db.stores, db.products, db.events, db.meta], async () => {
+    await db.transaction('rw', [db.stores, db.products, db.customers, db.events, db.meta], async () => {
       const cur = await getMeta('current_store')
       if (cur) {
         await db.products.where('store_id').equals(cur).delete()
+        await db.customers.where('store_id').equals(cur).delete()
         await db.events.where('store_id').equals(cur).delete()
         await db.stores.delete(cur)
       }
       await db.stores.put(file.store)
       await db.products.bulkPut(file.products)
+      await db.customers.bulkPut(customers)
       await setMeta('current_store', file.store.id)
     })
     const added = await addEvents(file.events)
-    return { added_events: added, updated_products: file.products.length }
+    return { added_events: added, updated_products: file.products.length, updated_customers: customers.length }
   }
   const existing = await loadSnapshot(file.store.id)
   if (!existing) throw new Error('store not found')
   const merged = mergeImport(existing, file)
-  await db.transaction('rw', [db.stores, db.products], async () => {
+  await db.transaction('rw', [db.stores, db.products, db.customers], async () => {
     if (merged.store_updated) await db.stores.put(merged.snapshot.store)
     await db.products.bulkPut(merged.snapshot.products)
+    await db.customers.bulkPut(merged.snapshot.customers)
   })
   const added = await addEvents(file.events)
-  return { added_events: added, updated_products: merged.updated_products }
+  return { added_events: added, updated_products: merged.updated_products, updated_customers: merged.updated_customers }
 }
 
 export async function requestPersistentStorage(): Promise<boolean> {

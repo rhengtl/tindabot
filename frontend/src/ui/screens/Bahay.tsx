@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { type ListLine, type Product, addDays, isPayday, templates, toLocalDate } from '../../domain'
+import { type ListLine, type Product, addDays, applyBudget, budgetPrefill, isPayday, templates, toLocalDate } from '../../domain'
 import { useApp } from '../../state/store'
 import { Dot, useToast } from '../components'
 import { S } from '../strings'
@@ -33,6 +33,14 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
   const toast = useToast()
   const [showWag, setShowWag] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(true)
+  const finance = useApp((s) => s.finance)
+  // Budget (§E6): prefilled from the last cash count only when ≤ 2 days old; otherwise empty.
+  const prefill = budgetPrefill(finance?.cash_last ?? null, nowMs)
+  const [budgetText, setBudgetText] = useState<string | null>(null)
+  const budgetStr = budgetText ?? (prefill === null ? '' : String(prefill))
+  const budgetN = budgetStr.trim() === '' ? null : Number(budgetStr)
+  const budget = useMemo(() => (list && budgetN !== null && budgetN >= 0 ? applyBudget(list, budgetN) : null), [list, budgetN])
+  const budgetPacks = useMemo(() => new Map(budget?.lines.map((b) => [b.product_id, b]) ?? []), [budget])
 
   const today = toLocalDate(nowMs)
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
@@ -130,6 +138,13 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
             {S.bahay.share}
           </button>
         </div>
+        <div className="row" style={{ marginTop: 8, alignItems: 'center' }}>
+          <label className="muted small" htmlFor="budget" style={{ whiteSpace: 'nowrap' }}>
+            {S.bahay.budget}
+          </label>
+          <input id="budget" type="number" inputMode="decimal" min={0} placeholder="₱" value={budgetStr} onChange={(e) => setBudgetText(e.target.value)} style={{ maxWidth: 140 }} />
+          {budget && lines.length > 0 && <span className="small">{budget.kulang > 0 ? S.bahay.kulang(templates.pesoExact(budget.kulang)) : S.bahay.sapat}</span>}
+        </div>
       </div>
 
       {list.banner && <div className="banner">{list.banner}</div>}
@@ -188,6 +203,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
                         {l.tier === 'cadence' && <span className="badge grey" style={{ marginRight: 6 }}>{S.bahay.tantiya}</span>}
                         {l.reason}
                         {l.hint && <span> {l.hint}</span>}
+                        {budgetPacks.get(l.product_id)?.reduced && <span className="budget-hint"> {S.bahay.budgetPacks(budgetPacks.get(l.product_id)!.packs, p.pack_size === 1 ? p.unit_label : p.pack_label)}</span>}
                       </div>
                     </button>
                     {l.needs_count && (

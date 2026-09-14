@@ -31,9 +31,21 @@ export interface Product {
   updated_at: ISODateTime
 }
 
+/** P2 — BLUEPRINT §C. */
+export interface Customer {
+  id: ULID
+  store_id: ULID
+  name: string
+  phone: string | null
+  archived: boolean
+  updated_at: ISODateTime
+}
+
 // ---------- Events (append-only, write-once by id) ----------
 
 export type AdjustReason = 'sira' | 'expired' | 'personal' | 'iba'
+export type ExpenseCategory = 'kuryente' | 'tubig' | 'pamasahe' | 'load' | 'renta' | 'iba'
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = ['kuryente', 'tubig', 'pamasahe', 'load', 'renta', 'iba']
 
 interface EventBase {
   id: EventId
@@ -72,8 +84,34 @@ export interface VoidEvent extends EventBase {
   target: EventId
 }
 
+// P2 finance events — BLUEPRINT §C / §E6. Amounts are pesos > 0 (validated at entry only).
+export interface UtangEvent extends EventBase {
+  type: 'UTANG'
+  customer_id: ULID
+  amount: number
+  note?: string
+}
+export interface BayadEvent extends EventBase {
+  type: 'BAYAD'
+  customer_id: ULID
+  amount: number
+}
+export interface ExpenseEvent extends EventBase {
+  type: 'EXPENSE'
+  amount: number
+  category: ExpenseCategory
+  note?: string
+}
+export interface CashCountEvent extends EventBase {
+  type: 'CASH_COUNT'
+  amount: number
+}
+
 export type StockEvent = PurchaseEvent | CountEvent | AdjustEvent
-export type DomainEvent = StockEvent | VoidEvent
+export type FinanceEvent = UtangEvent | BayadEvent | ExpenseEvent | CashCountEvent
+/** Every non-VOID event. */
+export type ActiveEvent = StockEvent | FinanceEvent
+export type DomainEvent = ActiveEvent | VoidEvent
 export type EventType = DomainEvent['type']
 
 // ---------- Derived state (memory only) ----------
@@ -162,6 +200,65 @@ export interface ShoppingList {
   total_known_cost: number
   unknown_cost_count: number
   banner: string | null
+}
+
+// ---------- P2 derived finance state (memory only) — BLUEPRINT §E6 ----------
+
+export interface CustomerState {
+  customer_id: ULID
+  /** Σ UTANG − Σ BAYAD; negative = sobra (advance). */
+  balance: number
+  total_utang: number
+  total_bayad: number
+  last_utang_ts: ISODateTime | null
+  last_bayad_ts: ISODateTime | null
+  /** FIFO: first UTANG whose cumulative sum exceeds Σ BAYAD; null when balance ≤ 0. */
+  oldest_unpaid_ts: ISODateTime | null
+}
+
+export interface WeekSummary {
+  /** Monday of the week (local). */
+  start: LocalDate
+  /** Sunday of the week (local). */
+  end: LocalDate
+  gastos: number
+  nabili: number
+  utang_given: number
+  utang_received: number
+  cash_count: number | null
+  /** utang_outstanding using events with ts ≤ end of the week. */
+  outstanding_end: number
+}
+
+export interface StoreState {
+  cash_last: { ts: ISODateTime; amount: number } | null
+  utang_outstanding: number
+  weeks: WeekSummary[]
+  tantiya: {
+    /** Σ rate·7·sell_price over Tier B products with a rate; exact, UI rounds to ₱10. */
+    benta: number
+    tubo: number
+    /** products included / skipped for lack of sell_price or cost */
+    products: number
+    skipped: number
+  }
+}
+
+export interface BudgetLine {
+  product_id: ULID
+  /** packs affordable in greedy order (≥ 1 for every listed line with a known cost) */
+  packs: number
+  /** true when packs < the line's buy_packs */
+  reduced: boolean
+  spend: number
+}
+
+export interface BudgetResult {
+  budget: number
+  lines: BudgetLine[]
+  /** max(0, total_known_cost − budget) */
+  kulang: number
+  spent: number
 }
 
 export interface TripContext {

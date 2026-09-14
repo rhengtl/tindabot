@@ -4,8 +4,9 @@ import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
 import { useToast } from '../components'
 import { S } from '../strings'
+import { UlatCard } from './Ulat'
 
-export function IbaPa() {
+export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
   const store = useApp((s) => s.store)
   const persisted = useApp((s) => s.persisted)
   const updateStore = useApp((s) => s.updateStore)
@@ -103,6 +104,8 @@ export function IbaPa() {
           </div>
         </div>
       </div>
+
+      <UlatCard onGastos={onGastos} onPera={onPera} />
 
       <h3>Backup</h3>
       <div className="card">

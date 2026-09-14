@@ -2,7 +2,7 @@
 // Events are write-once by id (add-or-ignore); records are last-write-wins by updated_at.
 // Importing the same file twice must be a no-op.
 
-import type { DomainEvent, ISODateTime, Product, Store, ULID } from './types'
+import type { Customer, DomainEvent, ISODateTime, Product, Store, ULID } from './types'
 
 export interface ExportFile {
   format: 'tindabot-export'
@@ -11,13 +11,14 @@ export interface ExportFile {
   device_id: ULID
   store: Store
   products: Product[]
-  customers: unknown[] // P2
+  customers: Customer[]
   events: DomainEvent[]
 }
 
 export interface Snapshot {
   store: Store
   products: Product[]
+  customers: Customer[]
   events: DomainEvent[]
 }
 
@@ -29,7 +30,7 @@ export function buildExport(s: Snapshot, deviceId: ULID, exportedAt: ISODateTime
     device_id: deviceId,
     store: s.store,
     products: s.products.slice(),
-    customers: [],
+    customers: s.customers.slice(),
     events: s.events.slice(), // synced_at is a storage column and is never part of an event
   }
 }
@@ -37,13 +38,14 @@ export function buildExport(s: Snapshot, deviceId: ULID, exportedAt: ISODateTime
 export function isExportFile(x: unknown): x is ExportFile {
   if (!x || typeof x !== 'object') return false
   const f = x as Partial<ExportFile>
-  return f.format === 'tindabot-export' && f.version === 1 && !!f.store && Array.isArray(f.products) && Array.isArray(f.events)
+  return f.format === 'tindabot-export' && f.version === 1 && !!f.store && Array.isArray(f.products) && Array.isArray(f.events) && (f.customers === undefined || Array.isArray(f.customers))
 }
 
 export interface MergeResult {
   snapshot: Snapshot
   added_events: number
   updated_products: number
+  updated_customers: number
   store_updated: boolean
 }
 
@@ -81,11 +83,22 @@ export function mergeImport(existing: Snapshot, file: ExportFile): MergeResult {
     }
   }
 
+  const custById = new Map(existing.customers.map((c) => [c.id, c]))
+  let updatedCustomers = 0
+  for (const c of file.customers ?? []) {
+    const cur = custById.get(c.id)
+    if (!cur || newer(c, cur)) {
+      custById.set(c.id, c)
+      updatedCustomers++
+    }
+  }
+
   const store = newer(file.store, existing.store) ? file.store : existing.store
   return {
-    snapshot: { store, products: [...byId.values()], events },
+    snapshot: { store, products: [...byId.values()], customers: [...custById.values()], events },
     added_events: added,
     updated_products: updated,
+    updated_customers: updatedCustomers,
     store_updated: store !== existing.store,
   }
 }

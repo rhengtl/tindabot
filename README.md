@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # domain tests (133) against the reference oracle
+npm test           # domain tests (157) against the reference oracles
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -26,6 +26,7 @@ It generates the golden numbers the TypeScript tests assert against:
 ```bash
 python tools/make_scenarios.py     # writes frontend/src/domain/__tests__/scenarios.json
 python tools/reference_model.py    # writes frontend/src/domain/__tests__/goldens.json
+python tools/finance_reference.py  # P2 (§E6): writes frontend/src/domain/__tests__/finance_scenarios.json
 ```
 
 Change a scenario or a rule → regenerate goldens → run `npm test`.

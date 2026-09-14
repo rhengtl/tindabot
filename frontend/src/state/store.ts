@@ -3,18 +3,25 @@
 
 import { create } from 'zustand'
 import {
+  type Customer,
+  type CustomerState,
   type DomainEvent,
+  type ExpenseCategory,
   type LocalDate,
   type Product,
   type ProductState,
   type ShoppingList,
   type Store,
+  type StoreState,
   type Weekday,
   activeEvents,
   addDays,
   buildExport,
   buildList,
+  customerIds,
+  deriveCustomer,
   deriveProduct,
+  deriveStoreFinance,
   forProduct,
   isExportFile,
   localTimeMs,
@@ -37,13 +44,23 @@ export interface PurchaseDraft {
   when: DateChoice
 }
 
+/** P2 finance drafts — ids generated when the form opens (idempotent submit). */
+export interface FinanceDraft {
+  id: string
+  amount: number
+  when: DateChoice
+}
+
 interface AppState {
   loaded: boolean
   onboarded: boolean
   store: Store | null
   products: Product[]
+  customers: Customer[]
   events: DomainEvent[]
   states: Map<string, ProductState>
+  customerStates: Map<string, CustomerState>
+  finance: StoreState | null
   list: ShoppingList | null
   nowMs: number
   deviceId: string
@@ -58,10 +75,16 @@ interface AppState {
   recordPurchase(d: PurchaseDraft): Promise<void>
   recordCount(id: string, productId: string, qty: number, when: DateChoice): Promise<void>
   recordAdjust(id: string, productId: string, delta: number, reason: 'sira' | 'expired' | 'personal' | 'iba'): Promise<void>
+  addCustomer(name: string, phone: string | null): Promise<Customer>
+  saveCustomer(c: Customer): Promise<void>
+  recordUtang(d: FinanceDraft & { customer_id: string; note: string | null }): Promise<void>
+  recordBayad(d: FinanceDraft & { customer_id: string }): Promise<void>
+  recordExpense(d: FinanceDraft & { category: ExpenseCategory; note: string | null }): Promise<void>
+  recordCashCount(d: FinanceDraft): Promise<void>
   voidEvent(targetId: string): Promise<void>
   restoreEvent(original: DomainEvent): Promise<void>
   exportJson(): string
-  importJson(text: string, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number; sameStore: boolean }>
+  importJson(text: string, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number; updated_customers: number; sameStore: boolean }>
   meta(key: string): Promise<string | null>
   setMeta(key: string, value: string): Promise<void>
 }
@@ -71,7 +94,7 @@ function nowIso(): string {
 }
 
 /** BLUEPRINT §C backdating rules. */
-export function resolveTs(when: DateChoice, kind: 'PURCHASE' | 'COUNT'): string {
+export function resolveTs(when: DateChoice, kind: 'PURCHASE' | 'COUNT' | 'FINANCE'): string {
   if (when.kind === 'ngayon') return nowIso()
   const date = when.kind === 'kahapon' ? addDays(toLocalDate(Date.now()), -1) : when.date
   return toISOWithOffset(localTimeMs(date, kind === 'COUNT' ? 21 : 12))
@@ -82,20 +105,23 @@ function derive(store: Store, products: Product[], events: DomainEvent[], nowMs:
   const states = new Map<string, ProductState>()
   for (const p of products) states.set(p.id, deriveProduct(p, forProduct(active, p.id), nowMs))
   const list = buildList({ store, products, states, nowMs })
-  return { states, list }
+  const customerStates = new Map<string, CustomerState>()
+  for (const id of customerIds(active)) customerStates.set(id, deriveCustomer(id, active))
+  const finance = deriveStoreFinance({ events: active, products, states, nowMs })
+  return { states, list, customerStates, finance }
 }
 
 export const useApp = create<AppState>((set, get) => {
   async function reload(nowMs = Date.now()) {
     const store = await repo.currentStore()
     if (!store) {
-      set({ loaded: true, store: null, products: [], events: [], states: new Map(), list: null, nowMs })
+      set({ loaded: true, store: null, products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
       return
     }
     const snap = await repo.loadSnapshot(store.id)
     if (!snap) return
     const d = derive(snap.store, snap.products, snap.events, nowMs)
-    set({ loaded: true, store: snap.store, products: snap.products, events: snap.events, ...d, nowMs })
+    set({ loaded: true, store: snap.store, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
   }
 
   function base(): Pick<DomainEvent, 'v' | 'store_id' | 'device_id' | 'recorded_at'> {
@@ -108,8 +134,11 @@ export const useApp = create<AppState>((set, get) => {
     onboarded: false,
     store: null,
     products: [],
+    customers: [],
     events: [],
     states: new Map(),
+    customerStates: new Map(),
+    finance: null,
     list: null,
     nowMs: Date.now(),
     deviceId: '',
@@ -187,6 +216,38 @@ export const useApp = create<AppState>((set, get) => {
       await reload()
     },
 
+    async addCustomer(name, phone) {
+      const c: Customer = { id: ulid(), store_id: get().store!.id, name, phone, archived: false, updated_at: nowIso() }
+      await repo.saveCustomer(c)
+      await reload()
+      return c
+    },
+
+    async saveCustomer(c) {
+      await repo.saveCustomer(c)
+      await reload()
+    },
+
+    async recordUtang(d) {
+      await repo.addEvents([{ ...base(), id: d.id, type: 'UTANG', customer_id: d.customer_id, amount: d.amount, ...(d.note ? { note: d.note } : {}), ts: resolveTs(d.when, 'FINANCE') }])
+      await reload()
+    },
+
+    async recordBayad(d) {
+      await repo.addEvents([{ ...base(), id: d.id, type: 'BAYAD', customer_id: d.customer_id, amount: d.amount, ts: resolveTs(d.when, 'FINANCE') }])
+      await reload()
+    },
+
+    async recordExpense(d) {
+      await repo.addEvents([{ ...base(), id: d.id, type: 'EXPENSE', amount: d.amount, category: d.category, ...(d.note ? { note: d.note } : {}), ts: resolveTs(d.when, 'FINANCE') }])
+      await reload()
+    },
+
+    async recordCashCount(d) {
+      await repo.addEvents([{ ...base(), id: d.id, type: 'CASH_COUNT', amount: d.amount, ts: resolveTs(d.when, 'FINANCE') }])
+      await reload()
+    },
+
     async voidEvent(targetId) {
       const target = get().events.find((e) => e.id === targetId)
       if (!target || target.type === 'VOID') return
@@ -203,7 +264,7 @@ export const useApp = create<AppState>((set, get) => {
 
     exportJson() {
       const s = get()
-      const file = buildExport({ store: s.store!, products: s.products, events: s.events }, s.deviceId, nowIso())
+      const file = buildExport({ store: s.store!, products: s.products, customers: s.customers, events: s.events }, s.deviceId, nowIso())
       return JSON.stringify(file, null, 1)
     },
 

@@ -2,7 +2,7 @@
 // to today so the list is always live. Products cover Tier B (count-at-restock), Tier A
 // (purchases only), hybrid (one count), and no-data cases.
 
-import { type DomainEvent, type Product, addDays, localTimeMs, toISOWithOffset, toLocalDate, ulid } from '../domain'
+import { type Customer, type DomainEvent, type Product, addDays, localTimeMs, toISOWithOffset, toLocalDate, ulid } from '../domain'
 import * as repo from '../db/repo'
 
 interface Spec {
@@ -78,5 +78,28 @@ export async function loadDemo(): Promise<void> {
     }
   }
   for (const p of products) await repo.saveProduct(p)
+
+  // P2: customers, utang/bayad, gastos, cash counts (relative dates)
+  const base = { v: 1 as const, store_id: store.id, device_id: deviceId, recorded_at: now }
+  const custs: Array<[string, string | null, Array<['UTANG' | 'BAYAD', number, number, string?]>]> = [
+    ['Aling Rosa', '0917 555 0101', [['UTANG', -12, 120, 'bigas, itlog'], ['UTANG', -6, 85, 'canton, coke'], ['BAYAD', -4, 100], ['UTANG', -1, 60, 'load']]],
+    ['Mang Ben', null, [['UTANG', -20, 250, 'sigarilyo'], ['BAYAD', -15, 250], ['UTANG', -3, 40]]],
+    ['Ate Joy', null, [['UTANG', -9, 75], ['BAYAD', -8, 100]]],
+    ['Kuya Dan', null, [['UTANG', -35, 300, 'gatas, sardinas'], ['BAYAD', -30, 50]]],
+  ]
+  for (const [name, phone, rows] of custs) {
+    const c: Customer = { id: ulid(), store_id: store.id, name, phone, archived: false, updated_at: now }
+    await repo.saveCustomer(c)
+    for (const [type, d, amount, note] of rows) {
+      if (type === 'UTANG') events.push({ ...base, id: ulid(), type, customer_id: c.id, amount, ...(note ? { note } : {}), ts: at(d, 12) })
+      else events.push({ ...base, id: ulid(), type, customer_id: c.id, amount, ts: at(d, 12) })
+    }
+  }
+  const gastos: Array<[number, number, 'kuryente' | 'tubig' | 'pamasahe' | 'load' | 'renta' | 'iba', string?]> = [
+    [-13, 1250, 'kuryente'], [-10, 60, 'pamasahe', 'palengke'], [-6, 60, 'pamasahe', 'palengke'], [-5, 100, 'load'], [-2, 60, 'pamasahe', 'palengke'],
+  ]
+  for (const [d, amount, category, note] of gastos) events.push({ ...base, id: ulid(), type: 'EXPENSE', amount, category, ...(note ? { note } : {}), ts: at(d, 12) })
+  for (const [d, amount] of [[-14, 3200], [-7, 2850], [-1, 3410]] as Array<[number, number]>) events.push({ ...base, id: ulid(), type: 'CASH_COUNT', amount, ts: at(d, 20) })
+
   await repo.addEvents(events)
 }

@@ -149,3 +149,6 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 .step-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
 .step-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .step-dots span.on { background: var(--brand); }
+
+/* P2 */
+.budget-hint { color: var(--brand-dark); font-weight: 600; }
