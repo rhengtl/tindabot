@@ -38,7 +38,7 @@ export const S = {
     nothingToBuy: 'Walang kailangang bilhin ngayon.',
     nothingHint: 'I-record ang bili mo o bilangin ang natira para may masabi si TindaBot.',
     nudge: (names: string) => `Bilangin: ${names}`,
-    paydaySoon: (day: string) => `Kinsenas/katapusan ${day} — mas mabenta.`,
+    paydaySoon: (day: string) => `Kinsenas/katapusan ${day} — karaniwang mas maraming bumibili.`,
     bilanginMuna: 'Bilangin muna →',
     bakit: 'Bakit?',
     tantiya: 'tantiya',
@@ -146,7 +146,7 @@ export const S = {
     about: 'Tungkol',
     aboutText: 'Lahat ng data ay nasa phone mo lang. Walang internet na kailangan.',
     backupNudge: 'Matagal nang walang backup — i-export ang listahan mo.',
-    persisted: (ok: boolean) => (ok ? 'Naka-secure ang storage.' : 'I-install ang app sa home screen para hindi mabura ang data.'),
+    persisted: (ok: boolean) => (ok ? 'Naka-secure ang storage ng phone para sa app.' : 'Hindi pa ginagarantiya ng phone ang storage — mag-export ng backup buwan-buwan. Nakakatulong ang pag-install sa home screen.'),
   },
 
   days: ['Lin', 'Lun', 'Mar', 'Miy', 'Huw', 'Biy', 'Sab'],
