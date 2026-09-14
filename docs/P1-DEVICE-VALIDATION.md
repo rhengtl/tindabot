@@ -48,4 +48,6 @@ delivered the rebuilt assets to the phone with data intact.
 Not verifiable here: Brave offers "Install app" and registers the shortcut as standalone
 (`webapp_display_mode=3`), but the realme launcher never places the icon (also when added by
 hand), so standalone/WebAPK behaviour and `persisted()` for an installed app remain untested on a
-physical phone; in-tab `persisted()` is false.
+physical phone; in-tab `persisted()` is false. Chrome for Android itself was not exercised
+(user-disabled on this phone). The export share sheet was intercepted to capture the file, so the
+real share target (Files/Drive/Messenger) was not tested.
