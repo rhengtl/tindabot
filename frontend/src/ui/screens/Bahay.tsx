@@ -222,7 +222,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
       {wag.length > 0 && (
         <div>
           <h3>
-            <button type="button" onClick={() => setShowWag((v) => !v)} style={{ font: 'inherit', color: 'inherit' }}>
+            <button type="button" className="section-toggle" onClick={() => setShowWag((v) => !v)} style={{ font: 'inherit', color: 'inherit' }}>
               {S.bahay.wagMuna} ({wag.length}) {showWag ? '▲' : '▼'}
             </button>
           </h3>

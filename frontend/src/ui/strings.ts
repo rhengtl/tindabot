@@ -182,6 +182,7 @@ export const S = {
     lastUtang: (d: number) => (d === 0 ? 'umutang ngayon' : `huling utang ${d} araw na`),
     oldest: (date: string) => `pinakamatagal na utang: ${date}`,
     archived: 'Itinigil na customer',
+    mayBalanse: 'may balanse pa',
     itigil: 'Itigil',
     ibalik: 'Ibalik sa listahan',
     edit: 'I-edit',

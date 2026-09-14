@@ -151,4 +151,7 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 .step-dots span.on { background: var(--brand); }
 
 /* P2 */
+.tripbar input { min-height: var(--tap); padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 1rem; background: #fff; }
+.tripbar input:focus { outline: 2px solid var(--brand); border-color: transparent; }
+.section-toggle { min-height: var(--tap); display: inline-flex; align-items: center; }
 .budget-hint { color: var(--brand-dark); font-weight: 600; }

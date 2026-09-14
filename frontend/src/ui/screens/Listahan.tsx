@@ -82,7 +82,7 @@ export function Listahan({ onUtang, onBayad }: { onUtang: (customerId: string | 
       )}
       {(showArchived || customers.some((c) => c.archived)) && (
         <button type="button" className="btn ghost" onClick={() => setShowArchived((v) => !v)}>
-          {showArchived ? '‹ Aktibo' : `${S.listahan.archived}${archivedOwing ? ` (${archivedOwing} may utang pa)` : ''} ›`}
+          {showArchived ? '‹ Aktibo' : `${S.listahan.archived}${archivedOwing ? ` (${archivedOwing} ${S.listahan.mayBalanse})` : ''} ›`}
         </button>
       )}
       {detail && <CustomerDetail customerId={detail} onClose={() => setDetail(null)} onUtang={onUtang} onBayad={onBayad} />}

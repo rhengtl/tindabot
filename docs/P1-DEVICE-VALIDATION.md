@@ -51,3 +51,25 @@ hand), so standalone/WebAPK behaviour and `persisted()` for an installed app rem
 physical phone; in-tab `persisted()` is false. Chrome for Android itself was not exercised
 (user-disabled on this phone). The export share sheet was intercepted to capture the file, so the
 real share target (Files/Drive/Messenger) was not tested.
+
+## P2 physical validation (2026-09-14)
+
+Same phone and setup (realme C55, Android 15, Brave 1.94 / Chromium 152, `adb reverse`, real taps
+and typing via `adb shell input`, state via CDP). Demo store loaded through the app's own confirm.
+
+Passed on the phone: Listahan (total, balances, `sobra ₱X`, archived list), customer detail
+timeline with Burahin/Ibalik, Bayad ₱50.25 with Gboard (viewport 794→510, field and confirmation
+visible), FIFO oldest-unpaid after payments, overpayment → `sobra ₱60` and excluded from the
+store total, edit (long name), Itigil, FAB Utang with inline new customer, ₱35.50 exact, long
+note, Kahapon backdating, invalid amounts (0 / 12.345 / 00) blocked, Gastos with category, decimal,
+note and *Ibang araw* date, cash counts (prefill 1,000 → 3,410 → empty at 7 d → 3,600 after
+Ibalik; a backdated count never overrides a later one), Ulat weeks (Mon–Sun, sums checked by
+hand), Tantiya ~₱ rounded to 10 from the 7 Tier B products only, budget greedy order / ≥ 1 pack /
+`Kulang ₱Y`, list quantities unchanged by the budget, export → import ×2 (146/146/146) plus a
+P1-format file (0 added), reload, background/reopen, app switch, force-stop, offline relaunch with
+airplane mode and the USB mapping removed, no horizontal overflow, real swipe scrolling.
+
+Fixed: the "Dala ko ₱" input and the "Wag muna" toggle were 23 px / 18 px tall (now the tap
+size); the archived-customer counter said "may utang pa" for a credit balance (now "may balanse
+pa"). P1 spots re-checked: Paninda, catalog "coke", Bumili confirmation, Bilang numpad, Bahay
+rows.
