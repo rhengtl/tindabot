@@ -213,6 +213,43 @@ export const S = {
     noHistory: 'Wala pang gastos o bilang ng pera.',
   },
 
+  // ---------- P3a cloud backup ----------
+  cloud: {
+    title: 'Cloud backup',
+    unavailable: 'Hindi available ang cloud backup sa build na ito. Gumagana pa rin ang lahat sa phone mo.',
+    signIn: 'Mag-sign in gamit ang Google',
+    signInHint: 'Para may kopya ang listahan mo sa cloud kahit mawala o mapalitan ang phone. Nasa phone pa rin ang lahat at gumagana kahit walang internet.',
+    signInFailed: 'Hindi naka-sign in. Subukan ulit.',
+    signedInAs: (email: string) => `Naka-sign in: ${email}`,
+    syncNow: 'I-sync ngayon',
+    signOut: 'Mag-sign out',
+    signOutHint: 'Mananatili sa phone ang listahan mo; titigil lang ang backup.',
+    status: {
+      idle: (ago: string) => `Naka-backup · huling sync ${ago}`,
+      idleNever: 'Naka-connect sa cloud.',
+      syncing: 'Nagsi-sync…',
+      offline: (n: number) => (n ? `Offline — ${n} entry ang hindi pa naka-backup. Masi-sync pag may internet.` : 'Offline — naka-backup na ang lahat.'),
+      error: (msg: string) => `Hindi na-sync: ${msg}`,
+      localOnly: 'Demo — hindi naka-sync sa cloud.',
+      unbound: 'Hindi pa naka-connect ang tindahan na ito sa cloud. I-tap ang "I-sync ngayon".',
+      needsChoice: 'May ibang tindahan sa cloud account mo — pumili sa ibaba.',
+      pending: (n: number) => `${n} entry ang hindi pa naka-backup`,
+    },
+    ago: { justNow: 'kanina lang', minutes: (n: number) => `${n} min ang nakalipas`, hours: (n: number) => `${n} oras ang nakalipas`, days: (n: number) => `${n} araw ang nakalipas` },
+    skew: (min: number) => `Mali yata ang oras ng phone mo (≈ ${min} min ang layo sa server). Ayusin sa Settings ng phone para tama ang pagkakasunod ng mga entry.`,
+    choice: {
+      title: 'Aling tindahan ang gagamitin?',
+      intro: (cloudName: string, localName: string) => `May tindahan na sa cloud account mo ("${cloudName}") at iba ang nasa phone na ito ("${localName}"). Walang mabubura sa alinmang pipiliin mo.`,
+      keepPhone: 'Panatilihin ang nasa phone',
+      keepPhoneHint: 'Ia-archive ang tindahan sa cloud (hindi mabubura) at ia-upload ang nasa phone bilang backup.',
+      useCloud: 'Gamitin ang nasa cloud',
+      useCloudHint: 'Lilipat ang app sa tindahan mula sa cloud. Mananatili sa phone ang kasalukuyang listahan pero hindi na ito makikita.',
+      exportFirst: 'I-export muna ang nasa phone',
+      later: 'Mamaya na',
+      done: 'Tapos na.',
+    },
+  },
+
   days: ['Lin', 'Lun', 'Mar', 'Miy', 'Huw', 'Biy', 'Sab'],
   daysLong: ['Linggo', 'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado'],
 }

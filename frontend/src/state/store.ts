@@ -31,6 +31,8 @@ import {
 } from '../domain'
 import type { CatalogItem } from '../catalog/catalog'
 import * as repo from '../db/repo'
+import { type Cloud, type SyncEngine as SyncEngineT, type SyncReason, type SyncStatus, createCloud } from '../sync'
+import { SyncEngine } from '../sync/engine'
 
 export type DateChoice = { kind: 'ngayon' } | { kind: 'kahapon' } | { kind: 'date'; date: LocalDate }
 
@@ -65,6 +67,8 @@ interface AppState {
   nowMs: number
   deviceId: string
   persisted: boolean
+  /** P3a — absent configuration means `available: false` and every cloud action is a no-op. */
+  cloud: { available: boolean; sync: SyncStatus }
 
   init(): Promise<void>
   refreshNow(): void
@@ -87,7 +91,31 @@ interface AppState {
   importJson(text: string, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number; updated_customers: number; sameStore: boolean }>
   meta(key: string): Promise<string | null>
   setMeta(key: string, value: string): Promise<void>
+  // P3a cloud backup
+  signInGoogle(): Promise<void>
+  signOutCloud(): Promise<void>
+  syncNow(): Promise<void>
+  requestSync(reason: SyncReason): void
+  resolveClaim(choice: 'phone' | 'cloud' | 'later'): Promise<void>
 }
+
+const SYNC_INITIAL: SyncStatus = {
+  phase: 'signed_out',
+  user: null,
+  boundStoreId: null,
+  lastSyncAt: null,
+  pendingEvents: 0,
+  pendingRecords: 0,
+  error: null,
+  skewMs: null,
+  skewWarning: false,
+  choice: null,
+}
+
+// One cloud client + engine per page; created lazily on the first init() when configured.
+let cloud: Cloud | null = null
+let engine: SyncEngineT | null = null
+let initialized = false
 
 function nowIso(): string {
   return toISOWithOffset(Date.now())
@@ -124,6 +152,25 @@ export const useApp = create<AppState>((set, get) => {
     set({ loaded: true, store: snap.store, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
   }
 
+  /** After a local write: recompute, then let the engine push (debounced). Pulls call reload() only. */
+  async function commit() {
+    await reload()
+    engine?.requestSync('write')
+  }
+
+  function ensureEngine() {
+    if (engine || cloud) return
+    cloud = createCloud()
+    if (!cloud) return
+    engine = new SyncEngine({
+      api: cloud.api,
+      onPulled: () => reload(),
+      onStatus: (sync) => set({ cloud: { available: true, sync } }),
+    })
+    set({ cloud: { available: true, sync: engine.status } })
+    cloud.auth.onChange((user) => engine?.setUser(user))
+  }
+
   function base(): Pick<DomainEvent, 'v' | 'store_id' | 'device_id' | 'recorded_at'> {
     const s = get()
     return { v: 1, store_id: s.store!.id, device_id: s.deviceId, recorded_at: nowIso() }
@@ -143,11 +190,17 @@ export const useApp = create<AppState>((set, get) => {
     nowMs: Date.now(),
     deviceId: '',
     persisted: false,
+    cloud: { available: false, sync: SYNC_INITIAL },
 
     async init() {
       const [deviceId, persisted, onboarded] = await Promise.all([repo.deviceId(), repo.requestPersistentStorage(), repo.getMeta('onboarded')])
       set({ deviceId, persisted, onboarded: onboarded === '1' })
       await reload()
+      ensureEngine()
+      // First launch: evaluate the cloud binding (may resume a pending claim). A re-init after
+      // "Subukan ang demo" only re-checks locally, so the demo is not switched away automatically.
+      engine?.requestSync(initialized ? 'write' : 'init')
+      initialized = true
     },
 
     refreshNow() {
@@ -159,14 +212,14 @@ export const useApp = create<AppState>((set, get) => {
 
     async createStore(name, restockDays) {
       await repo.createStore(name, restockDays)
-      await reload()
+      await commit()
     },
 
     async updateStore(patch) {
       const s = get().store
       if (!s) return
       await repo.saveStore({ ...s, ...patch })
-      await reload()
+      await commit()
     },
 
     async addProduct(item, sellPrice, natira) {
@@ -187,13 +240,13 @@ export const useApp = create<AppState>((set, get) => {
       if (natira !== null) {
         await repo.addEvents([{ ...base(), id: ulid(), type: 'COUNT', product_id: p.id, qty_on_hand: natira, ts: nowIso() }])
       }
-      await reload()
+      await commit()
       return p
     },
 
     async saveProduct(p) {
       await repo.saveProduct(p)
-      await reload()
+      await commit()
     },
 
     async recordPurchase(d) {
@@ -203,63 +256,63 @@ export const useApp = create<AppState>((set, get) => {
       if (d.natira !== null) events.push({ ...base(), id: d.countId, type: 'COUNT', product_id: d.product_id, qty_on_hand: d.natira, ts })
       events.push({ ...base(), id: d.id, type: 'PURCHASE', product_id: d.product_id, qty_units: d.qty_units, total_cost: d.total_cost, ts })
       await repo.addEvents(events)
-      await reload()
+      await commit()
     },
 
     async recordCount(id, productId, qty, when) {
       await repo.addEvents([{ ...base(), id, type: 'COUNT', product_id: productId, qty_on_hand: qty, ts: resolveTs(when, 'COUNT') }])
-      await reload()
+      await commit()
     },
 
     async recordAdjust(id, productId, delta, reason) {
       await repo.addEvents([{ ...base(), id, type: 'ADJUST', product_id: productId, delta, reason, ts: nowIso() }])
-      await reload()
+      await commit()
     },
 
     async addCustomer(name, phone) {
       const c: Customer = { id: ulid(), store_id: get().store!.id, name, phone, archived: false, updated_at: nowIso() }
       await repo.saveCustomer(c)
-      await reload()
+      await commit()
       return c
     },
 
     async saveCustomer(c) {
       await repo.saveCustomer(c)
-      await reload()
+      await commit()
     },
 
     async recordUtang(d) {
       await repo.addEvents([{ ...base(), id: d.id, type: 'UTANG', customer_id: d.customer_id, amount: d.amount, ...(d.note ? { note: d.note } : {}), ts: resolveTs(d.when, 'FINANCE') }])
-      await reload()
+      await commit()
     },
 
     async recordBayad(d) {
       await repo.addEvents([{ ...base(), id: d.id, type: 'BAYAD', customer_id: d.customer_id, amount: d.amount, ts: resolveTs(d.when, 'FINANCE') }])
-      await reload()
+      await commit()
     },
 
     async recordExpense(d) {
       await repo.addEvents([{ ...base(), id: d.id, type: 'EXPENSE', amount: d.amount, category: d.category, ...(d.note ? { note: d.note } : {}), ts: resolveTs(d.when, 'FINANCE') }])
-      await reload()
+      await commit()
     },
 
     async recordCashCount(d) {
       await repo.addEvents([{ ...base(), id: d.id, type: 'CASH_COUNT', amount: d.amount, ts: resolveTs(d.when, 'FINANCE') }])
-      await reload()
+      await commit()
     },
 
     async voidEvent(targetId) {
       const target = get().events.find((e) => e.id === targetId)
       if (!target || target.type === 'VOID') return
       await repo.addEvents([{ ...base(), id: ulid(), type: 'VOID', target: targetId, ts: nowIso() }])
-      await reload()
+      await commit()
     },
 
     async restoreEvent(original) {
       if (original.type === 'VOID') return
       const copy = { ...original, id: ulid(), recorded_at: nowIso() } as DomainEvent
       await repo.addEvents([copy])
-      await reload()
+      await commit()
     },
 
     exportJson() {
@@ -275,11 +328,34 @@ export const useApp = create<AppState>((set, get) => {
       const sameStore = !!cur && cur.id === parsed.store.id
       if (mode === 'merge' && !sameStore) throw new Error('different_store')
       const r = await repo.importFile(parsed, sameStore ? 'merge' : 'replace')
-      await reload()
+      await commit()
       return { ...r, sameStore }
     },
 
     meta: repo.getMeta,
     setMeta: repo.setMeta,
+
+    async signInGoogle() {
+      if (!cloud) return
+      await cloud.auth.signInWithGoogle()
+    },
+
+    async signOutCloud() {
+      if (!cloud) return
+      await cloud.auth.signOut() // local data untouched; sync simply stops
+      engine?.setUser(null)
+    },
+
+    async syncNow() {
+      await engine?.syncNow()
+    },
+
+    requestSync(reason) {
+      engine?.requestSync(reason)
+    },
+
+    async resolveClaim(choice) {
+      await engine?.resolveClaim(choice)
+    },
   }
 })

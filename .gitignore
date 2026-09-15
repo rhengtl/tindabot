@@ -11,6 +11,12 @@ backend/*.pyc
 # Environment & secrets
 backend/.env
 .env
+.env.local
+.env.*.local
+frontend/.env.local
+frontend/.env.*.local
+supabase/.temp/
+supabase/.branches/
 
 # Node / React
 frontend/node_modules/

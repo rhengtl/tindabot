@@ -1,10 +1,18 @@
 // Dexie schema — local persistence. Events are write-once by id (add-or-ignore).
-// `synced_at` is a storage-only column (P3); it is never part of the domain event.
+// Storage-only sync markers (P3a) live beside the domain fields and are never part of a domain
+// object: `loadSnapshot` strips them, so derivation and export files never see them.
+//   events.synced_at            — server acknowledged this event (null/absent = still to push)
+//   records.synced_updated_at   — the `updated_at` the server last acknowledged (dirty ⇔ ≠ updated_at)
+//   stores.local_only           — never synced (demo store)
+// None of these are indexed, so adding them needs no schema version bump.
 
 import Dexie, { type EntityTable } from 'dexie'
 import type { Customer, DomainEvent, Product, Store } from '../domain'
 
 export type StoredEvent = DomainEvent & { synced_at?: string | null }
+export type StoredProduct = Product & { synced_updated_at?: string | null }
+export type StoredCustomer = Customer & { synced_updated_at?: string | null }
+export type StoredStore = Store & { synced_updated_at?: string | null; local_only?: boolean }
 
 export interface MetaRow {
   key: string
@@ -12,9 +20,9 @@ export interface MetaRow {
 }
 
 export class TindaDB extends Dexie {
-  stores!: EntityTable<Store, 'id'>
-  products!: EntityTable<Product, 'id'>
-  customers!: EntityTable<Customer, 'id'>
+  stores!: EntityTable<StoredStore, 'id'>
+  products!: EntityTable<StoredProduct, 'id'>
+  customers!: EntityTable<StoredCustomer, 'id'>
   events!: EntityTable<StoredEvent, 'id'>
   meta!: EntityTable<MetaRow, 'key'>
 

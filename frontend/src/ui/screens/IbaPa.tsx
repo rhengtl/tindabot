@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { type Weekday, toLocalDate } from '../../domain'
+import type { Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
 import { useToast } from '../components'
+import { exportCurrentStore } from '../exportFile'
 import { S } from '../strings'
+import { CloudCard } from './Cloud'
 import { UlatCard } from './Ulat'
 
 export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
   const store = useApp((s) => s.store)
   const persisted = useApp((s) => s.persisted)
   const updateStore = useApp((s) => s.updateStore)
-  const exportJson = useApp((s) => s.exportJson)
   const importJson = useApp((s) => s.importJson)
   const init = useApp((s) => s.init)
   const meta = useApp((s) => s.meta)
@@ -31,26 +32,9 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   if (!store) return null
 
   async function doExport() {
-    const text = exportJson()
-    const fname = `tindabot-${toLocalDate(Date.now())}.json`
-    const blob = new Blob([text], { type: 'application/json' })
-    try {
-      const file = new File([blob], fname, { type: 'application/json' })
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: fname })
-      } else {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = fname
-        a.click()
-        URL.revokeObjectURL(url)
-      }
-      await setMeta('last_backup_at', new Date().toISOString())
+    if (await exportCurrentStore()) {
       setLastBackup(new Date().toISOString())
       toast('Na-export.')
-    } catch {
-      /* cancelled */
     }
   }
 
@@ -106,6 +90,8 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
       </div>
 
       <UlatCard onGastos={onGastos} onPera={onPera} />
+
+      <CloudCard />
 
       <h3>Backup</h3>
       <div className="card">

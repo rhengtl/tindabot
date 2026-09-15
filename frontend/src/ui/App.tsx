@@ -7,6 +7,7 @@ import { Bahay } from './screens/Bahay'
 import { BakitSheet } from './screens/Bakit'
 import { BilangSheet } from './screens/Bilang'
 import { BumiliSheet } from './screens/Bumili'
+import { ClaimChoiceSheet } from './screens/Cloud'
 import { IbaPa } from './screens/IbaPa'
 import { Listahan } from './screens/Listahan'
 import { type PeraKind, PeraSheet } from './screens/Pera'
@@ -29,6 +30,7 @@ function Shell() {
   const store = useApp((s) => s.store)
   const init = useApp((s) => s.init)
   const refreshNow = useApp((s) => s.refreshNow)
+  const requestSync = useApp((s) => s.requestSync)
   const onboarded = useApp((s) => s.onboarded)
   const [tab, setTab] = useState<Tab>('bahay')
   const [fab, setFab] = useState(false)
@@ -42,16 +44,24 @@ function Shell() {
     init()
   }, [init])
 
-  // "today" changes: re-derive on focus/visibility and at local midnight.
+  // "today" changes: re-derive on focus/visibility and at local midnight. P3a: foreground and
+  // regained connectivity also trigger a sync (no-ops when signed out / unconfigured).
   useEffect(() => {
-    const onVis = () => document.visibilityState === 'visible' && refreshNow()
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return
+      refreshNow()
+      requestSync('foreground')
+    }
+    const onOnline = () => requestSync('online')
     document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('online', onOnline)
     const t = window.setInterval(refreshNow, 60_000)
     return () => {
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('online', onOnline)
       window.clearInterval(t)
     }
-  }, [refreshNow])
+  }, [refreshNow, requestSync])
 
   const openBakit = useCallback((productId: string, line: ListLine | null = null) => setBakit({ productId, line }), [])
   const openBilang = useCallback((only: string[] | null) => setBilang({ open: true, only }), [])
@@ -153,6 +163,7 @@ function Shell() {
       <AddProductSheet open={adding} onClose={() => setAdding(false)} />
       <PeraSheet open={pera.open} kind={pera.kind} initialCustomerId={pera.customerId} onClose={() => setPera((p) => ({ ...p, open: false }))} />
       {bakit && <BakitSheet product={bakitProduct} state={bakitState} line={bakitLine} onClose={() => setBakit(null)} />}
+      <ClaimChoiceSheet />
     </div>
   )
 }

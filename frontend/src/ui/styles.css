@@ -155,3 +155,8 @@ h3 { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spac
 .tripbar input:focus { outline: 2px solid var(--brand); border-color: transparent; }
 .section-toggle { min-height: var(--tap); display: inline-flex; align-items: center; }
 .budget-hint { color: var(--brand-dark); font-weight: 600; }
+
+/* P3a cloud backup status line */
+.sync-status { font-weight: 600; }
+.sync-status.error { color: var(--red, #c0392b); }
+.sync-status.offline, .sync-status.unbound, .sync-status.local_only { color: var(--muted, #6b6b6b); }

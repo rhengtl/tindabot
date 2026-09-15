@@ -37,7 +37,7 @@ Phone (PWA): React + TypeScript + Vite + vite-plugin-pwa
 | Layer | Owns | Never does |
 |---|---|---|
 | `domain/` | Event types, total order, derivation, cadence, list, tubo, templates | Storage, network, React |
-| Dexie | Local persistence, sync cursors, device id | Business logic |
+| Dexie | Local persistence, sync cursors/markers, device id | Business logic |
 | UI | Screens, derived state in memory | Math |
 | Supabase | Identity, durable storage, RLS isolation, sync | Derivation, AI |
 | FastAPI | Gemini key, JWT check, rate limit, schema-bound Gemini calls | Data storage, business rules |
@@ -293,6 +293,57 @@ Customer       archiving keeps events and balance; an archived customer with bal
 Paalala        deferred — not defined in P2.
 ```
 
+### E7. Cloud backup (P3a — decided 2026-09-15, additions only; no `domain/` change)
+
+P3a = Google sign-in + Supabase backup/sync of the existing data model. `/ai/parse` and the
+receipt camera are P3b. Local-first behaviour is unchanged: the app works fully without a
+network and without any cloud configuration (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
+absent → the Cloud card says so and every sync entry point is inert).
+
+```
+Cloud rows     stores{id, body, updated_at, server_rev, created_by, archived_at}
+               products/customers{id, store_id, body, updated_at, server_rev}
+               events{id, store_id, type, ts, body, server_seq}
+               body = the local object verbatim (byte-exact round trip, `ts` string untouched).
+Server rules   RLS by store_members (owner trigger on store insert; clients never write members);
+               events INSERT+SELECT only; records SELECT/INSERT/UPDATE with lww_guard()
+               (NEW.updated_at <= OLD.updated_at → skipped); no DELETE anywhere; archived_at only
+               via owner-only archive_store()/unarchive_store() RPCs; server_time() for skew.
+Local markers  storage-only, never in domain objects or export files: events.synced_at,
+               records.synced_updated_at (dirty ⇔ ≠ updated_at), stores.local_only (demo).
+Sync run       single-flight: push dirty records (then re-fetch them: a row the server rejected
+               as stale is replaced locally by the newer cloud copy), push unsynced events in
+               batches of 500 (insert-or-ignore), pull store row + records by server_rev cursor
+               + events by server_seq cursor (add-or-ignore), then full recompute (reload).
+               Markers are set only after the server acknowledged. Existing event order, VOID
+               semantics and record LWW are authoritative — sync adds no merge rule.
+Triggers       sign-in, launch, foreground, online, local write (2 s debounce), manual button.
+               Errors back off 10 s → 1 min → 5 min; network errors show as "Offline — N entry
+               ang hindi pa naka-backup", never as errors.
+Clock skew     |device − server| > 5 min → warning line only; sync never blocks.
+Claim (on sign-in / launch while unbound / manual):
+               no cloud store           → upload the phone store (it becomes the account's store)
+               same id                  → normal sync
+               phone empty or demo      → pull the cloud store completely, then switch to it
+               both populated, ids ≠    → sheet: "Panatilihin ang nasa phone" (archive the cloud
+                                          store via RPC — kept, not deleted — then upload the
+                                          phone store) / "Gamitin ang nasa cloud" (pull, then
+                                          switch; the phone store stays in Dexie untouched) /
+                                          "I-export muna" / "Mamaya na" (stay unbound; writes do
+                                          not re-ask, a manual sync does). Never a second active
+                                          store, never an automatic merge of two stores.
+               Switching current_store happens only after a complete pull; `claim_pending` +
+               per-store cursors resume an interrupted pull on the next run. A bound store found
+               archived/missing on the server → unbind and re-run the claim (asks when needed).
+               A different account never reuses this device's binding.
+Demo           local_only: never pushed, never claimed; signing in with the demo current only
+               switches to the account's cloud store if one exists.
+Membership     owner-only in P3a; store_members has `role` for households later (P5).
+Sign-out       stops sync; local data untouched; signing in again resumes on the same binding.
+Never          importFile('replace') (the only destructive local path) — sync never calls it;
+               no service-role key, DB password, access token or OAuth secret in the client.
+```
+
 ## F. AI boundaries (P3–P4)
 
 - `/ai/parse`: image or text + product names/pack sizes → `{ drafts[], unreadable[] }` via response
@@ -319,6 +370,8 @@ Paalala        deferred — not defined in P2.
 - **P3 Cloud at Kamera:** Supabase (`stores`, `store_members`, `products`, `customers`, `events` with
   `server_seq`), RLS by membership, events INSERT-only, records no DELETE, owner trigger, Google
   sign-in claiming the local store, push/pull, clock-skew warning, `/ai/parse`, receipt camera.
+  Split (decided 2026-09-15): **P3a** = sign-in + backup/sync (§E7); **P3b** = `/ai/parse` +
+  receipt camera.
 - **P4 Katulong:** Ilista text/voice via parse, `/ai/chat` with client tools, briefing card.
 - **P5 Abot:** household second device, push via Edge Function running `domain/`, supplier price
   memory, CSV import, tally (`SALE`, additive), English toggle, multi-store.

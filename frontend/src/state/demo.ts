@@ -47,6 +47,7 @@ const SPECS: Spec[] = [
 export async function loadDemo(): Promise<void> {
   const deviceId = await repo.deviceId()
   const store = await repo.createStore('Tindahan ni Aling Nena (demo)', [3, 6])
+  await repo.setLocalOnly(store.id) // P3a: the demo never syncs and is never claimed
   const today = toLocalDate(Date.now())
   const at = (offset: number, hour: number) => toISOWithOffset(localTimeMs(addDays(today, offset), hour))
   const now = toISOWithOffset(Date.now())
