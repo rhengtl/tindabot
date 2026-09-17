@@ -1,118 +1,107 @@
 # P3a — Cloud backup setup (one online Supabase project)
 
-Written for the project owner. Nothing here is fabricated: every `<placeholder>` is a value you
-create in a dashboard and keep outside the repository. Decisions: [BLUEPRINT §E7](BLUEPRINT.md).
+Written for the project owner. Nothing here is fabricated: every blank is a value you create in a
+dashboard and keep outside the repository. Design: [BLUEPRINT §E7](BLUEPRINT.md).
 
-## What the frontend needs (and nothing more)
+## Value classification
 
-| Value | Where it goes | Why it is safe there |
+| Value | Class | Where it goes |
 |---|---|---|
-| Project URL `https://<ref>.supabase.co` | `frontend/.env.local` → `VITE_SUPABASE_URL` | public |
-| anon / publishable key | `frontend/.env.local` → `VITE_SUPABASE_ANON_KEY` | designed to ship in clients; RLS is the boundary |
+| Supabase project ref | **SAFE TO GIVE** | derived from the URL; also `npm run db:link` |
+| Supabase project URL | **SAFE TO GIVE** | `frontend/.env.local`, `frontend/.env.test.local` |
+| Supabase anon / publishable key | **SAFE TO GIVE** (designed to ship in clients; RLS is the boundary) | `frontend/.env.local`, `frontend/.env.test.local` |
+| Test user A / B email | **SAFE TO GIVE** — must start with `tindabot-test-` | `frontend/.env.test.local` |
+| Test user A / B password | **PRIVATE / ENTER LOCALLY** | `frontend/.env.test.local` only |
+| Google OAuth client ID | **CONSOLE ONLY** (Supabase → Google provider) | never in the repo or the app |
+| Google OAuth client secret | **CONSOLE ONLY** | never in the repo, the app, or a chat |
+| Supabase database password | **PRIVATE / ENTER LOCALLY** (CLI prompt during `db:link`) | password manager |
+| Supabase CLI access token | **PRIVATE** (created by `supabase login`, stored in your user profile) | never in the repo |
+| `service_role` / secret key | **NEVER USED** — nothing in P3a needs it | — |
 
-`frontend/.env.local` is git-ignored. When both values are absent or malformed the app behaves
-exactly as P2 (the Cloud card says "Hindi available…").
+Both `.env` files are git-ignored (`.gitignore` covers `frontend/.env.local` and `frontend/.env.*.local`).
+Without them the app runs exactly as P2 and the online test suite skips itself.
 
-**Never** in the frontend, the repo, or a message to Claude: the `service_role` key, the database
-password, your Supabase personal access token, the Google OAuth client secret.
+## 1. Supabase dashboard
 
-## 1. Create the project
+1. **New project** — any name (e.g. `tindabot`), region closest to you. Save the database password
+   in your password manager. *Verify:* the project shows "Active".
+2. **Postgres version** — Settings → Infrastructure (or Database): must be **15 or newer**
+   (`pg_current_xact_id()` / `pg_snapshot_xmin()` need 13+). *Verify:* version shown.
+3. **API values** — Settings → API: copy the Project URL and the anon / publishable key.
+   Skip the `service_role` / secret key entirely.
+4. **Email provider** — Authentication → Providers → Email: leave enabled (needed by the test users).
+5. **Test users** — Authentication → Users → Add user → Create new user, twice, **Auto Confirm
+   User checked**: `tindabot-test-a@example.com` and `tindabot-test-b@example.com` with two
+   different strong passwords. The `tindabot-test-` prefix is required: the suite refuses any other
+   account and the cleanup script only ever touches stores owned by such users.
+   *Verify:* both appear in the Users list with "Confirmed".
+6. **Redirect URLs** — Authentication → URL Configuration: Site URL `http://localhost:4173`;
+   Additional Redirect URLs `http://localhost:4173/**` and `http://localhost:5173/**`. *Verify:* saved.
+7. **Google provider** — Authentication → Providers → Google → enable → paste Client ID and
+   Client secret from section 2 → Save. *Verify:* provider shows "Enabled".
+8. *(Optional, after your first successful Google sign-in and step 5)* Authentication → Settings:
+   turn off "Allow new users to sign up". Existing users (you and the test users) still sign in.
 
-1. supabase.com → New project → name `tindabot`, region closest to you. Save the **database
-   password** in your password manager (only migrations need it).
-2. Project Settings → API: note the **Project URL** and the **anon / publishable** key.
+## 2. Google Cloud console
 
-## 2. Apply the schema
+1. **OAuth consent screen** — External; app name "TindaBot"; your email as support and developer
+   contact. Keep it in *Testing* and add your own Google account under **Test users**.
+   *Verify:* your account is listed as a test user.
+2. **Credentials → Create credentials → OAuth client ID → Web application.** Exactly one authorized
+   redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`. *Verify:* the client ID
+   and secret are shown; enter them only in Supabase (step 1.7).
 
-Option A (CLI, recommended — keeps `supabase/migrations/` as the source of truth):
-
-```bash
-npx --yes supabase@2 login                       # once; stores a token in your user profile
-cd frontend
-npm run db:link -- --project-ref <ref>           # asks for the database password
-npm run db:push                                   # applies supabase/migrations/0001_p3a.sql
-```
-
-The first `link` creates `supabase/config.toml` (commit it; it holds no secrets — the project ref
-is public) and `supabase/.temp/` (git-ignored).
-
-Option B: SQL editor → paste the whole `supabase/migrations/0001_p3a.sql` → Run.
-
-Either way, afterwards Table editor shows `stores`, `store_members`, `products`, `customers`,
-`events`, all with RLS enabled, and Database → Functions lists `sync_watermark`, `server_time`,
-`archive_store`, `unarchive_store`, `is_member`, `is_owner`.
-
-`sync_watermark()` is what makes pulls safe against Postgres' commit-order race (BLUEPRINT §E7
-"Pull windows"); it returns only a transaction counter, no data.
-
-## 3. Google sign-in
-
-1. Google Cloud Console → a project (any) → **APIs & Services → OAuth consent screen**:
-   External, app name "TindaBot", your email as support and developer contact. While the app is in
-   *Testing*, add your Google account under **Test users** (enough for validation).
-2. **Credentials → Create credentials → OAuth client ID → Web application**.
-   Authorized redirect URI: `https://<ref>.supabase.co/auth/v1/callback`.
-   Copy the **Client ID** and **Client secret**.
-3. Supabase → Authentication → Providers → **Google** → enable → paste Client ID and Client secret
-   → Save. The secret lives only in Supabase.
-
-## 4. Redirect URLs (Authentication → URL Configuration)
-
-- Site URL: `http://localhost:4173`
-- Additional Redirect URLs: `http://localhost:4173/**`, `http://localhost:5173/**`
-- Add the production origin later when there is one.
-
-The phone reaches `localhost:4173` through `adb reverse tcp:4173 tcp:4173`, so the same entries
-cover the physical realme validation.
-
-## 5. Test users (automated RLS/integration tests only)
-
-Authentication → Providers → **Email** stays enabled (default). Then Authentication → Users →
-**Add user → Create new user** twice, with **Auto Confirm User** checked:
-
-- `tindabot-test-a@example.com` — a strong password you choose
-- `tindabot-test-b@example.com` — a different strong password
-
-These are pre-created, so "Confirm email" can stay on and the tests only ever sign in; they never
-sign up. Keep the `tindabot-test-` prefix — the cleanup script relies on it.
-
-## 6. Local files
-
-`frontend/.env.local` (git-ignored):
+## 3. `frontend/.env.local`
 
 ```
-VITE_SUPABASE_URL=https://<ref>.supabase.co
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon/publishable key>
 ```
+*Verify:* `npm run build && npx vite preview --port 4173` → Iba pa → the Cloud backup card shows
+"Mag-sign in gamit ang Google" instead of "Hindi available…".
 
-`frontend/.env.test.local` (git-ignored; only when you want the online test suite to run):
+## 4. `frontend/.env.test.local`
 
 ```
 TINDABOT_TEST_USERS=1
-TEST_SUPABASE_URL=https://<ref>.supabase.co
+TEST_SUPABASE_URL=https://<project-ref>.supabase.co
 TEST_SUPABASE_ANON_KEY=<anon/publishable key>
 TEST_USER_A_EMAIL=tindabot-test-a@example.com
 TEST_USER_A_PASSWORD=<password A>
 TEST_USER_B_EMAIL=tindabot-test-b@example.com
 TEST_USER_B_PASSWORD=<password B>
 ```
+*Verify:* `npx vitest run src/sync/__tests__/online.test.ts` no longer reports "0 test" (it will
+fail until the migration is applied; that is expected).
 
-## 7. How the automated tests stay away from your data
+## 5. CLI login and first migration
 
-- They authenticate with the anon key + `signInWithPassword` as the two test users only. Every
-  read and write goes through RLS exactly like the app; the suite includes the cross-account
-  isolation checks (user B cannot see or touch user A's store — and neither can see yours).
-- Each run creates fresh stores named `test-<runid>-…`. Tests delete nothing (there is no DELETE
-  privilege for any client).
-- The suite is skipped entirely unless `TINDABOT_TEST_USERS=1` and both users' credentials are
-  present.
-- Cleanup is manual and explicit: `supabase/scripts/cleanup_test_data.sql`, run by you in the SQL
-  editor. It deletes only stores created by the two test users **and** named `test-…`, inside a
-  transaction that aborts if either condition fails, so it can never reach your store.
+```bash
+npx --yes supabase@2 login                    # once; opens a browser; token stays in your profile
+cd frontend
+npm run db:link -- --project-ref <project-ref>   # prompts for the database password
+npm run db:push                                # applies supabase/migrations/0001_p3a.sql
+```
+Alternative: SQL editor → paste the whole of `supabase/migrations/0001_p3a.sql` → Run.
 
-## 8. Running it
+*Verify:* Table editor shows `stores`, `store_members`, `products`, `customers`, `events`, each
+marked RLS enabled; Database → Functions lists `sync_watermark`, `server_time`, `archive_store`,
+`unarchive_store`, `is_member`, `is_owner`. `link` creates `supabase/config.toml` (no secrets —
+fine to keep) and `supabase/.temp/` (git-ignored).
+
+**Optional, only while validating:** paste `supabase/scripts/test_helpers.sql` into the SQL
+editor. It adds `test_slow_insert_event` — a member-only function that inserts one ordinary event
+and holds its transaction open for ≤ 3 s — which is the only way to reproduce the
+uncommitted-transaction race on the real database. The suite skips those tests when it is absent.
+Drop it afterwards with the statement at the bottom of that file.
+
+## 6. Running the online suite and cleaning up
 
 ```bash
 cd frontend
-npm run build && npx vite preview --port 4173    # then open http://localhost:4173 → Iba pa → Cloud backup
+npx vitest run src/sync/__tests__/online.test.ts
 ```
+It signs in only as the two test users, creates stores named `test-<runid>-…`, deletes nothing (no
+client can), and archives its stores when done. Remove them for good whenever you like:
+`supabase/scripts/cleanup_test_data.sql` in the SQL editor — it deletes only stores that are owned
+by `tindabot-test-*` users **and** named `test-…`, inside a transaction that aborts otherwise.

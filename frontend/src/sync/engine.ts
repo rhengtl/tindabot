@@ -82,6 +82,8 @@ export interface EngineDeps {
   isOnline?: () => boolean
   debounceMs?: number
   backoffMs?: number[]
+  /** rows per pull page (default PULL_PAGE); tests lower it to exercise multi-page windows */
+  pullPage?: number
 }
 
 export const META = {
@@ -129,6 +131,7 @@ export class SyncEngine {
   private readonly isOnline: () => boolean
   private readonly debounceMs: number
   private readonly backoffMs: number[]
+  private readonly pullPage: number
   private running: Promise<void> | null = null
   private again: SyncReason | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -145,6 +148,7 @@ export class SyncEngine {
     this.isOnline = deps.isOnline ?? (() => (typeof navigator === 'undefined' || navigator.onLine === undefined ? true : navigator.onLine))
     this.debounceMs = deps.debounceMs ?? 2000
     this.backoffMs = deps.backoffMs ?? [10_000, 60_000, 300_000]
+    this.pullPage = deps.pullPage ?? PULL_PAGE
   }
 
   // ---------- public API ----------
@@ -545,7 +549,7 @@ export class SyncEngine {
       table === 'products' ? META.cursorProducts(storeId) : META.cursorCustomers(storeId),
       table === 'products' ? META.windowProducts(storeId) : META.windowCustomers(storeId),
       watermark,
-      (win) => this.api.pullRecords(table, storeId, win, PULL_PAGE),
+      (win) => this.api.pullRecords(table, storeId, win, this.pullPage),
       async (rows) => {
         const { items } = decodeAll(rows, decode)
         const r = await repo.applyPulledRecords(wrap(items.filter((x) => x.store_id === storeId)))
@@ -559,7 +563,7 @@ export class SyncEngine {
       META.cursorEvents(storeId),
       META.windowEvents(storeId),
       watermark,
-      (win) => this.api.pullEvents(storeId, win, PULL_PAGE),
+      (win) => this.api.pullEvents(storeId, win, this.pullPage),
       async (rows) => {
         const { items } = decodeAll(rows, rowToEvent)
         const added = await repo.addEvents(
@@ -603,7 +607,7 @@ export class SyncEngine {
         changed = changed || r.changed
         after = Math.max(after, r.last)
         await repo.setMeta(windowKey, formatWindow(hi, after))
-        if (rows.length < PULL_PAGE) break
+        if (rows.length < this.pullPage) break
       }
       cursor = hi - 1
       await repo.setMeta(cursorKey, String(cursor))
