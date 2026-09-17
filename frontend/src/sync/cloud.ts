@@ -33,6 +33,12 @@ export function createCloudApi(client: SupabaseClient): CloudApi {
       if (typeof data !== 'string') throw new CloudError('server_time', 'server')
       return data
     },
+    async syncWatermark() {
+      const data = check(await client.rpc('sync_watermark'), 'sync_watermark')
+      const n = Number(data)
+      if (!Number.isSafeInteger(n) || n <= 0) throw new CloudError('sync_watermark', 'server')
+      return n
+    },
     async listMyStores() {
       const data = check(await client.from('stores').select('id, body, updated_at, server_rev, archived_at, created_by').is('archived_at', null), 'listMyStores')
       return (data ?? []) as StoreRow[]
@@ -64,9 +70,17 @@ export function createCloudApi(client: SupabaseClient): CloudApi {
         'insertEvents',
       )
     },
-    async pullRecords(table: RecordTable, storeId, afterRev, limit) {
+    async pullRecords(table: RecordTable, storeId, win, limit) {
       const data = check(
-        await client.from(table).select('id, store_id, body, updated_at, server_rev').eq('store_id', storeId).gt('server_rev', afterRev).order('server_rev', { ascending: true }).limit(limit),
+        await client
+          .from(table)
+          .select('id, store_id, body, updated_at, server_rev, xid')
+          .eq('store_id', storeId)
+          .gt('xid', win.afterXid)
+          .lt('xid', win.beforeXid)
+          .gt('server_rev', win.after)
+          .order('server_rev', { ascending: true })
+          .limit(limit),
         `pull ${table}`,
       )
       return (data ?? []) as RecordRow[]
@@ -76,9 +90,17 @@ export function createCloudApi(client: SupabaseClient): CloudApi {
       const data = check(await client.from(table).select('id, store_id, body, updated_at, server_rev').eq('store_id', storeId).in('id', ids), `fetch ${table}`)
       return (data ?? []) as RecordRow[]
     },
-    async pullEvents(storeId, afterSeq, limit) {
+    async pullEvents(storeId, win, limit) {
       const data = check(
-        await client.from('events').select('id, store_id, type, ts, body, server_seq').eq('store_id', storeId).gt('server_seq', afterSeq).order('server_seq', { ascending: true }).limit(limit),
+        await client
+          .from('events')
+          .select('id, store_id, type, ts, body, server_seq, xid')
+          .eq('store_id', storeId)
+          .gt('xid', win.afterXid)
+          .lt('xid', win.beforeXid)
+          .gt('server_seq', win.after)
+          .order('server_seq', { ascending: true })
+          .limit(limit),
         'pullEvents',
       )
       return (data ?? []) as EventRow[]

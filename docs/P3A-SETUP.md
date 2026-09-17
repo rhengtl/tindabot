@@ -39,7 +39,11 @@ is public) and `supabase/.temp/` (git-ignored).
 Option B: SQL editor → paste the whole `supabase/migrations/0001_p3a.sql` → Run.
 
 Either way, afterwards Table editor shows `stores`, `store_members`, `products`, `customers`,
-`events`, all with RLS enabled.
+`events`, all with RLS enabled, and Database → Functions lists `sync_watermark`, `server_time`,
+`archive_store`, `unarchive_store`, `is_member`, `is_owner`.
+
+`sync_watermark()` is what makes pulls safe against Postgres' commit-order race (BLUEPRINT §E7
+"Pull windows"); it returns only a transaction counter, no data.
 
 ## 3. Google sign-in
 

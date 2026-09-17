@@ -5,6 +5,49 @@
 
 import type { Customer, DomainEvent, Product, Store } from '../domain'
 
+/**
+ * A pull window. `server_seq`/`server_rev` are allocated when a transaction writes, not when it
+ * commits, so a row with a LOWER sequence can become visible AFTER a higher one — reading by
+ * sequence alone could step over a row that had not committed yet and never come back for it.
+ * Every row therefore also carries `xid`, the id of the transaction that wrote it, and the server
+ * reports the lowest still-running transaction (`sync_watermark`). Restricting a pull to
+ * `xid < watermark` means every transaction in the window had already finished when the watermark
+ * was taken: the window is a frozen set that can never grow, so paging through it is complete and
+ * the cursor may advance to `watermark - 1` once it is drained.
+ */
+export interface PullWindow {
+  /** exclusive lower bound — every row with xid ≤ this is already local */
+  afterXid: number
+  /** exclusive upper bound — the run's committed high-water mark */
+  beforeXid: number
+  /** keyset page cursor inside the window: server_seq (events) or server_rev (records) */
+  after: number
+}
+
+/** An unfinished window, persisted so an interrupted pull resumes in the same frozen set. */
+export interface PendingWindow {
+  hi: number
+  seq: number
+}
+
+export function formatWindow(hi: number, seq: number): string {
+  return JSON.stringify({ hi, seq })
+}
+
+export function parseWindow(raw: string | null | undefined): PendingWindow | null {
+  if (!raw) return null
+  try {
+    const o: unknown = JSON.parse(raw)
+    if (!o || typeof o !== 'object') return null
+    const { hi, seq } = o as Record<string, unknown>
+    if (!Number.isSafeInteger(hi) || !Number.isSafeInteger(seq)) return null
+    if ((hi as number) <= 0 || (seq as number) < 0) return null
+    return { hi: hi as number, seq: seq as number }
+  } catch {
+    return null
+  }
+}
+
 export interface StoreRow {
   id: string
   body: Store
@@ -21,6 +64,8 @@ export interface RecordRow<T = Product | Customer> {
   body: T
   updated_at: string
   server_rev?: number
+  /** transaction that wrote the row (server-assigned) */
+  xid?: number
 }
 
 export interface EventRow {
@@ -30,6 +75,8 @@ export interface EventRow {
   ts: string
   body: DomainEvent
   server_seq?: number
+  /** transaction that wrote the row (server-assigned) */
+  xid?: number
 }
 
 const EVENT_TYPES = new Set(['PURCHASE', 'COUNT', 'ADJUST', 'UTANG', 'BAYAD', 'EXPENSE', 'CASH_COUNT', 'VOID'])

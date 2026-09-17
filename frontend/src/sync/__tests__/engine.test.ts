@@ -9,7 +9,7 @@ import { type Customer, type DomainEvent, type Product, type Store, activeEvents
 import { makeProduct, makeStore, run, scenarios, shuffled, toEvents } from '../../domain/__tests__/helpers'
 import { db } from '../../db/db'
 import * as repo from '../../db/repo'
-import { eventToRow, recordToRow, storeToRow } from '../codec'
+import { eventToRow, parseCursor, recordToRow, storeToRow } from '../codec'
 import { META, type SyncEngine as Engine, type SyncStatus, SyncEngine } from '../engine'
 import { FakeCloud } from './fake_cloud'
 
@@ -113,7 +113,10 @@ describe('claim: account has no store → upload the phone store', () => {
     expect(await repo.countDirtyRecords(local.store.id)).toBe(0)
     expect(await repo.getMeta(META.boundStore)).toBe(local.store.id)
     expect(await repo.getMeta(META.boundUser)).toBe(USER_A.id)
-    expect(await repo.getMeta(META.cursorEvents(local.store.id))).toBe('3')
+    // the cursor is an xid watermark: everything committed before this run is accounted for, and
+    // no window is left open
+    expect(parseCursor(await repo.getMeta(META.cursorEvents(local.store.id)))).toBe(cloud.server.watermark() - 1)
+    expect(await repo.getMeta(META.windowEvents(local.store.id))).toBeNull()
     expect(await repo.getMeta(META.lastSyncAt)).toBe('2026-09-15T10:00:00.000Z')
     expect(h.pulled).toBe(0) // nothing new came back
 
@@ -602,6 +605,177 @@ describe('triggers, offline, backoff, skew, sign-out, other account', () => {
     expect(cloud.members.get(local.store.id)!.has(USER_B.id)).toBe(false)
     expect(await repo.getMeta(META.boundUser)).toBe(USER_A.id)
     expect((await repo.loadSnapshot(local.store.id))!.events.length).toBe(3)
+  })
+})
+
+describe('pull windows: an event can never be skipped by the cursor', () => {
+  /** A bound, already-synced device sharing a store with a second device. */
+  async function bound() {
+    const local = await seedLocal()
+    const cloud = new FakeCloud(USER_A.id)
+    const h = harness(cloud)
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+    expect(h.engine.status.phase).toBe('idle')
+    return { local, cloud, h }
+  }
+  const localEventIds = async (storeId: string) => (await repo.loadSnapshot(storeId))!.events.map((e) => e.id).sort()
+
+  it('the race: a lower server_seq that commits later is not stepped over', async () => {
+    const { local, cloud, h } = await bound()
+    const sid = local.store.id
+    const cursorBefore = parseCursor(await repo.getMeta(META.cursorEvents(sid)))
+
+    // Device B starts writing E_slow (gets the lower sequence) but has not committed yet…
+    const slow = cloud.begin()
+    const eSlow = event(sid)
+    await slow.insertEvents([eventToRow(eSlow)])
+    // …while device C writes and commits E_fast, which therefore has a HIGHER sequence.
+    const eFast = event(sid)
+    await cloud.insertEvents([eventToRow(eFast)])
+    expect(cloud.events.get(eSlow.id)!.server_seq).toBeLessThan(cloud.events.get(eFast.id)!.server_seq)
+
+    // This is the defect the window removes: reading by sequence alone (no xid bound) returns the
+    // later row only, so a cursor advanced to its server_seq would never come back for E_slow.
+    const bySequenceOnly = await cloud.pullEvents(sid, { afterXid: 0, beforeXid: Number.MAX_SAFE_INTEGER, after: 0 }, 500)
+    expect(bySequenceOnly.map((r) => r.id)).toContain(eFast.id)
+    expect(bySequenceOnly.map((r) => r.id)).not.toContain(eSlow.id)
+    expect(bySequenceOnly[bySequenceOnly.length - 1]!.server_seq).toBeGreaterThan(cloud.events.get(eSlow.id)!.server_seq)
+
+    // The real pull: the watermark sits at the uncommitted transaction, so the cursor does not move
+    // past it and neither event is consumed yet.
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect(await localEventIds(sid)).toEqual(local.events.map((e) => e.id).sort())
+    expect(parseCursor(await repo.getMeta(META.cursorEvents(sid)))).toBe(cursorBefore)
+
+    // Once it commits, both arrive — nothing was lost, only delayed.
+    slow.commit()
+    await h.engine.syncNow()
+    expect(await localEventIds(sid)).toEqual([...local.events.map((e) => e.id), eSlow.id, eFast.id].sort())
+    expect(parseCursor(await repo.getMeta(META.cursorEvents(sid)))).toBe(cloud.server.watermark() - 1)
+    expect(await repo.getMeta(META.windowEvents(sid))).toBeNull()
+  })
+
+  it('the same guarantee covers record pulls (products/customers)', async () => {
+    const { local, cloud, h } = await bound()
+    const sid = local.store.id
+    const cursorBefore = parseCursor(await repo.getMeta(META.cursorProducts(sid)))
+
+    const slow = cloud.begin()
+    const pSlow = product(sid, ulid(), '2027-01-01T00:00:00.000Z', 'slow')
+    await slow.upsertRecords('products', [recordToRow(pSlow)])
+    const pFast = product(sid, ulid(), '2027-01-01T00:00:00.000Z', 'fast')
+    await cloud.upsertRecords('products', [recordToRow(pFast)])
+    expect(cloud.products.get(pSlow.id)!.server_rev).toBeLessThan(cloud.products.get(pFast.id)!.server_rev)
+
+    await h.engine.syncNow()
+    let names = (await repo.loadSnapshot(sid))!.products.map((x) => x.name)
+    expect(names).not.toContain('fast')
+    expect(names).not.toContain('slow')
+    expect(parseCursor(await repo.getMeta(META.cursorProducts(sid)))).toBe(cursorBefore)
+
+    slow.commit()
+    await h.engine.syncNow()
+    names = (await repo.loadSnapshot(sid))!.products.map((x) => x.name)
+    expect(names).toContain('slow')
+    expect(names).toContain('fast')
+  })
+
+  it('an aborted transaction leaves a sequence gap but never stalls the cursor', async () => {
+    const { local, cloud, h } = await bound()
+    const sid = local.store.id
+    const doomed = cloud.begin()
+    await doomed.insertEvents([eventToRow(event(sid))])
+    doomed.rollback() // rows gone, sequence numbers spent
+    const kept = event(sid)
+    await cloud.insertEvents([eventToRow(kept)])
+
+    await h.engine.syncNow()
+    expect(await localEventIds(sid)).toContain(kept.id)
+    expect(parseCursor(await repo.getMeta(META.cursorEvents(sid)))).toBe(cloud.server.watermark() - 1)
+    expect((await repo.loadSnapshot(sid))!.events.length).toBe(local.events.length + 1)
+  })
+
+  it('an event committed while a pull is running is outside the window and arrives on the next run', async () => {
+    const { local, cloud, h } = await bound()
+    const sid = local.store.id
+    const early = event(sid)
+    await cloud.insertEvents([eventToRow(early)])
+
+    // commit a second event from another device in the middle of this run's pull
+    const late = event(sid)
+    const orig = cloud.pullEvents.bind(cloud)
+    let calls = 0
+    cloud.pullEvents = async (...args) => {
+      const rows = await orig(...args)
+      if (++calls === 1) await cloud.insertEvents([eventToRow(late)])
+      return rows
+    }
+    await h.engine.syncNow()
+    const after = await localEventIds(sid)
+    expect(after).toContain(early.id)
+    expect(after).not.toContain(late.id) // higher xid than this run's watermark
+    const cursor = parseCursor(await repo.getMeta(META.cursorEvents(sid)))
+    expect(cursor).toBeLessThan(cloud.events.get(late.id)!.xid) // cursor never passed it
+
+    cloud.pullEvents = orig
+    await h.engine.syncNow()
+    expect(await localEventIds(sid)).toContain(late.id)
+  })
+
+  it('an interrupted pull resumes in the same frozen window and still ends up complete', async () => {
+    const localStore = await repo.createStore('Fresh phone', [3])
+    const cloud = new FakeCloud(USER_A.id)
+    const X = cloudStore('X0000000000000000000000009')
+    const first = Array.from({ length: 700 }, () => event(X.id))
+    await seedCloud(cloud, X, [product(X.id)], [], first)
+    const h = harness(cloud, { backoffMs: [5] })
+
+    // fail on the second page, so a window is left half-consumed
+    const orig = cloud.pullEvents.bind(cloud)
+    let calls = 0
+    cloud.pullEvents = async (...args) => {
+      if (++calls === 2) throw new Error('connection lost mid-pull')
+      return orig(...args)
+    }
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+    expect((await repo.currentStore())!.id).toBe(localStore.id) // not switched
+    const pending = JSON.parse((await repo.getMeta(META.windowEvents(X.id)))!)
+    expect(pending.seq).toBe(500)
+    const frozenHi = pending.hi
+
+    // more events commit before the resume: they must NOT be inside the pinned window
+    const later = Array.from({ length: 3 }, () => event(X.id))
+    await cloud.insertEvents(later.map(eventToRow))
+    for (const e of later) expect(cloud.events.get(e.id)!.xid).toBeGreaterThanOrEqual(frozenHi)
+
+    cloud.pullEvents = orig
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect((await repo.currentStore())!.id).toBe(X.id)
+    const snap = (await repo.loadSnapshot(X.id))!
+    expect(snap.events.length).toBe(703) // the frozen window plus the newer window, each exactly once
+    expect(await db.events.count()).toBe(703)
+    expect(await repo.getMeta(META.windowEvents(X.id))).toBeNull()
+    expect(parseCursor(await repo.getMeta(META.cursorEvents(X.id)))).toBe(cloud.server.watermark() - 1)
+  })
+
+  it('a lost window marker only costs a re-read: add-or-ignore keeps the result identical', async () => {
+    const { local, cloud, h } = await bound()
+    const sid = local.store.id
+    const extra = Array.from({ length: 3 }, () => event(sid))
+    await cloud.insertEvents(extra.map(eventToRow))
+    await h.engine.syncNow()
+    const before = await localEventIds(sid)
+
+    // rewind the cursor as if the window/cursor state had been lost
+    await repo.setMeta(META.cursorEvents(sid), '0')
+    await h.engine.syncNow()
+    expect(await localEventIds(sid)).toEqual(before)
+    expect(await db.events.count()).toBe(before.length)
+    expect(await repo.countUnsyncedEvents(sid)).toBe(0) // re-pulled rows stay marked as synced
   })
 })
 

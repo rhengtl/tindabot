@@ -8,10 +8,14 @@
 --     when a store row is inserted, and clients cannot write store_members at all in P3a
 --   * archiving a store is a flag (archived_at) set only through owner-only RPCs — never a delete
 --   * every row keeps the full client object verbatim in `body` (byte-exact round trips)
+--   * pulls are safe against the commit-order race: `xid` records the INSERTING transaction's
+--     id and sync_watermark() reports the lowest still-running transaction, so a client only ever
+--     consumes rows whose transactions had already finished (see BLUEPRINT §E7 "Pull windows")
 --
 -- Apply with `npx supabase db push` (after `npx supabase link`) or paste into the SQL editor.
 
 create sequence if not exists public.record_rev_seq;
+create sequence if not exists public.event_seq;
 
 -- ---------------------------------------------------------------------------------------------
 -- tables
@@ -41,7 +45,9 @@ create table public.products (
   body jsonb not null,
   updated_at timestamptz not null,
   server_updated_at timestamptz not null default now(),
-  server_rev bigint not null default nextval('public.record_rev_seq')
+  server_rev bigint not null default nextval('public.record_rev_seq'),
+  -- transaction that last wrote this row; set by trigger, never by the client (see sync_watermark)
+  xid bigint not null default 0
 );
 
 create table public.customers (
@@ -50,7 +56,8 @@ create table public.customers (
   body jsonb not null,
   updated_at timestamptz not null,
   server_updated_at timestamptz not null default now(),
-  server_rev bigint not null default nextval('public.record_rev_seq')
+  server_rev bigint not null default nextval('public.record_rev_seq'),
+  xid bigint not null default 0
 );
 
 create table public.events (
@@ -59,13 +66,16 @@ create table public.events (
   type text not null,
   ts text not null,            -- ISO string with offset, kept verbatim (part of the event's order)
   body jsonb not null,
-  server_seq bigserial unique,
+  -- server-assigned by trigger (never by the client), unique and monotonic per insert
+  server_seq bigint not null unique default 0,
+  xid bigint not null default 0,
   inserted_at timestamptz not null default now()
 );
 
-create index products_store_rev on public.products (store_id, server_rev);
-create index customers_store_rev on public.customers (store_id, server_rev);
-create index events_store_seq on public.events (store_id, server_seq);
+-- Pull windows filter on xid and page on the row sequence, in that order.
+create index products_store_pull on public.products (store_id, xid, server_rev);
+create index customers_store_pull on public.customers (store_id, xid, server_rev);
+create index events_store_pull on public.events (store_id, xid, server_seq);
 create index store_members_user on public.store_members (user_id);
 
 -- ---------------------------------------------------------------------------------------------
@@ -86,6 +96,25 @@ language sql stable security definer
 set search_path = public
 as $$
   select exists (select 1 from public.store_members m where m.store_id = sid and m.user_id = auth.uid() and m.role = 'owner');
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- pull safety: transaction id per row + the committed high-water mark
+-- ---------------------------------------------------------------------------------------------
+
+-- `xid` on every row below is (pg_current_xact_id()::text)::bigint — the writing transaction's id
+-- (xid8, 64-bit, never wraps), taken at write time, before the transaction commits. It is set by
+-- the triggers only, so a client can neither choose it nor call it directly.
+--
+-- The lowest transaction id that is still running. Postgres guarantees every transaction with a
+-- LOWER id has already finished (committed and visible, or aborted and gone forever), so a client
+-- that only consumes rows with `xid < sync_watermark()` can never step over a row that had not
+-- committed yet. Uses pg_current_snapshot(), which does NOT assign an xid to the reading session.
+create or replace function public.sync_watermark()
+returns bigint
+language sql stable
+as $$
+  select (pg_snapshot_xmin(pg_current_snapshot())::text)::bigint;
 $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -133,6 +162,7 @@ begin
   new.store_id := old.store_id;
   new.server_updated_at := now();
   new.server_rev := nextval('public.record_rev_seq');
+  new.xid := (pg_current_xact_id()::text)::bigint;
   return new;
 end;
 $$;
@@ -170,10 +200,26 @@ as $$
 begin
   new.server_updated_at := now();
   new.server_rev := nextval('public.record_rev_seq');
+  new.xid := (pg_current_xact_id()::text)::bigint;
   return new;
 end;
 $$;
 
+-- Events: the server owns server_seq and xid (a client may not choose either; the rest of the
+-- row is the client's write-once event).
+create or replace function public.events_before_insert()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.server_seq := nextval('public.event_seq');
+  new.xid := (pg_current_xact_id()::text)::bigint;
+  new.inserted_at := now();
+  return new;
+end;
+$$;
+
+create trigger events_bi before insert on public.events for each row execute function public.events_before_insert();
 create trigger stores_bi before insert on public.stores for each row execute function public.stores_before_insert();
 create trigger stores_ai after insert on public.stores for each row execute function public.stores_after_insert();
 create trigger stores_bu before update on public.stores for each row execute function public.stores_lww_guard();
@@ -235,8 +281,8 @@ revoke all on all sequences in schema public from anon, authenticated;
 grant select, insert, update on public.stores, public.products, public.customers to authenticated;
 grant select, insert on public.events to authenticated;
 grant select on public.store_members to authenticated;
-grant usage on sequence public.record_rev_seq, public.events_server_seq_seq to authenticated;
-grant execute on function public.is_member(text), public.is_owner(text), public.server_time(), public.archive_store(text), public.unarchive_store(text) to authenticated;
+grant usage on sequence public.record_rev_seq, public.event_seq to authenticated;
+grant execute on function public.is_member(text), public.is_owner(text), public.server_time(), public.sync_watermark(), public.archive_store(text), public.unarchive_store(text) to authenticated;
 
 alter table public.stores enable row level security;
 alter table public.store_members enable row level security;

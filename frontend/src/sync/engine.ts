@@ -20,14 +20,17 @@ import {
   EVENT_PUSH_BATCH,
   PULL_PAGE,
   SKEW_WARN_MS,
+  type PullWindow,
   type RecordRow,
   type StoreRow,
   chunk,
   clockSkewMs,
   decodeAll,
   eventToRow,
+  formatWindow,
   maxSeq,
   parseCursor,
+  parseWindow,
   recordToRow,
   rowToCustomer,
   rowToEvent,
@@ -88,9 +91,14 @@ export const META = {
   lastSyncAt: 'last_sync_at',
   lastError: 'last_sync_error',
   skew: 'clock_skew_ms',
+  // Cursors hold an xid watermark: every row written by a transaction with a lower or equal id
+  // has been pulled. The window keys hold an unfinished pull so it resumes in the same frozen set.
   cursorEvents: (id: string) => `cursor_events:${id}`,
   cursorProducts: (id: string) => `cursor_products:${id}`,
   cursorCustomers: (id: string) => `cursor_customers:${id}`,
+  windowEvents: (id: string) => `window_events:${id}`,
+  windowProducts: (id: string) => `window_products:${id}`,
+  windowCustomers: (id: string) => `window_customers:${id}`,
 } as const
 
 const INITIAL: SyncStatus = {
@@ -414,8 +422,9 @@ export class SyncEngine {
       throw new CloudError('Hindi na available ang tindahan sa cloud.', 'server')
     }
     await repo.applyPulledRecords({ store })
-    await this.pullRecords(cloudStoreId)
-    await this.pullEvents(cloudStoreId)
+    const watermark = await this.api.syncWatermark()
+    await this.pullRecords(cloudStoreId, watermark)
+    await this.pullEvents(cloudStoreId, watermark)
     await repo.setCurrentStore(cloudStoreId)
     await this.bind(cloudStoreId, this.status.user!.id)
     await repo.deleteMeta(META.claimPending)
@@ -451,10 +460,13 @@ export class SyncEngine {
     let changed = await this.pushRecords(storeId)
     await this.pushEvents(storeId)
 
+    // One high-water mark for the whole run: taken AFTER the push so this device's own writes are
+    // inside it, and shared by both pulls.
+    const watermark = await this.api.syncWatermark()
     const remoteStore = rowToStore(remote)
     if (remoteStore) changed = (await repo.applyPulledRecords({ store: remoteStore })).applied > 0 || changed
-    changed = (await this.pullRecords(storeId)) || changed
-    changed = (await this.pullEvents(storeId)) || changed
+    changed = (await this.pullRecords(storeId, watermark)) || changed
+    changed = (await this.pullEvents(storeId, watermark)) || changed
     if (changed) await this.onPulled()
 
     const at = new Date(this.now()).toISOString()
@@ -516,50 +528,88 @@ export class SyncEngine {
   }
 
   /** Returns true when anything new was applied. */
-  private async pullRecords(storeId: string): Promise<boolean> {
-    const a = await this.pullTable(storeId, 'products', META.cursorProducts(storeId), rowToProduct, (items) => ({ products: items }))
-    const b = await this.pullTable(storeId, 'customers', META.cursorCustomers(storeId), rowToCustomer, (items) => ({ customers: items }))
+  private async pullRecords(storeId: string, watermark: number): Promise<boolean> {
+    const a = await this.pullTable(storeId, 'products', watermark, rowToProduct, (items) => ({ products: items }))
+    const b = await this.pullTable(storeId, 'customers', watermark, rowToCustomer, (items) => ({ customers: items }))
     return a || b
   }
 
   private async pullTable<T extends Product | Customer>(
     storeId: string,
     table: 'products' | 'customers',
-    key: string,
+    watermark: number,
     decode: (r: RecordRow) => T | null,
     wrap: (items: T[]) => repo.PulledRecords,
   ): Promise<boolean> {
-    let cursor = parseCursor(await repo.getMeta(key))
-    let changed = false
-    for (;;) {
-      const rows = await this.api.pullRecords(table, storeId, cursor, PULL_PAGE)
-      if (rows.length === 0) break
-      const { items } = decodeAll(rows, decode)
-      const r = await repo.applyPulledRecords(wrap(items.filter((x) => x.store_id === storeId)))
-      changed = changed || r.applied > 0
-      cursor = Math.max(cursor, maxSeq(rows, 'server_rev'))
-      await repo.setMeta(key, String(cursor))
-      if (rows.length < PULL_PAGE) break
-    }
-    return changed
+    return this.pullWindowed(
+      table === 'products' ? META.cursorProducts(storeId) : META.cursorCustomers(storeId),
+      table === 'products' ? META.windowProducts(storeId) : META.windowCustomers(storeId),
+      watermark,
+      (win) => this.api.pullRecords(table, storeId, win, PULL_PAGE),
+      async (rows) => {
+        const { items } = decodeAll(rows, decode)
+        const r = await repo.applyPulledRecords(wrap(items.filter((x) => x.store_id === storeId)))
+        return { changed: r.applied > 0, last: maxSeq(rows, 'server_rev') }
+      },
+    )
   }
 
-  private async pullEvents(storeId: string): Promise<boolean> {
-    const key = META.cursorEvents(storeId)
-    let cursor = parseCursor(await repo.getMeta(key))
+  private async pullEvents(storeId: string, watermark: number): Promise<boolean> {
+    return this.pullWindowed(
+      META.cursorEvents(storeId),
+      META.windowEvents(storeId),
+      watermark,
+      (win) => this.api.pullEvents(storeId, win, PULL_PAGE),
+      async (rows) => {
+        const { items } = decodeAll(rows, rowToEvent)
+        const added = await repo.addEvents(
+          items.filter((e) => e.store_id === storeId),
+          new Date(this.now()).toISOString(),
+        )
+        return { changed: added > 0, last: maxSeq(rows, 'server_seq') }
+      },
+    )
+  }
+
+  /**
+   * Window-bounded pull (see `PullWindow`). The cursor advances only to `hi - 1` once the whole
+   * frozen window `(cursor, hi)` has been drained, so it can never pass a row whose transaction
+   * had not committed when `hi` was taken. Rows committed during the pull have a higher xid, fall
+   * outside the window, and are picked up by the next run — never skipped, never lost.
+   * An interrupted pull keeps `hi` and the page cursor in meta and resumes in the same set;
+   * re-reading part of it is harmless (events are add-or-ignore, records are LWW).
+   */
+  private async pullWindowed<R>(
+    cursorKey: string,
+    windowKey: string,
+    watermark: number,
+    fetch: (win: PullWindow) => Promise<R[]>,
+    apply: (rows: R[]) => Promise<{ changed: boolean; last: number }>,
+  ): Promise<boolean> {
+    let cursor = parseCursor(await repo.getMeta(cursorKey))
+    let pending = parseWindow(await repo.getMeta(windowKey))
     let changed = false
     for (;;) {
-      const rows = await this.api.pullEvents(storeId, cursor, PULL_PAGE)
-      if (rows.length === 0) break
-      const { items } = decodeAll(rows, rowToEvent)
-      const added = await repo.addEvents(
-        items.filter((e) => e.store_id === storeId),
-        new Date(this.now()).toISOString(),
-      )
-      changed = changed || added > 0
-      cursor = Math.max(cursor, maxSeq(rows, 'server_seq'))
-      await repo.setMeta(key, String(cursor))
-      if (rows.length < PULL_PAGE) break
+      const hi = pending?.hi ?? watermark
+      if (hi - 1 <= cursor) {
+        if (pending) await repo.deleteMeta(windowKey)
+        break
+      }
+      let after = pending?.seq ?? 0
+      for (;;) {
+        const rows = await fetch({ afterXid: cursor, beforeXid: hi, after })
+        if (rows.length === 0) break
+        const r = await apply(rows)
+        changed = changed || r.changed
+        after = Math.max(after, r.last)
+        await repo.setMeta(windowKey, formatWindow(hi, after))
+        if (rows.length < PULL_PAGE) break
+      }
+      cursor = hi - 1
+      await repo.setMeta(cursorKey, String(cursor))
+      await repo.deleteMeta(windowKey)
+      pending = null
+      if (watermark - 1 <= cursor) break // a resumed older window may leave newer data for this pass
     }
     return changed
   }

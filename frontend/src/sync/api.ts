@@ -2,13 +2,18 @@
 // supabase-js; tests implement it in memory (mirroring the server-side rules: write-once events,
 // LWW guard on records, membership). Nothing here can delete data — the interface has no delete.
 
-import type { EventRow, RecordRow, StoreRow } from './codec'
+import type { EventRow, PullWindow, RecordRow, StoreRow } from './codec'
 
 export type RecordTable = 'products' | 'customers'
 
 export interface CloudApi {
   /** Server `now()` as ISO — clock-skew check only. */
   serverTime(): Promise<string>
+  /**
+   * The lowest transaction id still running on the server. Every transaction with a lower id has
+   * finished, so rows with `xid < watermark` are exactly the rows that can never appear later.
+   */
+  syncWatermark(): Promise<number>
   /** Active (non-archived) stores the signed-in user is a member of. */
   listMyStores(): Promise<StoreRow[]>
   /** One store row (archived included) or null when unknown/not visible. */
@@ -18,10 +23,10 @@ export interface CloudApi {
   upsertRecords(table: RecordTable, rows: RecordRow[]): Promise<void>
   /** Insert-or-ignore by id (write-once). */
   insertEvents(rows: EventRow[]): Promise<void>
-  pullRecords(table: RecordTable, storeId: string, afterRev: number, limit: number): Promise<RecordRow[]>
+  pullRecords(table: RecordTable, storeId: string, win: PullWindow, limit: number): Promise<RecordRow[]>
   /** Current server copies of specific records (after a push, to reconcile rows the LWW guard rejected). */
   fetchRecords(table: RecordTable, storeId: string, ids: string[]): Promise<RecordRow[]>
-  pullEvents(storeId: string, afterSeq: number, limit: number): Promise<EventRow[]>
+  pullEvents(storeId: string, win: PullWindow, limit: number): Promise<EventRow[]>
   /** Owner-only RPCs; non-destructive flags on the store row. */
   archiveStore(id: string): Promise<void>
   unarchiveStore(id: string): Promise<void>

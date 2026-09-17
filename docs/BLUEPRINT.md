@@ -302,21 +302,42 @@ absent → the Cloud card says so and every sync entry point is inert).
 
 ```
 Cloud rows     stores{id, body, updated_at, server_rev, created_by, archived_at}
-               products/customers{id, store_id, body, updated_at, server_rev}
-               events{id, store_id, type, ts, body, server_seq}
-               body = the local object verbatim (byte-exact round trip, `ts` string untouched).
+               products/customers{id, store_id, body, updated_at, server_rev, xid}
+               events{id, store_id, type, ts, body, server_seq, xid}
+               body = the local object verbatim (byte-exact round trip, `ts` string untouched);
+               xid = the transaction that wrote the row (server-assigned; see Pull windows).
 Server rules   RLS by store_members (owner trigger on store insert; clients never write members);
-               events INSERT+SELECT only; records SELECT/INSERT/UPDATE with lww_guard()
-               (NEW.updated_at <= OLD.updated_at → skipped); no DELETE anywhere; archived_at only
-               via owner-only archive_store()/unarchive_store() RPCs; server_time() for skew.
+               events INSERT+SELECT only (server owns server_seq and xid); records
+               SELECT/INSERT/UPDATE with lww_guard() (NEW.updated_at <= OLD.updated_at → skipped);
+               no DELETE anywhere; archived_at only via owner-only archive_store()/
+               unarchive_store() RPCs; server_time() for skew; sync_watermark() for pull windows.
 Local markers  storage-only, never in domain objects or export files: events.synced_at,
                records.synced_updated_at (dirty ⇔ ≠ updated_at), stores.local_only (demo).
 Sync run       single-flight: push dirty records (then re-fetch them: a row the server rejected
                as stale is replaced locally by the newer cloud copy), push unsynced events in
-               batches of 500 (insert-or-ignore), pull store row + records by server_rev cursor
-               + events by server_seq cursor (add-or-ignore), then full recompute (reload).
-               Markers are set only after the server acknowledged. Existing event order, VOID
-               semantics and record LWW are authoritative — sync adds no merge rule.
+               batches of 500 (insert-or-ignore), take one sync_watermark() for the run, pull the
+               store row + records + events through pull windows (add-or-ignore / LWW), then full
+               recompute (reload). Markers are set only after the server acknowledged. Existing
+               event order, VOID semantics and record LWW are authoritative — sync adds no merge
+               rule.
+Pull windows   (decided 2026-09-17, replaces the plain server_seq cursor.)
+               Sequence numbers are allocated when a transaction WRITES, not when it commits, so a
+               row with a lower server_seq can become visible after a higher one; a cursor that
+               followed server_seq alone could step over the slower row and never return to it.
+               Every row therefore carries `xid` (its writing transaction) and the server exposes
+               sync_watermark() = pg_snapshot_xmin(pg_current_snapshot()) = the lowest transaction
+               still running. Postgres guarantees every lower-numbered transaction has already
+               finished, so the set {xid < watermark} is frozen: it can never gain a member.
+               A pull consumes exactly that window — `xid > cursor and xid < watermark`, paged by
+               server_seq/server_rev — and only when the window is drained does the cursor advance
+               to `watermark − 1`. Rows committed during the pull have a higher xid, sit outside
+               the window, and are taken by the next run. INVARIANT: once cursor_events advances,
+               every event with xid ≤ cursor was visible to that pull.
+               An unfinished window is kept in meta (`window_events:<id>` = {hi, seq}) so a resumed
+               pull continues in the same frozen set; losing it only costs a re-read (add-or-ignore).
+               Cost: an in-flight write anywhere in the database holds the watermark down, so new
+               rows can be a moment late (never lost), and each event this device uploads is
+               downloaded back once.
 Triggers       sign-in, launch, foreground, online, local write (2 s debounce), manual button.
                Errors back off 10 s → 1 min → 5 min; network errors show as "Offline — N entry
                ang hindi pa naka-backup", never as errors.
@@ -333,7 +354,7 @@ Claim (on sign-in / launch while unbound / manual):
                                           not re-ask, a manual sync does). Never a second active
                                           store, never an automatic merge of two stores.
                Switching current_store happens only after a complete pull; `claim_pending` +
-               per-store cursors resume an interrupted pull on the next run. A bound store found
+               per-store cursors and windows resume an interrupted pull on the next run. A bound store found
                archived/missing on the server → unbind and re-run the claim (asks when needed).
                A different account never reuses this device's binding.
 Demo           local_only: never pushed, never claimed; signing in with the demo current only
