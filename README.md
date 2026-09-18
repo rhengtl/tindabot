@@ -62,5 +62,7 @@ Optional. Without `frontend/.env.local` the app runs exactly as before (no sign-
 Setup steps and what goes where: [docs/P3A-SETUP.md](docs/P3A-SETUP.md). Only the project URL
 and the anon key ever reach the frontend; RLS is the security boundary.
 
-Phase 1 (local-only) is implemented. P2–P5 (utang/cash, cloud sync + receipt camera, assistant,
-household) follow the blueprint roadmap.
+P1 (local-only listahan) and P2 (utang/cash) are implemented and device-validated. P3a (Google
+sign-in + cloud backup/sync) is implemented and integration-tested against the online project;
+its physical device validation and deployment are still open. P3b (receipt camera + `/ai/parse`),
+P4 (assistant) and P5 (household) follow the blueprint roadmap.
