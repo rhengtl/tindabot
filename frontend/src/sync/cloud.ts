@@ -3,22 +3,29 @@
 // Only the anon key is ever present here; RLS on the server is the security boundary.
 
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
-import { type AuthApi, type CloudApi, type CloudUser, CloudError, type RecordTable } from './api'
+import { type AuthApi, type CloudApi, type CloudUser, CloudError, type RecordTable, type SignInError } from './api'
 import type { EventRow, RecordRow, StoreRow } from './codec'
 import { type CloudEnv, readCloudEnv } from './env'
-import { isSignInCallbackUrl, redirectErrorFromUrl, safeErrorText, stripRedirectErrorParams } from './redirect'
+import { classifyRedirectError, isSignInCallbackUrl, redirectErrorFromUrl, safeErrorText, stripRedirectErrorParams } from './redirect'
 
 export interface Cloud {
   api: CloudApi
   auth: AuthApi
 }
 
-function toCloudError(err: unknown, fallback: string): CloudError {
+/**
+ * The only place raw supabase-js / PostgREST / Postgres failures are interpreted. The result
+ * carries an app-level `code` (what the UI shows, localized) and the original message as
+ * developer detail (never shown to users; may reach console/meta diagnostics only).
+ */
+export function toCloudError(err: unknown, fallback: string): CloudError {
   const e = err as { message?: string; code?: string; status?: number; name?: string } | null
-  const msg = e?.message || fallback
-  if (e?.name === 'TypeError' || /fetch|network|Failed to fetch|NetworkError/i.test(msg)) return new CloudError('Walang koneksyon.', 'network')
-  if (e?.code === '42501' || e?.status === 401 || e?.status === 403) return new CloudError(msg, 'denied')
-  if (e?.name === 'AuthError' || e?.name === 'AuthApiError') return new CloudError(msg, 'auth')
+  const msg = `${fallback}: ${e?.message || 'no message'}`
+  if (e?.name === 'TypeError' || /fetch|network|Failed to fetch|NetworkError|ECONN|timed? ?out/i.test(e?.message ?? '')) return new CloudError(msg, 'network')
+  if (e?.name === 'AuthError' || e?.name === 'AuthApiError' || e?.name === 'AuthSessionMissingError' || e?.code === 'PGRST301' || e?.status === 401) {
+    return new CloudError(msg, 'auth')
+  }
+  if (e?.code === '42501' || e?.status === 403) return new CloudError(msg, 'denied')
   return new CloudError(msg, 'server')
 }
 
@@ -148,12 +155,13 @@ export function createAuthApi(client: SupabaseClient): AuthApi {
       // already ran when the client was created, not a second exchange attempt.
       const { error } = await client.auth.initialize()
       if (!error) return null
-      const text = redirectErrorFromUrl(location.href) ?? safeErrorText(error.message)
+      const fromUrl = redirectErrorFromUrl(location.href)
+      const result: SignInError = { kind: classifyRedirectError(location.href, fromUrl === null), detail: fromUrl ?? safeErrorText(error.message) }
       // supabase-js strips `code` on success only; drop the error parameters ourselves so a
       // reload or a later share of the URL does not repeat the message.
       const clean = stripRedirectErrorParams(location.href)
       if (clean !== location.href && typeof history !== 'undefined') history.replaceState(history.state, '', clean)
-      return text
+      return result
     },
     async signOut() {
       const { error } = await client.auth.signOut({ scope: 'local' })

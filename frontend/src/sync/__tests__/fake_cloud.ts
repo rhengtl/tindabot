@@ -156,7 +156,7 @@ export class FakeCloud implements CloudApi {
   private guard(what: string) {
     const st = this.server
     st.calls.push(what)
-    if (st.offline) throw new CloudError('Walang koneksyon.', 'network')
+    if (st.offline) throw new CloudError(`${what}: Failed to fetch`, 'network')
     if (st.failNext) {
       const m = st.failNext
       st.failNext = null

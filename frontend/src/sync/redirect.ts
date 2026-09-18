@@ -6,6 +6,8 @@
 // it emits no auth-state event and leaves the parameters in the address bar — so the app has to
 // look for it explicitly (see `AuthApi.signInRedirectError`).
 
+import type { SignInErrorKind } from './api'
+
 const CALLBACK_PARAMS = ['code', 'access_token', 'error', 'error_code', 'error_description']
 const ERROR_PARAMS = ['error', 'error_code', 'error_description']
 
@@ -37,7 +39,22 @@ export function redirectErrorFromUrl(href: string): string | null {
   return null
 }
 
-/** Trims and caps an error text so the UI never shows a wall of text or anything token-shaped. */
+/**
+ * App-level kind of a failed redirect. `cancelled` = the person backed out or Google refused
+ * (access_denied / user_cancelled); `exchange` = the URL carried no provider error but the PKCE
+ * code exchange failed (verifier missing — different browser — or expired); `provider` = any
+ * other provider/server error in the URL.
+ */
+export function classifyRedirectError(href: string, noUrlError: boolean): SignInErrorKind {
+  if (noUrlError) return 'exchange'
+  for (const p of paramsOf(href)) {
+    const code = `${p.get('error') ?? ''} ${p.get('error_code') ?? ''} ${p.get('error_description') ?? ''}`.toLowerCase()
+    if (/access_denied|cancel|denied|consent/.test(code)) return 'cancelled'
+  }
+  return 'provider'
+}
+
+/** Trims and caps an error text so logs never carry a wall of text or anything token-shaped. */
 export function safeErrorText(text: string): string {
   const t = text.replace(/\s+/g, ' ').trim()
   if (!t) return 'unknown'

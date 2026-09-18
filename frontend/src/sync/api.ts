@@ -42,19 +42,31 @@ export interface AuthApi {
   signInWithGoogle(): Promise<void>
   /**
    * Non-null when this page load is the return leg of a sign-in redirect that failed (provider
-   * error in the URL, or the PKCE code exchange failed). Display-safe text, never a token.
-   * supabase-js reports this only through `auth.initialize()`, never as an auth-state event.
+   * error in the URL, or the PKCE code exchange failed). `kind` is what the UI shows (localized);
+   * `detail` is display-safe developer text (provider description or supabase-js message, never a
+   * token or code) meant for logging only. supabase-js reports this only through
+   * `auth.initialize()`, never as an auth-state event.
    */
-  signInRedirectError(): Promise<string | null>
+  signInRedirectError(): Promise<SignInError | null>
   signOut(): Promise<void>
   /** Fires with the user on sign-in/restore and null on sign-out. Returns an unsubscribe. */
   onChange(cb: (user: CloudUser | null) => void): () => void
 }
 
+/** App-level failure categories. The UI maps these to localized text; `message` is developer detail. */
+export type CloudErrorCode = 'network' | 'auth' | 'denied' | 'store_gone' | 'server' | 'unknown'
+
+/** Why a Google sign-in redirect came back without a session. */
+export type SignInErrorKind = 'cancelled' | 'exchange' | 'provider'
+export interface SignInError {
+  kind: SignInErrorKind
+  detail: string
+}
+
 export class CloudError extends Error {
   constructor(
     message: string,
-    public readonly code: 'network' | 'auth' | 'denied' | 'server' | 'unknown' = 'unknown',
+    public readonly code: CloudErrorCode = 'unknown',
   ) {
     super(message)
     this.name = 'CloudError'

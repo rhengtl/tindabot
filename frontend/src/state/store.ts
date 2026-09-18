@@ -3,10 +3,13 @@
 
 import { create } from 'zustand'
 import {
+  DEFAULT_LANG,
+  LANGS,
   type Customer,
   type CustomerState,
   type DomainEvent,
   type ExpenseCategory,
+  type Lang,
   type LocalDate,
   type Product,
   type ProductState,
@@ -31,7 +34,7 @@ import {
 } from '../domain'
 import type { CatalogItem } from '../catalog/catalog'
 import * as repo from '../db/repo'
-import { type Cloud, type SyncEngine as SyncEngineT, type SyncReason, type SyncStatus, createCloud } from '../sync'
+import { type Cloud, type SignInError, type SyncEngine as SyncEngineT, type SyncReason, type SyncStatus, createCloud } from '../sync'
 import { SyncEngine } from '../sync/engine'
 
 export type DateChoice = { kind: 'ngayon' } | { kind: 'kahapon' } | { kind: 'date'; date: LocalDate }
@@ -71,9 +74,15 @@ interface AppState {
    * P3a — absent configuration means `available: false` and every cloud action is a no-op.
    * `signInError` is set when this page load came back from a failed Google sign-in redirect
    * (supabase-js reports that only through initialize(), never as an auth event); it is cleared
-   * by the next sign-in attempt or a successful sign-in.
+   * by the next sign-in attempt or a successful sign-in. The UI shows its `kind`, never `detail`.
    */
-  cloud: { available: boolean; sync: SyncStatus; signInError: string | null }
+  cloud: { available: boolean; sync: SyncStatus; signInError: SignInError | null }
+  /**
+   * UI language (device-local preference in Dexie meta, like `onboarded`; never part of the
+   * store data, exports or cloud rows). Taglish is the default; generated wording (list reasons,
+   * dates) is re-derived when it changes.
+   */
+  lang: Lang
 
   init(): Promise<void>
   refreshNow(): void
@@ -96,6 +105,7 @@ interface AppState {
   importJson(text: string, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number; updated_customers: number; sameStore: boolean }>
   meta(key: string): Promise<string | null>
   setMeta(key: string, value: string): Promise<void>
+  setLang(lang: Lang): Promise<void>
   // P3a cloud backup
   signInGoogle(): Promise<void>
   signOutCloud(): Promise<void>
@@ -117,6 +127,15 @@ const SYNC_INITIAL: SyncStatus = {
   choice: null,
 }
 
+/** Meta key of the language preference. Anything but a known language falls back to Taglish. */
+export const META_LANG = 'lang'
+export function parseLang(v: string | null | undefined): Lang {
+  return (LANGS as readonly string[]).includes(v ?? '') ? (v as Lang) : DEFAULT_LANG
+}
+function applyDocumentLang(lang: Lang) {
+  if (typeof document !== 'undefined') document.documentElement.lang = lang
+}
+
 // One cloud client + engine per page; created lazily on the first init() when configured.
 let cloud: Cloud | null = null
 let engine: SyncEngineT | null = null
@@ -133,11 +152,11 @@ export function resolveTs(when: DateChoice, kind: 'PURCHASE' | 'COUNT' | 'FINANC
   return toISOWithOffset(localTimeMs(date, kind === 'COUNT' ? 21 : 12))
 }
 
-function derive(store: Store, products: Product[], events: DomainEvent[], nowMs: number) {
+function derive(store: Store, products: Product[], events: DomainEvent[], nowMs: number, lang: Lang) {
   const active = activeEvents(events)
   const states = new Map<string, ProductState>()
   for (const p of products) states.set(p.id, deriveProduct(p, forProduct(active, p.id), nowMs))
-  const list = buildList({ store, products, states, nowMs })
+  const list = buildList({ store, products, states, nowMs, lang })
   const customerStates = new Map<string, CustomerState>()
   for (const id of customerIds(active)) customerStates.set(id, deriveCustomer(id, active))
   const finance = deriveStoreFinance({ events: active, products, states, nowMs })
@@ -153,7 +172,7 @@ export const useApp = create<AppState>((set, get) => {
     }
     const snap = await repo.loadSnapshot(store.id)
     if (!snap) return
-    const d = derive(snap.store, snap.products, snap.events, nowMs)
+    const d = derive(snap.store, snap.products, snap.events, nowMs, get().lang)
     set({ loaded: true, store: snap.store, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
   }
 
@@ -204,10 +223,13 @@ export const useApp = create<AppState>((set, get) => {
     deviceId: '',
     persisted: false,
     cloud: { available: false, sync: SYNC_INITIAL, signInError: null },
+    lang: DEFAULT_LANG,
 
     async init() {
-      const [deviceId, persisted, onboarded] = await Promise.all([repo.deviceId(), repo.requestPersistentStorage(), repo.getMeta('onboarded')])
-      set({ deviceId, persisted, onboarded: onboarded === '1' })
+      const [deviceId, persisted, onboarded, storedLang] = await Promise.all([repo.deviceId(), repo.requestPersistentStorage(), repo.getMeta('onboarded'), repo.getMeta(META_LANG)])
+      const lang = parseLang(storedLang)
+      applyDocumentLang(lang)
+      set({ deviceId, persisted, onboarded: onboarded === '1', lang })
       await reload()
       ensureEngine()
       // First launch: evaluate the cloud binding (may resume a pending claim). A re-init after
@@ -220,7 +242,16 @@ export const useApp = create<AppState>((set, get) => {
       const s = get()
       if (!s.store) return
       const nowMs = Date.now()
-      set({ nowMs, ...derive(s.store, s.products, s.events, nowMs) })
+      set({ nowMs, ...derive(s.store, s.products, s.events, nowMs, s.lang) })
+    },
+
+    async setLang(lang) {
+      const s = get()
+      if (!(LANGS as readonly string[]).includes(lang) || lang === s.lang) return
+      await repo.setMeta(META_LANG, lang)
+      applyDocumentLang(lang)
+      // Only the wording changes: same store, products, events and numbers.
+      set({ lang, ...(s.store ? derive(s.store, s.products, s.events, s.nowMs, lang) : {}) })
     },
 
     async createStore(name, restockDays) {
@@ -336,7 +367,7 @@ export const useApp = create<AppState>((set, get) => {
 
     async importJson(text, mode) {
       const parsed: unknown = JSON.parse(text)
-      if (!isExportFile(parsed)) throw new Error('Hindi ito TindaBot export file.')
+      if (!isExportFile(parsed)) throw new Error('not_export_file')
       const cur = get().store
       const sameStore = !!cur && cur.id === parsed.store.id
       if (mode === 'merge' && !sameStore) throw new Error('different_store')

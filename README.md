@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 229 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors
+npm test           # 264 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors, language/strings
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (229 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (264 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 
@@ -51,7 +51,8 @@ frontend/src/db/           Dexie persistence (write-once events, storage-only sy
 frontend/src/sync/         P3a cloud backup: env (fails closed), codec, claim rules, engine, supabase-js wrapper
 frontend/src/state/        Zustand store, demo seed
 frontend/src/catalog/      bundled PH sari-sari catalog
-frontend/src/ui/           screens (Bahay, Paninda, Bumili, Bilang, Bakit, Listahan, Pera, Iba pa, Onboarding)
+frontend/src/ui/           screens (Bahay, Paninda, Bumili, Bilang, Bakit, Listahan, Pera, Iba pa, Onboarding);
+                           strings.ts = Taglish (default) + English, switched at runtime via i18n.ts / Iba pa
 supabase/migrations/       P3a schema, triggers, RLS (apply with `npm run db:push` or the SQL editor)
 supabase/scripts/          manual cleanup of automated-test data (run in the SQL editor only)
 ```

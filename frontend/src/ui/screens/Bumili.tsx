@@ -3,7 +3,7 @@ import { CATALOG } from '../../catalog/catalog'
 import { type Product, templates, toLocalDate, ulid } from '../../domain'
 import { useApp, type DateChoice } from '../../state/store'
 import { Segment, Sheet, useToast } from '../components'
-import { S } from '../strings'
+import { useStrings } from '../i18n'
 
 const HIGH_COST_FACTOR = 5
 
@@ -13,6 +13,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
   const states = useApp((s) => s.states)
   const events = useApp((s) => s.events)
   const recordPurchase = useApp((s) => s.recordPurchase)
+  const S = useStrings()
   const toast = useToast()
 
   const [ids, setIds] = useState(() => ({ id: ulid(), countId: ulid() }))
@@ -84,7 +85,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
     try {
       const when: DateChoice = whenKind === 'date' ? { kind: 'date', date } : { kind: whenKind }
       await recordPurchase({ id: ids.id, countId: ids.countId, product_id: product.id, qty_units: qtyUnits, total_cost: totalCost, natira: natiraN, when })
-      toast(`Naitala: ${product.name} — ${qtyUnits} ${product.unit_label}`)
+      toast(S.common.recordedToast(`${product.name} — ${qtyUnits} ${product.unit_label}`))
       // new ids for the next submit (write-once)
       setIds({ id: ulid(), countId: ulid() })
       if (again) {
@@ -135,7 +136,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
           <div className="card soft row between">
             <span className="bold">{product.name}</span>
             <button type="button" className="btn ghost sm" onClick={() => setProductId(null)}>
-              palitan
+              {S.common.change}
             </button>
           </div>
 

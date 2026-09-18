@@ -4,6 +4,11 @@ export type ULID = string
 export type EventId = ULID
 export type ISODateTime = string // ISO 8601 with offset, e.g. 2026-05-13T10:00:00+08:00
 export type LocalDate = string // YYYY-MM-DD in the device's local calendar
+
+/** UI language for generated wording. `tl` (Taglish) is the source wording and the default. */
+export type Lang = 'tl' | 'en'
+export const LANGS: readonly Lang[] = ['tl', 'en']
+export const DEFAULT_LANG: Lang = 'tl'
 /** 0 = Sunday … 6 = Saturday (JavaScript convention). */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
 

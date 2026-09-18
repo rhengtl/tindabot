@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { type Product, ulid } from '../../domain'
 import { useApp } from '../../state/store'
 import { NumberPad, Sheet, useToast } from '../components'
-import { S } from '../strings'
+import { useStrings } from '../i18n'
 
 /** Full-screen count mode: stalest first, packs + loose pad, skip/next, exit anytime. */
 export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: () => void; only?: string[] | null }) {
@@ -10,6 +10,7 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
   const products = useMemo(() => allProducts.filter((p) => !p.archived), [allProducts])
   const states = useApp((s) => s.states)
   const recordCount = useApp((s) => s.recordCount)
+  const S = useStrings()
   const toast = useToast()
 
   const queue = useMemo(() => {

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Weekday } from '../../domain'
+import { LANGS, type Lang, type Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
 import { useToast } from '../components'
 import { exportCurrentStore } from '../exportFile'
-import { S } from '../strings'
+import { useLang, useStrings } from '../i18n'
 import { CloudCard } from './Cloud'
 import { UlatCard } from './Ulat'
 
@@ -15,7 +15,9 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   const importJson = useApp((s) => s.importJson)
   const init = useApp((s) => s.init)
   const meta = useApp((s) => s.meta)
-  const setMeta = useApp((s) => s.setMeta)
+  const setLang = useApp((s) => s.setLang)
+  const lang = useLang()
+  const S = useStrings()
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(store?.name ?? '')
@@ -34,7 +36,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   async function doExport() {
     if (await exportCurrentStore()) {
       setLastBackup(new Date().toISOString())
-      toast('Na-export.')
+      toast(S.common.exported)
     }
   }
 
@@ -49,7 +51,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
           const r = await importJson(text, 'replace')
           toast(S.ibaPa.imported(r.added_events))
         }
-      } else toast((e as Error).message)
+      } else toast((e as Error).message === 'not_export_file' ? S.ibaPa.importNotExport : S.ibaPa.importFailed)
     }
   }
 
@@ -70,6 +72,16 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
 
       <h3>{S.ibaPa.settings}</h3>
       <div className="card">
+        <div className="field">
+          <label>{S.lang.title}</label>
+          <div className="chips" data-testid="lang-chips">
+            {LANGS.map((l: Lang) => (
+              <button key={l} type="button" className={`chip ${lang === l ? 'on' : ''}`} data-testid={`lang-${l}`} aria-pressed={lang === l} onClick={() => setLang(l)}>
+                {S.lang[l]}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="field">
           <label>{S.ibaPa.storeName}</label>
           <input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== store.name && updateStore({ name: name.trim() })} />
@@ -93,7 +105,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
 
       <CloudCard />
 
-      <h3>Backup</h3>
+      <h3>{S.ibaPa.backup}</h3>
       <div className="card">
         <button type="button" className="btn primary" onClick={doExport}>
           {S.ibaPa.export}
@@ -116,7 +128,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
       <h3>{S.ibaPa.advanced}</h3>
       <div className="card">
         <button type="button" className="btn ghost" onClick={() => setShowAdvanced((v) => !v)}>
-          {showAdvanced ? 'Itago' : 'Ipakita'}
+          {showAdvanced ? S.common.hide : S.common.show}
         </button>
         {showAdvanced && (
           <>
@@ -135,7 +147,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
                 if (!window.confirm(S.ibaPa.demoHint)) return
                 await loadDemo()
                 await init()
-                toast('Demo loaded.')
+                toast(S.ibaPa.demoLoaded)
               }}
             >
               {S.ibaPa.demo}

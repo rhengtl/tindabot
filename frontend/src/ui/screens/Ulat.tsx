@@ -3,10 +3,12 @@ import { useMemo, useState } from 'react'
 import { type DomainEvent, compareEvents, roundTo10, templates, toLocalDate } from '../../domain'
 import { useApp } from '../../state/store'
 import { Sheet } from '../components'
-import { S } from '../strings'
+import { useLang, useStrings } from '../i18n'
 
 export function UlatCard({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
   const finance = useApp((s) => s.finance)
+  const S = useStrings()
+  const lang = useLang()
   const [history, setHistory] = useState(false)
   if (!finance) return null
   const t = finance.tantiya
@@ -20,7 +22,7 @@ export function UlatCard({ onGastos, onPera }: { onGastos: () => void; onPera: (
         </div>
         <div className="kv">
           <span className="k">{S.ulat.cashLast}</span>
-          <span className="bold">{finance.cash_last ? `${templates.pesoExact(finance.cash_last.amount)} · ${templates.fmtDate(toLocalDate(finance.cash_last.ts))}` : S.ulat.cashNone}</span>
+          <span className="bold">{finance.cash_last ? `${templates.pesoExact(finance.cash_last.amount)} · ${templates.fmtDate(toLocalDate(finance.cash_last.ts), lang)}` : S.ulat.cashNone}</span>
           <span className="k">{S.ulat.utangOutstanding}</span>
           <span className="bold">{templates.pesoExact(finance.utang_outstanding)}</span>
         </div>
@@ -56,7 +58,7 @@ export function UlatCard({ onGastos, onPera }: { onGastos: () => void; onPera: (
         {finance.weeks.map((w, i) => (
           <div key={w.start} style={{ marginTop: 14 }}>
             <div className="muted small bold" style={{ marginBottom: 6 }}>
-              {i === 0 ? S.ulat.thisWeek : i === 1 ? S.ulat.lastWeek : S.ulat.weeksAgo(i)} · {templates.fmtDate(w.start)}–{templates.fmtDate(w.end)}
+              {i === 0 ? S.ulat.thisWeek : i === 1 ? S.ulat.lastWeek : S.ulat.weeksAgo(i)} · {templates.fmtDate(w.start, lang)}–{templates.fmtDate(w.end, lang)}
             </div>
             <div className="kv">
               <span className="k">{S.ulat.gastos}</span>
@@ -84,6 +86,8 @@ function FinanceHistory({ onClose }: { onClose: () => void }) {
   const events = useApp((s) => s.events)
   const voidEvent = useApp((s) => s.voidEvent)
   const restoreEvent = useApp((s) => s.restoreEvent)
+  const S = useStrings()
+  const lang = useLang()
   const timeline = useMemo(() => {
     const voids = new Set(events.filter((e) => e.type === 'VOID').map((e) => (e as { target: string }).target))
     return events
@@ -108,8 +112,8 @@ function FinanceHistory({ onClose }: { onClose: () => void }) {
             <span>
               <div>{describe(e)}</div>
               <div className="muted small">
-                {templates.fmtDate(toLocalDate(e.ts))}
-                {toLocalDate(e.ts) !== toLocalDate(e.recorded_at) ? ` · naitala ${templates.fmtDate(toLocalDate(e.recorded_at))}` : ''}
+                {templates.fmtDate(toLocalDate(e.ts), lang)}
+                {toLocalDate(e.ts) !== toLocalDate(e.recorded_at) ? ` · ${S.common.recorded} ${templates.fmtDate(toLocalDate(e.recorded_at), lang)}` : ''}
                 {voided ? ` · ${S.paninda.binura}` : ''}
               </div>
             </span>

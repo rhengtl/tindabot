@@ -85,6 +85,7 @@ describe('Tier A intermediate numbers (carry, cap, units)', () => {
       const nt = nextTrip(today, store.restock_days, store.next_trip_override)
       const fo = followingTrip(nt, store.restock_days)
       const q = tierAQuantity(makeProduct(s.product), state, {
+        lang: 'tl',
         today,
         next_trip: nt,
         following: fo,

@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { CATALOG, CATEGORIES, searchCatalog, type CatalogItem } from '../../catalog/catalog'
 import { useApp } from '../../state/store'
 import { Sheet, useToast } from '../components'
-import { S } from '../strings'
+import { useStrings } from '../i18n'
 
 type Draft = Pick<CatalogItem, 'name' | 'category' | 'unit_label' | 'pack_size' | 'pack_label'>
 
 export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded?: () => void }) {
   const products = useApp((s) => s.products)
   const addProduct = useApp((s) => s.addProduct)
+  const S = useStrings()
   const toast = useToast()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState<string | null>(null)
@@ -41,7 +42,7 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
         sell.trim() === '' ? null : Number(sell),
         natira.trim() === '' ? null : Math.max(0, Math.round(Number(natira))),
       )
-      toast(`Naidagdag: ${draft.name}`)
+      toast(S.common.addedToast(draft.name))
       reset()
       onAdded?.()
     } finally {
@@ -90,7 +91,7 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
                     {c.category} · 1 {c.pack_label} = {c.pack_size} {c.unit_label}
                   </div>
                 </span>
-                {has ? <span className="badge grey">nasa listahan</span> : <span className="badge green">＋</span>}
+                {has ? <span className="badge grey">{S.paninda.inList}</span> : <span className="badge green">＋</span>}
               </button>
             )
           })}
@@ -99,7 +100,7 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
         <>
           <h2>{draft.name || S.paninda.customName}</h2>
           <div className="field">
-            <label>Pangalan</label>
+            <label>{S.common.name}</label>
             <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </div>
           <div className="row">
@@ -132,7 +133,7 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
           </div>
           <div className="row">
             <button type="button" className="btn secondary" onClick={() => setDraft(null)}>
-              ‹ Bumalik
+              {S.common.back}
             </button>
             <button type="button" className="btn primary grow" onClick={save} disabled={saving || !draft.name.trim()}>
               {S.paninda.save}

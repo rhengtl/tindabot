@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { type ListLine, type Product, addDays, applyBudget, budgetPrefill, isPayday, templates, toLocalDate } from '../../domain'
 import { useApp } from '../../state/store'
 import { Dot, useToast } from '../components'
-import { S } from '../strings'
+import { useLang, useStrings } from '../i18n'
+import type { Strings } from '../strings'
 
 interface Props {
   onBakit: (productId: string, line: ListLine | null) => void
@@ -10,7 +11,7 @@ interface Props {
   onAdd: () => void
 }
 
-function qtyLabel(l: ListLine, p: Product): string {
+function qtyLabel(l: ListLine, p: Product, S: Strings): string {
   const unit = p.pack_size === 1 ? p.unit_label : p.pack_label
   if (l.section === 'wag_muna') return '—'
   if (l.range) {
@@ -30,6 +31,8 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
   const updateStore = useApp((s) => s.updateStore)
   const meta = useApp((s) => s.meta)
   const setMeta = useApp((s) => s.setMeta)
+  const lang = useLang()
+  const S = useStrings()
   const toast = useToast()
   const [showWag, setShowWag] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(true)
@@ -74,7 +77,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
   for (let i = 0; i <= 3; i++) {
     const d = addDays(today, i)
     if (isPayday(d)) {
-      paydayDay = templates.fmtRelative(d, today)
+      paydayDay = templates.fmtRelative(d, today, lang)
       break
     }
   }
@@ -87,14 +90,14 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
       .filter((l) => l.section !== 'wag_muna')
       .map((l) => {
         const p = byId.get(l.product_id)!
-        return `• ${p.name} — ${l.range ? qtyLabel(l, p) : `${l.buy_packs} ${unit(p)}`}${l.cost !== null ? ` (${templates.peso(Math.round(l.cost))})` : ''}`
+        return `• ${p.name} — ${l.range ? qtyLabel(l, p, S) : `${l.buy_packs} ${unit(p)}`}${l.cost !== null ? ` (${templates.peso(Math.round(l.cost))})` : ''}`
       })
-    const text = [`Bilihin — ${templates.fmtDate(list!.next_trip)}`, ...rows, `Dalhin: ${templates.pesoEstimate(list!.total_known_cost)}`, `— ${store!.name} · TindaBot`].join('\n')
+    const text = [`${S.bahay.title} — ${templates.fmtDate(list!.next_trip, lang)}`, ...rows, `${S.bahay.shareBring}: ${templates.pesoEstimate(list!.total_known_cost)}`, `— ${store!.name} · ${S.appName}`].join('\n')
     try {
       if (navigator.share) await navigator.share({ text })
       else {
         await navigator.clipboard.writeText(text)
-        toast('Na-copy ang listahan.')
+        toast(S.common.copied)
       }
     } catch {
       /* cancelled */
@@ -122,7 +125,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
         <div className="row between">
           <div>
             <div className="muted small">{S.bahay.trip}</div>
-            <div className="bold">{list.next_trip === today ? 'Ngayon' : templates.fmtDate(list.next_trip)}</div>
+            <div className="bold">{list.next_trip === today ? S.bahay.today : templates.fmtDate(list.next_trip, lang)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div className="muted small">{S.bahay.total}</div>
@@ -160,7 +163,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
           <button
             type="button"
             className="muted icon-btn"
-            aria-label="isara"
+            aria-label={S.common.close}
             onClick={() => {
               setMeta('nudge_dismissed', today)
               setNudgeDismissed(true)
@@ -195,7 +198,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
                       <div className="row between">
                         <span className="name">{p.name}</span>
                         <span className="qty">
-                          {qtyLabel(l, p)}
+                          {qtyLabel(l, p, S)}
                           {l.cost !== null && <span className="muted"> · {templates.peso(Math.round(l.cost))}</span>}
                         </span>
                       </div>

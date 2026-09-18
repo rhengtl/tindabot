@@ -136,6 +136,16 @@ P2 adds **Utang · Bayad · Gastos · Pera** (decided 2026-09-14, see §E6).
   monthly backup nudge. P2+: Ulat, Listahan, Tanong kay TindaBot, sign-in.
 - Concepts the user never sees: confidence levels, derived state, event logs, multipliers (hidden
   under advanced), "forecast". They see *tantiya*, *bilangin*, a range, and *bakit*.
+- **Language (decided 2026-09-18):** Taglish is the default and the source wording; English is a
+  runtime switch under Iba pa → Settings (*Wika / Language*). The choice is a device-local
+  preference (Dexie meta `lang`, like `onboarded`) — never store data, never exported, never
+  synced. Everything the app itself says follows the switch, including domain-generated wording
+  (list reasons/hints, banner, *bakit* footers, dates, day/month names), which takes the language
+  as an explicit argument (`domain/templates.ts`); numbers, pesos and business rules do not change.
+  Cloud/sign-in failures are shown as app-level categories in the chosen language — raw
+  Supabase/PostgREST/Google text never reaches the screen. Outside the app's control and
+  therefore not switched: Google's own consent screens, browser/OS prompts, and the installed
+  PWA's manifest (`lang: tl`).
 
 ## E. Core logic (all in `domain/`, pure, tested)
 

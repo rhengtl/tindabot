@@ -77,7 +77,7 @@ export function runScenario(s: Scenario, overrides?: { events?: DomainEvent[]; n
 export function run(store: Store, product: Product, events: DomainEvent[], nowMs: number): RunResult {
   const active = forProduct(activeEvents(events), product.id)
   const state = deriveProduct(product, active, nowMs)
-  const list = buildList({ store, products: [product], states: new Map([[product.id, state]]), nowMs })
+  const list = buildList({ store, products: [product], states: new Map([[product.id, state]]), nowMs, lang: 'tl' })
   return { state, list, line: list.lines.find((l) => l.product_id === product.id) }
 }
 

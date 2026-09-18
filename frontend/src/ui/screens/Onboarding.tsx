@@ -2,10 +2,11 @@ import { useState } from 'react'
 import type { Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
-import { S } from '../strings'
+import { useStrings } from '../i18n'
 import { AddProductSheet } from './AddProduct'
 
 export function Onboarding() {
+  const S = useStrings()
   const createStore = useApp((s) => s.createStore)
   const init = useApp((s) => s.init)
   const store = useApp((s) => s.store)
@@ -26,7 +27,7 @@ export function Onboarding() {
   }
 
   async function finishStore() {
-    await createStore(name.trim() || 'Tindahan ko', whenNeeded ? [] : ([...days].sort() as Weekday[]))
+    await createStore(name.trim() || S.onboarding.defaultStoreName, whenNeeded ? [] : ([...days].sort() as Weekday[]))
     setStep(2)
   }
 

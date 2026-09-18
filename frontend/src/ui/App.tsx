@@ -13,7 +13,7 @@ import { Listahan } from './screens/Listahan'
 import { type PeraKind, PeraSheet } from './screens/Pera'
 import { Onboarding } from './screens/Onboarding'
 import { Paninda } from './screens/Paninda'
-import { S } from './strings'
+import { useStrings } from './i18n'
 
 type Tab = 'bahay' | 'paninda' | 'listahan' | 'ibapa'
 
@@ -33,6 +33,7 @@ function Shell() {
   const requestSync = useApp((s) => s.requestSync)
   const onboarded = useApp((s) => s.onboarded)
   const signInError = useApp((s) => s.cloud.signInError)
+  const S = useStrings()
   const toast = useToast()
   const [tab, setTab] = useState<Tab>('bahay')
   const [fab, setFab] = useState(false)
@@ -48,9 +49,12 @@ function Shell() {
 
   // A failed Google sign-in lands back here on whatever tab was open: say so once (the Cloud card
   // in "Iba pa" keeps the message until the next attempt).
+  // The provider's own text stays in the console; the person sees the app's wording for the kind.
   useEffect(() => {
-    if (signInError) toast(S.cloud.signInRedirectFailed(signInError))
-  }, [signInError, toast])
+    if (!signInError) return
+    console.warn('[tindabot] sign-in redirect failed:', signInError.kind, '—', signInError.detail)
+    toast(S.cloud.signInErrors[signInError.kind])
+  }, [signInError, toast, S])
 
   // "today" changes: re-derive on focus/visibility and at local midnight. P3a: foreground and
   // regained connectivity also trigger a sync (no-ops when signed out / unconfigured).
@@ -101,7 +105,7 @@ function Shell() {
         {tab === 'ibapa' && <IbaPa onGastos={() => openPera('gastos')} onPera={() => openPera('pera')} />}
       </main>
 
-      <button type="button" className="fab" aria-label="Ilista" onClick={() => setFab(true)}>
+      <button type="button" className="fab" aria-label={S.fab.open} data-testid="fab" onClick={() => setFab(true)}>
         ＋
       </button>
       {fab && (
@@ -159,7 +163,7 @@ function Shell() {
             ['ibapa', '⋯', S.tabs.ibaPa],
           ] as Array<[Tab, string, string]>
         ).map(([t, ico, label]) => (
-          <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
+          <button key={t} type="button" className={tab === t ? 'active' : ''} data-testid={`tab-${t}`} onClick={() => setTab(t)}>
             <span className="ico">{ico}</span>
             {label}
           </button>

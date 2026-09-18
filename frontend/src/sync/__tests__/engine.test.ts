@@ -170,7 +170,7 @@ describe('claim: account has no store → upload the phone store', () => {
     h.engine.setUser(USER_A)
     await h.engine.whenIdle()
     expect(h.engine.status.phase).toBe('error')
-    expect(h.engine.status.error).toMatch(/injected failure/)
+    expect(h.engine.status.error?.detail).toMatch(/injected failure/)
     expect(await repo.countUnsyncedEvents(local.store.id)).toBe(3)
     expect(cloud.eventsOf(local.store.id).length).toBe(0)
     expect(cloud.products.size).toBe(1) // records before events were acknowledged and stay marked

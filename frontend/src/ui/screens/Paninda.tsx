@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { type DomainEvent, type Product, type ProductState, compareEvents, templates, toLocalDate, ulid } from '../../domain'
+import { type DomainEvent, type Lang, type Product, type ProductState, compareEvents, templates, toLocalDate, ulid } from '../../domain'
 import { useApp } from '../../state/store'
 import { Dot, Sheet, fmtNum, useToast } from '../components'
-import { S } from '../strings'
+import { useLang, useStrings } from '../i18n'
+import type { Strings } from '../strings'
 
 const URGENCY_ORDER = { red: 0, orange: 1, yellow: 2, green: 3, grey: 4 } as const
 type U = keyof typeof URGENCY_ORDER
@@ -14,21 +15,21 @@ function urgencyOf(st: ProductState | undefined, lineUrgency: U | undefined): U 
   return 'grey'
 }
 
-function statusText(p: Product, st: ProductState | undefined): string {
+function statusText(p: Product, st: ProductState | undefined, S: Strings, lang: Lang): string {
   if (!st) return S.paninda.noData
   if (st.flags.has('dormant')) return S.paninda.dormant
   if (st.flags.has('unclear')) return S.paninda.unclear
   if (st.tier === 'cadence' && st.cadence) {
     const c = st.cadence
-    const when = c.rebuy.early === c.rebuy.late ? templates.fmtDate(c.rebuy.mid) : `${templates.fmtDate(c.rebuy.early)}–${templates.fmtDate(c.rebuy.late)}`
-    return `${S.paninda.rebuy}: mga ${when}`
+    const when = c.rebuy.early === c.rebuy.late ? templates.fmtDate(c.rebuy.mid, lang) : `${templates.fmtDate(c.rebuy.early, lang)}–${templates.fmtDate(c.rebuy.late, lang)}`
+    return S.paninda.rebuyWhen(when)
   }
   if (st.tier === 'counts') {
     if (st.flags.has('dead')) return S.paninda.dead
     if (st.flags.has('slow')) return S.paninda.slow
     if (st.daily_rate === null) return `${st.anchor?.qty ?? '?'} ${p.unit_label} (${S.paninda.lastCount})`
     if (st.days_left !== null && st.days_left > 7) return S.paninda.okDays(Math.round(st.days_left))
-    if (st.days_left !== null) return `~${fmtNum(st.days_left, 0)} araw pa`
+    if (st.days_left !== null) return S.paninda.daysLeftShort(fmtNum(st.days_left, 0))
   }
   return S.paninda.noData
 }
@@ -37,6 +38,8 @@ export function Paninda({ onAdd, onBakit, onBumili, onBilang }: { onAdd: () => v
   const products = useApp((s) => s.products)
   const states = useApp((s) => s.states)
   const list = useApp((s) => s.list)
+  const S = useStrings()
+  const lang = useLang()
   const [q, setQ] = useState('')
   const [detail, setDetail] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -75,13 +78,13 @@ export function Paninda({ onAdd, onBakit, onBumili, onBilang }: { onAdd: () => v
                   {st?.tier === 'counts' && st.on_hand_est !== null ? `${Math.round(st.on_hand_est)} ${p.unit_label}` : S.paninda.unknown}
                 </span>
               </div>
-              <div className="reason">{statusText(p, st)}</div>
+              <div className="reason">{statusText(p, st, S, lang)}</div>
             </button>
           </div>
         ))}
       </div>
       <button type="button" className="btn ghost" onClick={() => setShowArchived((v) => !v)}>
-        {showArchived ? '‹ Aktibo' : 'Itinigil na paninda ›'}
+        {showArchived ? S.paninda.activeTab : S.paninda.archivedTab}
       </button>
       {detail && (
         <ProductDetail
@@ -106,6 +109,8 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
   const voidEvent = useApp((s) => s.voidEvent)
   const restoreEvent = useApp((s) => s.restoreEvent)
   const recordAdjust = useApp((s) => s.recordAdjust)
+  const S = useStrings()
+  const lang = useLang()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Product | null>(null)
@@ -123,9 +128,9 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
 
   function describe(e: DomainEvent): string {
     const u = product!.unit_label
-    if (e.type === 'PURCHASE') return `Bumili ${e.qty_units} ${u}${e.total_cost !== null ? ` · ${templates.peso(e.total_cost)}` : ''}`
-    if (e.type === 'COUNT') return `Bilang: ${e.qty_on_hand} ${u}`
-    if (e.type === 'ADJUST') return `${e.reason === 'sira' ? 'Nasira' : e.reason === 'expired' ? 'Expired' : e.reason === 'personal' ? 'Ginamit' : 'Iba'}: ${e.delta} ${u}`
+    if (e.type === 'PURCHASE') return `${S.paninda.histPurchase(e.qty_units, u)}${e.total_cost !== null ? ` · ${templates.peso(e.total_cost)}` : ''}`
+    if (e.type === 'COUNT') return S.paninda.histCount(e.qty_on_hand, u)
+    if (e.type === 'ADJUST') return `${S.paninda.adjustReason[e.reason] ?? S.paninda.adjustReason.iba}: ${e.delta} ${u}`
     return e.type
   }
 
@@ -137,12 +142,12 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
           <span className="k">{S.paninda.natira}</span>
           <span className="bold">{state?.tier === 'counts' && state.on_hand_est !== null ? `${Math.round(state.on_hand_est)} ${product.unit_label}` : S.paninda.unknown}</span>
           <span className="k">Status</span>
-          <span>{statusText(product, state)}</span>
-          <span className="k">Balot</span>
+          <span>{statusText(product, state, S, lang)}</span>
+          <span className="k">{S.paninda.pack}</span>
           <span>
             1 {product.pack_label} = {product.pack_size} {product.unit_label}
           </span>
-          <span className="k">Presyo</span>
+          <span className="k">{S.paninda.price}</span>
           <span>{product.sell_price === null ? '—' : templates.peso(product.sell_price)}</span>
         </div>
         <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
@@ -199,7 +204,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
               onClick={async () => {
                 await recordAdjust(ulid(), product.id, -Math.round(Number(nasira)), 'sira')
                 setNasira(null)
-                toast('Naitala ang nasira.')
+                toast(S.paninda.nasiraSaved)
               }}
             >
               {S.paninda.save}
@@ -211,7 +216,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
       {editing && draft && (
         <div className="card soft">
           <div className="field">
-            <label>Pangalan</label>
+            <label>{S.common.name}</label>
             <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </div>
           <div className="row">
@@ -244,7 +249,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
               onClick={async () => {
                 await saveProduct({ ...draft, pack_size: Math.max(1, Math.round(draft.pack_size)) })
                 setEditing(false)
-                toast('Na-save.')
+                toast(S.common.saved)
               }}
             >
               {S.paninda.save}
@@ -261,8 +266,8 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
             <span>
               <div>{describe(e)}</div>
               <div className="muted small">
-                {templates.fmtDate(toLocalDate(e.ts))}
-                {toLocalDate(e.ts) !== toLocalDate(e.recorded_at) ? ` · naitala ${templates.fmtDate(toLocalDate(e.recorded_at))}` : ''}
+                {templates.fmtDate(toLocalDate(e.ts), lang)}
+                {toLocalDate(e.ts) !== toLocalDate(e.recorded_at) ? ` · ${S.common.recorded} ${templates.fmtDate(toLocalDate(e.recorded_at), lang)}` : ''}
                 {voided ? ` · ${S.paninda.binura}` : ''}
               </div>
             </span>

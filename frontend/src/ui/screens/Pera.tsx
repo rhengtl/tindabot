@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { EXPENSE_CATEGORIES, type Customer, type ExpenseCategory, pesos, templates, toLocalDate, ulid } from '../../domain'
 import { type DateChoice, useApp } from '../../state/store'
 import { Segment, Sheet, useToast } from '../components'
-import { S } from '../strings'
+import { useStrings } from '../i18n'
 
 export type PeraKind = 'utang' | 'bayad' | 'gastos' | 'pera'
 
@@ -24,6 +24,7 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
   const recordBayad = useApp((s) => s.recordBayad)
   const recordExpense = useApp((s) => s.recordExpense)
   const recordCashCount = useApp((s) => s.recordCashCount)
+  const S = useStrings()
   const toast = useToast()
 
   const [id, setId] = useState(() => ulid())
@@ -88,7 +89,7 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
       else if (kind === 'bayad') await recordBayad({ id, amount: amountN, when, customer_id: customer!.id })
       else if (kind === 'gastos') await recordExpense({ id, amount: amountN, when, category, note: noteN })
       else await recordCashCount({ id, amount: amountN, when })
-      toast(`Naitala: ${txt.title} ${templates.pesoExact(amountN)}`)
+      toast(S.common.recordedToast(`${txt.title} ${templates.pesoExact(amountN)}`))
       setId(ulid())
       onClose()
     } finally {
@@ -150,7 +151,7 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
             <div className="card soft row between">
               <span className="bold">{customer.name}</span>
               <button type="button" className="btn ghost sm" onClick={() => setCustomerId(null)}>
-                palitan
+                {S.common.change}
               </button>
             </div>
           )}

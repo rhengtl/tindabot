@@ -169,7 +169,7 @@ describe('finance invariants', () => {
     const store = makeStore(s.store.restock_days, s.store.next_trip_override)
     const product = makeProduct(s.product)
     const state = deriveProduct(product, forProduct(activeEvents(toEvents(s.events)), PRODUCT_ID), toMs(s.now))
-    const list = buildList({ store, products: [product], states: new Map([[PRODUCT_ID, state]]), nowMs: toMs(s.now) })
+    const list = buildList({ store, products: [product], states: new Map([[PRODUCT_ID, state]]), nowMs: toMs(s.now), lang: 'tl' })
     expect(list.lines).toHaveLength(1)
     const line = list.lines[0]!
     expect(line.cost).not.toBeNull()

@@ -16,7 +16,7 @@ import {
 } from './calendar'
 import { packsFor } from './rounding'
 import * as T from './templates'
-import type { LocalDate, ListLine, Product, ProductState, ShoppingList, Store, Urgency } from './types'
+import type { Lang, LocalDate, ListLine, Product, ProductState, ShoppingList, Store, Urgency } from './types'
 
 export const NEEDS_COUNT_URGENT_DAYS = 7
 export const DEFER_PACK_FRACTION = 0.25
@@ -31,6 +31,8 @@ export interface ListInput {
   products: Product[]
   states: Map<string, ProductState>
   nowMs: number
+  /** Language of the generated reasons/hints/banner (wording only; quantities are unaffected). */
+  lang: Lang
 }
 
 function paydayInRange(a: LocalDate, b: LocalDate): boolean {
@@ -41,7 +43,7 @@ function paydayInRange(a: LocalDate, b: LocalDate): boolean {
 }
 
 export function buildList(input: ListInput): ShoppingList {
-  const { store, products, states, nowMs } = input
+  const { store, products, states, nowMs, lang } = input
   const today = toLocalDate(nowMs)
   const next_trip = nextTrip(today, store.restock_days, store.next_trip_override)
   const following = followingTrip(next_trip, store.restock_days)
@@ -55,10 +57,10 @@ export function buildList(input: ListInput): ShoppingList {
     const s = states.get(p.id)
     if (!s) continue
     if (s.tier === 'counts' && s.daily_rate !== null && s.daily_rate > 0) {
-      const line = tierBLine(p, s, { today, next_trip, following, m, payday_in_horizon })
+      const line = tierBLine(p, s, { today, next_trip, following, m, payday_in_horizon, lang })
       if (line) lines.push(line)
     } else if (s.tier === 'cadence' && s.cadence && !s.cadence.dormant) {
-      const line = tierALine(p, s, { today, next_trip, following, m, hasSchedule, payday_in_horizon })
+      const line = tierALine(p, s, { today, next_trip, following, m, hasSchedule, payday_in_horizon, lang })
       if (line) lines.push(line)
     }
   }
@@ -80,11 +82,12 @@ export function buildList(input: ListInput): ShoppingList {
     lines,
     total_known_cost: total,
     unknown_cost_count: unknown,
-    banner: beforeTrip > 0 && next_trip !== today ? T.banner(beforeTrip, next_trip, today) : null,
+    banner: beforeTrip > 0 && next_trip !== today ? T.banner(beforeTrip, next_trip, today, lang) : null,
   }
 }
 
 interface Ctx {
+  lang: Lang
   today: LocalDate
   next_trip: LocalDate
   following: LocalDate
@@ -166,7 +169,7 @@ function tierBLine(p: Product, s: ProductState, c: Ctx): ListLine | null {
     deferred,
     slow: rate < SLOW_URGENCY_RATE,
     inconsistent: s.flags.has('inconsistent'),
-  })
+  }, c.lang)
 
   return {
     product_id: p.id,
@@ -247,8 +250,8 @@ function tierALine(p: Product, s: ProductState, c: CtxA): ListLine | null {
     range: null,
     cost,
     priority: q.units * value,
-    reason: T.tierAReason(reasonInput),
-    hint: T.tierAHint(reasonInput),
+    reason: T.tierAReason(reasonInput, c.lang),
+    hint: T.tierAHint(reasonInput, c.lang),
     before_trip: false,
     needs_count: false,
   }

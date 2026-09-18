@@ -1,12 +1,14 @@
 import { type ListLine, type Product, type ProductState, demand, templates } from '../../domain'
 import { useApp } from '../../state/store'
 import { Sheet, fmtNum } from '../components'
-import { S } from '../strings'
+import { useLang, useStrings } from '../i18n'
 
 /** The "bakit?" sheet: one plain explanation, and the accepted limitations kept visible. */
 export function BakitSheet({ product, state, line, onClose }: { product: Product | null; state: ProductState | null; line: ListLine | null; onClose: () => void }) {
   const list = useApp((s) => s.list)
   const store = useApp((s) => s.store)
+  const S = useStrings()
+  const lang = useLang()
   if (!product || !state) return null
   const c = state.cadence
   const isCadence = state.tier === 'cadence'
@@ -25,7 +27,7 @@ export function BakitSheet({ product, state, line, onClose }: { product: Product
               <span className="k">{S.bakit.natira}</span>
               <span>{state.on_hand_est === null ? S.paninda.unknown : `${Math.round(state.on_hand_est)} ${product.unit_label}`}</span>
               <span className="k">{S.bakit.lastCount}</span>
-              <span>{state.days_since_count === null ? '—' : `${Math.floor(state.days_since_count)} araw na (${state.anchor?.qty} ${product.unit_label})`}</span>
+              <span>{state.days_since_count === null ? '—' : S.bakit.lastCountAgo(Math.floor(state.days_since_count), String(state.anchor?.qty ?? '?'), product.unit_label)}</span>
               {rate !== null && (
                 <>
                   <span className="k">{S.bakit.rate}</span>
@@ -37,7 +39,7 @@ export function BakitSheet({ product, state, line, onClose }: { product: Product
               {state.days_left !== null && (
                 <>
                   <span className="k">{S.bakit.daysLeft}</span>
-                  <span>~{fmtNum(state.days_left, 0)} araw</span>
+                  <span>~{S.common.days(Number(fmtNum(state.days_left, 0)))}</span>
                 </>
               )}
             </>
@@ -45,12 +47,10 @@ export function BakitSheet({ product, state, line, onClose }: { product: Product
           {isCadence && c && (
             <>
               <span className="k">{S.bakit.throughput}</span>
-              <span>
-                ~{fmtNum(c.typical_units, 0)} {product.unit_label} sa ~{fmtNum(c.typical_units / c.throughput, 0)} araw
-              </span>
+              <span>{S.bakit.throughputIn(fmtNum(c.typical_units, 0), product.unit_label, fmtNum(c.typical_units / c.throughput, 0))}</span>
               <span className="k">{S.paninda.rebuy}</span>
               <span>
-                {c.rebuy.early === c.rebuy.late ? templates.fmtDate(c.rebuy.mid) : `${templates.fmtDate(c.rebuy.early)} – ${templates.fmtDate(c.rebuy.late)}`}
+                {c.rebuy.early === c.rebuy.late ? templates.fmtDate(c.rebuy.mid, lang) : `${templates.fmtDate(c.rebuy.early, lang)} – ${templates.fmtDate(c.rebuy.late, lang)}`}
               </span>
             </>
           )}
@@ -74,7 +74,7 @@ export function BakitSheet({ product, state, line, onClose }: { product: Product
               <span>{state.tubo_per_unit < 0 ? '⚠ ' : ''}{templates.peso(Math.round(state.tubo_per_unit * 100) / 100)}</span>
             </>
           )}
-          <span className="k">Tantiya</span>
+          <span className="k">{S.bakit.tantiya}</span>
           <span>{S.bakit.confidence[state.confidence]}</span>
         </div>
       </div>
@@ -91,11 +91,11 @@ export function BakitSheet({ product, state, line, onClose }: { product: Product
         </div>
       )}
       <p className="muted small" style={{ lineHeight: 1.45 }}>
-        {isCadence ? templates.TIER_A_BAKIT : templates.TIER_B_BAKIT_STALE}
+        {isCadence ? templates.bakitTierA(lang) : templates.bakitTierBStale(lang)}
       </p>
-      {state.flags.has('count_mismatch') && <div className="card flag">Hindi tugma ang huling bilang sa dalas ng bili — tama ba? Baka naisama ang bagong bili sa bilang.</div>}
-      {state.flags.has('inconsistent') && <div className="card flag">Mukhang may hindi na-record na bili. Idagdag ito sa Bumili at piliin ang tamang araw.</div>}
-      {state.flags.has('lugi_check') && <div className="card flag">Mas mataas ang puhunan kaysa presyo ng benta. Tama ba ang presyo?</div>}
+      {state.flags.has('count_mismatch') && <div className="card flag">{S.bakit.flagInconsistent}</div>}
+      {state.flags.has('inconsistent') && <div className="card flag">{S.bakit.flagMissingPurchase}</div>}
+      {state.flags.has('lugi_check') && <div className="card flag">{S.bakit.flagLugi}</div>}
     </Sheet>
   )
 }

@@ -14,7 +14,7 @@
 
 import type { Customer, Product, Store } from '../domain'
 import * as repo from '../db/repo'
-import { type AuthApi, type CloudApi, type CloudUser, CloudError } from './api'
+import { type AuthApi, type CloudApi, type CloudErrorCode, type CloudUser, CloudError } from './api'
 import { type ClaimDecision, decideClaim } from './claim'
 import {
   EVENT_PUSH_BATCH,
@@ -52,6 +52,11 @@ export type SyncPhase =
   | 'offline'
   | 'error'
 
+export interface SyncError {
+  code: CloudErrorCode
+  detail: string
+}
+
 export interface ClaimChoiceInfo {
   cloud: { id: string; name: string; updated_at: string }
   local: { id: string; name: string }
@@ -64,7 +69,8 @@ export interface SyncStatus {
   lastSyncAt: string | null
   pendingEvents: number
   pendingRecords: number
-  error: string | null
+  /** Last failure: `code` is what the UI shows (localized); `detail` is developer text only. */
+  error: SyncError | null
   /** device − server, ms; warning when |skew| > SKEW_WARN_MS */
   skewMs: number | null
   skewWarning: boolean
@@ -320,7 +326,7 @@ export class SyncEngine {
       this.patch({ phase: 'offline', error: null, ...counts })
       return
     }
-    this.patch({ phase: 'error', error: msg, ...counts })
+    this.patch({ phase: 'error', error: { code: err instanceof CloudError ? err.code : 'unknown', detail: msg }, ...counts })
     this.failures++
     const delay = this.backoffMs[Math.min(this.failures, this.backoffMs.length) - 1] ?? this.backoffMs[this.backoffMs.length - 1] ?? 60_000
     this.clearRetry()
@@ -423,7 +429,7 @@ export class SyncEngine {
     const store = row && !row.archived_at ? rowToStore(row) : null
     if (!store) {
       await repo.deleteMeta(META.claimPending)
-      throw new CloudError('Hindi na available ang tindahan sa cloud.', 'server')
+      throw new CloudError('cloud store archived or missing', 'store_gone')
     }
     await repo.applyPulledRecords({ store })
     const watermark = await this.api.syncWatermark()

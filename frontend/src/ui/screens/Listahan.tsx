@@ -1,19 +1,20 @@
 // P2 Listahan tab — customers and their utang balance (BLUEPRINT §D "Listahan", §E6).
 import { useMemo, useState } from 'react'
-import { type Customer, type CustomerState, type DomainEvent, compareEvents, daysBetweenMs, templates, toLocalDate, toMs } from '../../domain'
+import { type Customer, type CustomerState, type DomainEvent, type Lang, compareEvents, daysBetweenMs, templates, toLocalDate, toMs } from '../../domain'
 import { useApp } from '../../state/store'
 import { Sheet, useToast } from '../components'
-import { S } from '../strings'
+import { useLang, useStrings } from '../i18n'
+import type { Strings } from '../strings'
 
-function balanceLabel(st: CustomerState | undefined): string {
+function balanceLabel(st: CustomerState | undefined, S: Strings): string {
   if (!st || st.balance === 0) return S.listahan.bayadNa
   if (st.balance < 0) return S.listahan.sobra(templates.pesoExact(-st.balance))
   return templates.pesoExact(st.balance)
 }
 
-function subLabel(st: CustomerState | undefined, nowMs: number): string {
+function subLabel(st: CustomerState | undefined, nowMs: number, S: Strings, lang: Lang): string {
   if (!st) return S.listahan.noData
-  if (st.balance > 0 && st.oldest_unpaid_ts) return S.listahan.oldest(templates.fmtDate(toLocalDate(st.oldest_unpaid_ts)))
+  if (st.balance > 0 && st.oldest_unpaid_ts) return S.listahan.oldest(templates.fmtDate(toLocalDate(st.oldest_unpaid_ts), lang))
   if (st.last_bayad_ts) return S.listahan.lastBayad(Math.floor(daysBetweenMs(toMs(st.last_bayad_ts), nowMs)))
   if (st.last_utang_ts) return S.listahan.lastUtang(Math.floor(daysBetweenMs(toMs(st.last_utang_ts), nowMs)))
   return S.listahan.noData
@@ -24,6 +25,8 @@ export function Listahan({ onUtang, onBayad }: { onUtang: (customerId: string | 
   const customerStates = useApp((s) => s.customerStates)
   const finance = useApp((s) => s.finance)
   const nowMs = useApp((s) => s.nowMs)
+  const S = useStrings()
+  const lang = useLang()
   const [q, setQ] = useState('')
   const [detail, setDetail] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -70,9 +73,9 @@ export function Listahan({ onUtang, onBayad }: { onUtang: (customerId: string | 
                 <button type="button" className="grow" style={{ textAlign: 'left' }} onClick={() => setDetail(c.id)}>
                   <div className="row between">
                     <span className="name">{c.name}</span>
-                    <span className="qty">{balanceLabel(st)}</span>
+                    <span className="qty">{balanceLabel(st, S)}</span>
                   </div>
-                  <div className="reason">{subLabel(st, nowMs)}</div>
+                  <div className="reason">{subLabel(st, nowMs, S, lang)}</div>
                 </button>
               </div>
             ))}
@@ -82,7 +85,7 @@ export function Listahan({ onUtang, onBayad }: { onUtang: (customerId: string | 
       )}
       {(showArchived || customers.some((c) => c.archived)) && (
         <button type="button" className="btn ghost" onClick={() => setShowArchived((v) => !v)}>
-          {showArchived ? '‹ Aktibo' : `${S.listahan.archived}${archivedOwing ? ` (${archivedOwing} ${S.listahan.mayBalanse})` : ''} ›`}
+          {showArchived ? S.paninda.activeTab : `${S.listahan.archived}${archivedOwing ? ` (${archivedOwing} ${S.listahan.mayBalanse})` : ''} ›`}
         </button>
       )}
       {detail && <CustomerDetail customerId={detail} onClose={() => setDetail(null)} onUtang={onUtang} onBayad={onBayad} />}
@@ -100,6 +103,8 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
   const saveCustomer = useApp((s) => s.saveCustomer)
   const voidEvent = useApp((s) => s.voidEvent)
   const restoreEvent = useApp((s) => s.restoreEvent)
+  const S = useStrings()
+  const lang = useLang()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Customer | null>(null)
@@ -115,8 +120,8 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
   if (!customer) return null
 
   function describe(e: DomainEvent): string {
-    if (e.type === 'UTANG') return `Utang ${templates.pesoExact(e.amount)}${e.note ? ` · ${e.note}` : ''}`
-    if (e.type === 'BAYAD') return `Bayad ${templates.pesoExact(e.amount)}`
+    if (e.type === 'UTANG') return `${S.listahan.histUtang(templates.pesoExact(e.amount))}${e.note ? ` · ${e.note}` : ''}`
+    if (e.type === 'BAYAD') return S.listahan.histBayad(templates.pesoExact(e.amount))
     return e.type
   }
 
@@ -126,12 +131,12 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
       <div className="card">
         <div className="kv">
           <span className="k">{S.listahan.outstanding}</span>
-          <span className="bold">{balanceLabel(state)}</span>
-          <span className="k">Status</span>
-          <span>{subLabel(state, nowMs)}</span>
+          <span className="bold">{balanceLabel(state, S)}</span>
+          <span className="k">{S.listahan.status}</span>
+          <span>{subLabel(state, nowMs, S, lang)}</span>
           {customer.phone && (
             <>
-              <span className="k">Cellphone</span>
+              <span className="k">{S.listahan.cellphone}</span>
               <span>{customer.phone}</span>
             </>
           )}
@@ -188,7 +193,7 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
               onClick={async () => {
                 await saveCustomer({ ...draft, name: draft.name.trim() })
                 setEditing(false)
-                toast('Na-save.')
+                toast(S.common.saved)
               }}
             >
               {S.paninda.save}
@@ -205,8 +210,8 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
             <span>
               <div>{describe(e)}</div>
               <div className="muted small">
-                {templates.fmtDate(toLocalDate(e.ts))}
-                {toLocalDate(e.ts) !== toLocalDate(e.recorded_at) ? ` · naitala ${templates.fmtDate(toLocalDate(e.recorded_at))}` : ''}
+                {templates.fmtDate(toLocalDate(e.ts), lang)}
+                {toLocalDate(e.ts) !== toLocalDate(e.recorded_at) ? ` · ${S.common.recorded} ${templates.fmtDate(toLocalDate(e.recorded_at), lang)}` : ''}
                 {voided ? ` · ${S.paninda.binura}` : ''}
               </div>
             </span>

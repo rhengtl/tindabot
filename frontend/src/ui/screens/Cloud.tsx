@@ -5,9 +5,10 @@ import { useState } from 'react'
 import { useApp } from '../../state/store'
 import { Sheet, useToast } from '../components'
 import { exportCurrentStore } from '../exportFile'
-import { S } from '../strings'
+import { useStrings } from '../i18n'
+import type { Strings } from '../strings'
 
-export function agoLabel(iso: string, nowMs: number): string {
+export function agoLabel(iso: string, nowMs: number, S: Strings): string {
   const ms = Math.max(0, nowMs - Date.parse(iso))
   const min = Math.floor(ms / 60_000)
   if (min < 1) return S.cloud.ago.justNow
@@ -23,6 +24,7 @@ export function CloudCard() {
   const signInGoogle = useApp((s) => s.signInGoogle)
   const signOutCloud = useApp((s) => s.signOutCloud)
   const syncNow = useApp((s) => s.syncNow)
+  const S = useStrings()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const sync = cloud.sync
@@ -31,7 +33,7 @@ export function CloudCard() {
     return (
       <>
         <h3>{S.cloud.title}</h3>
-        <div className="card muted small">{S.cloud.unavailable}</div>
+        <div className="card muted small" data-testid="cloud-card">{S.cloud.unavailable}</div>
       </>
     )
   }
@@ -40,8 +42,12 @@ export function CloudCard() {
     return (
       <>
         <h3>{S.cloud.title}</h3>
-        {cloud.signInError && <div className="card flag">{S.cloud.signInRedirectFailed(cloud.signInError)}</div>}
-        <div className="card">
+        {cloud.signInError && (
+          <div className="card flag" data-testid="signin-error">
+            {S.cloud.signInErrors[cloud.signInError.kind]}
+          </div>
+        )}
+        <div className="card" data-testid="cloud-card">
           <button
             type="button"
             className="btn primary"
@@ -70,7 +76,7 @@ export function CloudCard() {
   let line: string
   switch (sync.phase) {
     case 'idle':
-      line = sync.lastSyncAt ? S.cloud.status.idle(agoLabel(sync.lastSyncAt, nowMs)) : S.cloud.status.idleNever
+      line = sync.lastSyncAt ? S.cloud.status.idle(agoLabel(sync.lastSyncAt, nowMs, S)) : S.cloud.status.idleNever
       break
     case 'syncing':
       line = S.cloud.status.syncing
@@ -79,7 +85,7 @@ export function CloudCard() {
       line = S.cloud.status.offline(pending)
       break
     case 'error':
-      line = S.cloud.status.error(sync.error ?? '?')
+      line = S.cloud.status.error(S.cloud.errors[sync.error?.code ?? 'unknown'])
       break
     case 'local_only':
       line = S.cloud.status.localOnly
@@ -94,9 +100,9 @@ export function CloudCard() {
   return (
     <>
       <h3>{S.cloud.title}</h3>
-      <div className="card">
+      <div className="card" data-testid="cloud-card">
         <div className="muted small">{S.cloud.signedInAs(sync.user.email ?? sync.user.id)}</div>
-        <div className={`sync-status ${sync.phase}`} style={{ margin: '8px 0' }}>
+        <div className={`sync-status ${sync.phase}`} style={{ margin: '8px 0' }} data-testid="sync-status">
           {line}
         </div>
         {sync.phase === 'idle' && pending > 0 && <div className="muted small">{S.cloud.status.pending(pending)}</div>}
@@ -121,11 +127,12 @@ export function CloudCard() {
 export function ClaimChoiceSheet() {
   const choice = useApp((s) => s.cloud.sync.choice)
   const resolveClaim = useApp((s) => s.resolveClaim)
+  const S = useStrings()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   if (!choice) return null
   const onExport = async () => {
-    if (await exportCurrentStore()) toast('Na-export.')
+    if (await exportCurrentStore()) toast(S.common.exported)
   }
   const pick = async (c: 'phone' | 'cloud') => {
     setBusy(true)
