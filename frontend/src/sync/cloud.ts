@@ -6,6 +6,7 @@ import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import { type AuthApi, type CloudApi, type CloudUser, CloudError, type RecordTable } from './api'
 import type { EventRow, RecordRow, StoreRow } from './codec'
 import { type CloudEnv, readCloudEnv } from './env'
+import { isSignInCallbackUrl, redirectErrorFromUrl, safeErrorText, stripRedirectErrorParams } from './redirect'
 
 export interface Cloud {
   api: CloudApi
@@ -140,6 +141,19 @@ export function createAuthApi(client: SupabaseClient): AuthApi {
       const redirectTo = typeof location !== 'undefined' ? `${location.origin}${location.pathname}` : undefined
       const { error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
       if (error) throw toCloudError(error, 'sign-in')
+    },
+    async signInRedirectError() {
+      if (typeof location === 'undefined' || !isSignInCallbackUrl(location.href)) return null
+      // initialize() is memoised by supabase-js: this is the result of the URL detection that
+      // already ran when the client was created, not a second exchange attempt.
+      const { error } = await client.auth.initialize()
+      if (!error) return null
+      const text = redirectErrorFromUrl(location.href) ?? safeErrorText(error.message)
+      // supabase-js strips `code` on success only; drop the error parameters ourselves so a
+      // reload or a later share of the URL does not repeat the message.
+      const clean = stripRedirectErrorParams(location.href)
+      if (clean !== location.href && typeof history !== 'undefined') history.replaceState(history.state, '', clean)
+      return text
     },
     async signOut() {
       const { error } = await client.auth.signOut({ scope: 'local' })

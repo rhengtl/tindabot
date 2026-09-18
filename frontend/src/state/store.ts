@@ -67,8 +67,13 @@ interface AppState {
   nowMs: number
   deviceId: string
   persisted: boolean
-  /** P3a — absent configuration means `available: false` and every cloud action is a no-op. */
-  cloud: { available: boolean; sync: SyncStatus }
+  /**
+   * P3a — absent configuration means `available: false` and every cloud action is a no-op.
+   * `signInError` is set when this page load came back from a failed Google sign-in redirect
+   * (supabase-js reports that only through initialize(), never as an auth event); it is cleared
+   * by the next sign-in attempt or a successful sign-in.
+   */
+  cloud: { available: boolean; sync: SyncStatus; signInError: string | null }
 
   init(): Promise<void>
   refreshNow(): void
@@ -165,10 +170,18 @@ export const useApp = create<AppState>((set, get) => {
     engine = new SyncEngine({
       api: cloud.api,
       onPulled: () => reload(),
-      onStatus: (sync) => set({ cloud: { available: true, sync } }),
+      onStatus: (sync) => set((s) => ({ cloud: { ...s.cloud, sync } })),
     })
-    set({ cloud: { available: true, sync: engine.status } })
-    cloud.auth.onChange((user) => engine?.setUser(user))
+    set((s) => ({ cloud: { ...s.cloud, available: true, sync: engine!.status } }))
+    cloud.auth.onChange((user) => {
+      if (user) set((s) => ({ cloud: { ...s.cloud, signInError: null } }))
+      engine?.setUser(user)
+    })
+    // The return leg of a failed sign-in redirect would otherwise be invisible: surface it.
+    void cloud.auth
+      .signInRedirectError()
+      .then((signInError) => signInError && set((s) => ({ cloud: { ...s.cloud, signInError } })))
+      .catch(() => {})
   }
 
   function base(): Pick<DomainEvent, 'v' | 'store_id' | 'device_id' | 'recorded_at'> {
@@ -190,7 +203,7 @@ export const useApp = create<AppState>((set, get) => {
     nowMs: Date.now(),
     deviceId: '',
     persisted: false,
-    cloud: { available: false, sync: SYNC_INITIAL },
+    cloud: { available: false, sync: SYNC_INITIAL, signInError: null },
 
     async init() {
       const [deviceId, persisted, onboarded] = await Promise.all([repo.deviceId(), repo.requestPersistentStorage(), repo.getMeta('onboarded')])
@@ -337,6 +350,7 @@ export const useApp = create<AppState>((set, get) => {
 
     async signInGoogle() {
       if (!cloud) return
+      set((s) => ({ cloud: { ...s.cloud, signInError: null } }))
       await cloud.auth.signInWithGoogle()
     },
 

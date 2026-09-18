@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ListLine } from '../domain'
 import { useApp } from '../state/store'
-import { ToastProvider } from './components'
+import { ToastProvider, useToast } from './components'
 import { AddProductSheet } from './screens/AddProduct'
 import { Bahay } from './screens/Bahay'
 import { BakitSheet } from './screens/Bakit'
@@ -32,6 +32,8 @@ function Shell() {
   const refreshNow = useApp((s) => s.refreshNow)
   const requestSync = useApp((s) => s.requestSync)
   const onboarded = useApp((s) => s.onboarded)
+  const signInError = useApp((s) => s.cloud.signInError)
+  const toast = useToast()
   const [tab, setTab] = useState<Tab>('bahay')
   const [fab, setFab] = useState(false)
   const [bumili, setBumili] = useState<{ open: boolean; productId: string | null }>({ open: false, productId: null })
@@ -43,6 +45,12 @@ function Shell() {
   useEffect(() => {
     init()
   }, [init])
+
+  // A failed Google sign-in lands back here on whatever tab was open: say so once (the Cloud card
+  // in "Iba pa" keeps the message until the next attempt).
+  useEffect(() => {
+    if (signInError) toast(S.cloud.signInRedirectFailed(signInError))
+  }, [signInError, toast])
 
   // "today" changes: re-derive on focus/visibility and at local midnight. P3a: foreground and
   // regained connectivity also trigger a sync (no-ops when signed out / unconfigured).

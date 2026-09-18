@@ -40,6 +40,7 @@ export function CloudCard() {
     return (
       <>
         <h3>{S.cloud.title}</h3>
+        {cloud.signInError && <div className="card flag">{S.cloud.signInRedirectFailed(cloud.signInError)}</div>}
         <div className="card">
           <button
             type="button"

@@ -40,6 +40,12 @@ export interface CloudUser {
 export interface AuthApi {
   currentUser(): Promise<CloudUser | null>
   signInWithGoogle(): Promise<void>
+  /**
+   * Non-null when this page load is the return leg of a sign-in redirect that failed (provider
+   * error in the URL, or the PKCE code exchange failed). Display-safe text, never a token.
+   * supabase-js reports this only through `auth.initialize()`, never as an auth-state event.
+   */
+  signInRedirectError(): Promise<string | null>
   signOut(): Promise<void>
   /** Fires with the user on sign-in/restore and null on sign-out. Returns an unsubscribe. */
   onChange(cb: (user: CloudUser | null) => void): () => void

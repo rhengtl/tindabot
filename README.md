@@ -13,9 +13,19 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 215 tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud)
+npm test           # 229 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
+```
+
+`npm test` runs every `*.test.ts`, and that includes the online integration suite whenever
+`frontend/.env.test.local` exists (`TINDABOT_TEST_USERS=1` + the test-project settings): on such a
+machine `npm test` talks to the real Supabase project and signs in as the `tindabot-test-*`
+accounts. To stay offline, or to run the online suite on purpose:
+
+```bash
+npx vitest run --exclude "**/online.test.ts"        # offline only (229 tests)
+npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 
 ## Reference oracle
