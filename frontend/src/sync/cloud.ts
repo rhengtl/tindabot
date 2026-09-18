@@ -48,7 +48,21 @@ export function createCloudApi(client: SupabaseClient): CloudApi {
       return (data as StoreRow | null) ?? null
     },
     async upsertStore(row) {
-      check(await client.from('stores').upsert({ id: row.id, body: row.body, updated_at: row.updated_at }, { onConflict: 'id' }), 'upsertStore')
+      // Not a PostgREST upsert: `INSERT … ON CONFLICT` makes Postgres apply the stores SELECT
+      // policy (is_member) to the new row, and the owner membership only exists after the
+      // insert trigger has run — so a brand-new store would be rejected (42501). Plain insert
+      // first; only a duplicate key (23505) means "exists" and becomes the update path.
+      const values = { id: row.id, body: row.body, updated_at: row.updated_at }
+      const ins = await client.from('stores').insert(values)
+      if (!ins.error) return
+      if (ins.error.code !== '23505') throw toCloudError(ins.error, 'upsertStore')
+      const updated = check(await client.from('stores').update(values).eq('id', row.id).select('id'), 'upsertStore')
+      if ((updated ?? []).length > 0) return
+      // 0 rows: either lww_guard skipped a stale row (fine, same as the old upsert) or the row is
+      // not ours and RLS hid it (the old upsert raised 42501 here — keep that behaviour).
+      const visible = await client.from('stores').select('id').eq('id', row.id).maybeSingle()
+      if (visible.error) throw toCloudError(visible.error, 'upsertStore')
+      if (!visible.data) throw new CloudError('upsertStore: not a member of this store', 'denied')
     },
     async upsertRecords(table, rows) {
       if (rows.length === 0) return

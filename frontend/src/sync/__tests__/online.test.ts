@@ -27,7 +27,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { type Customer, type DomainEvent, type Product, type Store, activeEvents, deriveProduct, forProduct, ulid } from '../../domain'
 import { db } from '../../db/db'
 import * as repo from '../../db/repo'
-import type { CloudApi } from '../api'
+import { type CloudApi, type CloudError } from '../api'
 import { createCloudApi } from '../cloud'
 import { eventToRow, maxSeq, parseCursor, recordToRow, rowToEvent, storeToRow } from '../codec'
 import { META, SyncEngine, type SyncStatus } from '../engine'
@@ -223,6 +223,36 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       expect((await cB.from('store_members').select('store_id').eq('store_id', s.id)).data).toEqual([])
     })
 
+    it('upsertStore: creates a brand-new store (owner membership by trigger) and updates an existing one', async () => {
+      // Regression: a PostgREST upsert (INSERT … ON CONFLICT) of a NEW store is rejected by RLS on
+      // real Postgres (the SELECT policy is applied before the owner membership exists), so the
+      // client must insert first and only fall back to update on a duplicate key.
+      const s = mkStore('upsert-new')
+      created.push(s.id)
+      await apiA.upsertStore(storeToRow(s)) // must not throw
+      const row = await apiA.fetchStore(s.id)
+      expect(row?.body).toEqual(s)
+      expect(row?.created_by).toBe(uidA)
+      expect(row?.archived_at).toBeNull()
+      expect((await cA.from('store_members').select('user_id, role').eq('store_id', s.id)).data).toEqual([{ user_id: uidA, role: 'owner' }])
+      expect((await apiA.listMyStores()).map((x) => x.id)).toContain(s.id)
+
+      // existing store: newer updated_at is applied through the same call
+      const renamed = { ...s, name: storeName('upsert-renamed'), updated_at: new Date(Date.now() + 2_000).toISOString() }
+      await apiA.upsertStore(storeToRow(renamed))
+      const after = await apiA.fetchStore(s.id)
+      expect(after?.body).toEqual(renamed)
+      expect(after?.server_rev).toBeGreaterThan(row!.server_rev ?? Infinity)
+      // stale updated_at: silently kept as is (lww_guard), still no error
+      await apiA.upsertStore(storeToRow({ ...s, name: storeName('upsert-stale') }))
+      expect((await apiA.fetchStore(s.id))?.body).toEqual(renamed)
+      // someone else's store: a real error, not swallowed as "exists"
+      const sB = await seedStore(apiB, 'upsert-B')
+      const err = await errorOf(apiA.upsertStore(storeToRow({ ...sB, updated_at: new Date(Date.now() + 5_000).toISOString() })))
+      expect((err as CloudError | null)?.code).toBe('denied')
+      expect((await apiB.fetchStore(sB.id))?.body).toEqual(sB)
+    })
+
     it('events: xid and server_seq are trigger-assigned (client values ignored); one request = one transaction', async () => {
       const s = await seedStore(apiA, 'xid')
       const e1 = mkEvent(s.id)
@@ -283,7 +313,9 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       const s = await seedStore(apiA, 'lww')
       const p = mkProduct(s.id, 'v1', '2026-09-01T00:00:00.000Z')
       await apiA.upsertRecords('products', [recordToRow(p)])
+      const rawXid = async () => (await cA.from('products').select('xid').eq('id', p.id).single()).data!.xid as number
       const [before] = await apiA.fetchRecords('products', s.id, [p.id])
+      const xidBefore = await rawXid()
       await apiA.upsertRecords('products', [recordToRow({ ...p, name: 'stale', updated_at: '2026-08-01T00:00:00.000Z' })])
       await apiA.upsertRecords('products', [recordToRow({ ...p, name: 'equal' })])
       let [after] = await apiA.fetchRecords('products', s.id, [p.id])
@@ -293,7 +325,7 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       ;[after] = await apiA.fetchRecords('products', s.id, [p.id])
       expect((after!.body as Product).name).toBe('newer')
       expect(after!.server_rev).toBeGreaterThan(before!.server_rev!)
-      expect(after!.xid).toBeGreaterThan(before!.xid!)
+      expect(await rawXid()).toBeGreaterThan(xidBefore) // re-stamped with the updating transaction
 
       // store row: same guard, and archived_at/created_by cannot be changed through an upsert
       await apiA.archiveStore(s.id)
@@ -531,9 +563,15 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       const eng = engine(apiA, 3, [60_000]) // no automatic retry while we inspect the half-done state
       const orig = apiA.pullEvents.bind(apiA)
       let calls = 0
+      const trace: string[] = []
       apiA.pullEvents = async (...args) => {
-        if (++calls === 2) throw new Error('connection lost mid-pull')
-        return orig(...args)
+        if (++calls === 2) {
+          trace.push(`call ${calls}: window ${JSON.stringify(args[1])} → connection lost`)
+          throw new Error('connection lost mid-pull')
+        }
+        const rows = await orig(...args)
+        trace.push(`call ${calls}: window ${JSON.stringify(args[1])} → seq [${rows.map((r) => r.server_seq).join(',')}]`)
+        return rows
       }
       eng.setUser(user())
       await eng.whenIdle()
@@ -541,15 +579,24 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       expect((await repo.currentStore())!.id).toBe(fresh.id) // NOT switched
       const pending = JSON.parse((await repo.getMeta(META.windowEvents(X.id)))!)
       expect(pending.seq).toBeGreaterThan(0)
+      const localBefore = await db.events.where('store_id').equals(X.id).count()
+      console.info('[resume] persisted window', pending, 'local rows before resume', localBefore, 'cursor', await repo.getMeta(META.cursorEvents(X.id)))
       const laterRows = Array.from({ length: 2 }, () => mkEvent(X.id))
       await apiA2.insertEvents(laterRows.map(eventToRow))
       for (const r of await rawEvents(cA, X.id)) if (laterRows.some((l) => l.id === r.id)) expect(r.xid).toBeGreaterThanOrEqual(pending.hi)
 
-      apiA.pullEvents = orig
+      const laterXids = (await rawEvents(cA, X.id)).filter((r) => laterRows.some((l) => l.id === r.id)).map((r) => r.xid)
+      apiA.pullEvents = async (...args) => {
+        const rows = await orig(...args)
+        trace.push(`resume call: window ${JSON.stringify(args[1])} → seq [${rows.map((r) => r.server_seq).join(',')}]`)
+        return rows
+      }
       eng.dispose()
       const eng2 = engine(apiA, 3) // "next launch"
       eng2.setUser(user())
       await eng2.whenIdle()
+      apiA.pullEvents = orig
+      console.info('[resume] later rows xid', laterXids, ...trace, 'cursor after resume', await repo.getMeta(META.cursorEvents(X.id)), 'window after', await repo.getMeta(META.windowEvents(X.id)))
       expect(eng2.status.phase).toBe('idle')
       expect((await repo.currentStore())!.id).toBe(X.id)
       expect((await repo.loadSnapshot(X.id))!.events.length).toBe(9)
@@ -594,6 +641,7 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
         // pull finished) → this attempt proves nothing; try again
         if (!got || got.server_seq > fastRow.server_seq || !syncedBeforeCommit) continue
         slowRow = got
+        console.info('[race] attempt', attempt, { cursor0, slow: got, fast: { xid: fastRow.xid, server_seq: fastRow.server_seq }, watermarkWhileSlow, slowVisibleEarly, cursorDuring, localHasFast: localIds.includes(fast!.id) })
         expect(slowVisibleEarly).toBe(false) // during the hold the slow row was invisible …
         expect(watermarkWhileSlow).toBeLessThanOrEqual(slowRow.xid) // … and the watermark sat at/below its transaction
         expect(localIds).not.toContain(slow!.id)
@@ -609,7 +657,7 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       const ids = (await repo.loadSnapshot(s.id))!.events.map((e) => e.id)
       expect(ids).toContain(slow!.id)
       expect(ids).toContain(fast!.id)
-      await assertCursorInvariant(s.id)
+      console.info('[race] after commit: cursor', await assertCursorInvariant(s.id), 'watermark', await apiA.syncWatermark())
       eng.dispose()
     })
 
