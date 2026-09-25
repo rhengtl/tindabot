@@ -148,7 +148,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
         {showAdvanced && (
           <div id="advanced-settings">
             <div className="field">
-              <label>{S.ibaPa.payday} (×)</label>
+              <label style={{ marginTop: 6 }}>{S.ibaPa.payday} (×)</label>
               <input aria-label={`${S.ibaPa.payday} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } })} />
             </div>
             <div className="field">
