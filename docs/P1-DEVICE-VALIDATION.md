@@ -160,3 +160,38 @@ outside the column above 900 px.
 Known and unchanged: Brave on this phone refuses file shares and fails every download, so no export
 file can be produced there; home-screen install / standalone still does not happen on the realme
 launcher; the FAB overlaps list content while scrolling (ordinary FAB behaviour on the phone).
+
+## Sheet drag + Show/Hide (2026-09-25, same phone)
+
+The handle on top of every sheet was decorative — there was no gesture code in the app at all.
+The shared `Sheet` now takes a pointer drag on the grip only: the sheet follows the finger down,
+resists upward (÷4, capped at 24 px), and on release closes past `max(64 px, 25 % of the sheet)` or
+a flick (≥ 32 px at ≥ 0.5 px/ms), otherwise springs back. Content scrolling, forms and the keyboard
+are untouched because only the grip has `touch-action: none`.
+
+Validated with injected touch events (`input motionevent`, sampling the sheet mid-drag) on all
+twelve surfaces that show the grip — Bumili picker and form, Bilang, Pera ×4 (utang/bayad/gastos/
+pera), AddProduct, Paninda detail, Bakit (stacked on the detail sheet), Listahan customer, Ulat
+history: each followed the finger within a pixel, dismissed past the threshold, sprang back from a
+40 px pull, and survived a 120 px upward drag. A real swipe inside a sheet body still scrolls it
+(AddProduct 0 → 355 px, Ulat 0 → 582 px) with no sheet movement; a sheet whose field had the
+keyboard open still drags away; the backdrop still closes sheets; Escape still closes them on
+desktop.
+
+Two defects found during this pass and fixed:
+- **`max-height: 92vh` is the toolbar-hidden height on Android**, so the tallest sheet (Ulat
+  history, 826 px) started 32 px above the visible viewport and its grip could not be touched.
+  Now `92dvh` where supported: the same sheet is 731 px with its top at 64 px.
+- **A drag that ended over a control tapped it** — releasing over the "Kailan mo binili?" row
+  selected *Ibang araw* and opened Android's date picker. A drag of more than 8 px now swallows
+  the click that follows.
+
+Desktop (1280/1366/1440): the sheet stays a centred dialog, the grip is hidden there (a bottom-sheet
+affordance has no meaning for a centred dialog), a mouse drag from the top edge does nothing, and
+Escape still closes it.
+
+Show/Hide in *Iba pa → Advanced* was plain underlined text; it is now the same disclosure
+convention as the "Wag muna" section on Bahay — a filled `btn secondary sm` with the state word and
+a ▼/▲ arrow, `aria-expanded` + `aria-controls`, 44 px tall, in both languages ("Ipakita ▼" /
+"Itago ▲", "Show ▼" / "Hide ▲"). Verified with real taps on the phone and with the keyboard on
+desktop.

@@ -133,11 +133,20 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
 
       <h3>{S.ibaPa.advanced}</h3>
       <div className="card">
-        <button type="button" className="btn ghost" onClick={() => setShowAdvanced((v) => !v)}>
-          {showAdvanced ? S.common.hide : S.common.show}
+        {/* Same disclosure convention as the "Wag muna" section on Bahay: the arrow says which
+            way it goes, the word says the state. */}
+        <button
+          type="button"
+          className="btn secondary sm disclosure"
+          data-testid="advanced-toggle"
+          aria-expanded={showAdvanced}
+          aria-controls="advanced-settings"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          {showAdvanced ? S.common.hide : S.common.show} <span aria-hidden="true">{showAdvanced ? '▲' : '▼'}</span>
         </button>
         {showAdvanced && (
-          <>
+          <div id="advanced-settings">
             <div className="field">
               <label>{S.ibaPa.payday} (×)</label>
               <input aria-label={`${S.ibaPa.payday} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } })} />
@@ -158,7 +167,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
             >
               {S.ibaPa.demo}
             </button>
-          </>
+          </div>
         )}
       </div>
 
