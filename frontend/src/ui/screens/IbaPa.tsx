@@ -34,9 +34,15 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   if (!store) return null
 
   async function doExport() {
-    if (await exportCurrentStore()) {
+    // Only a share the phone confirmed counts as a backup; a download cannot be verified.
+    const outcome = await exportCurrentStore()
+    if (outcome === 'shared') {
       setLastBackup(new Date().toISOString())
       toast(S.common.exported)
+    } else if (outcome === 'download_started') {
+      toast(S.ibaPa.exportUnconfirmed)
+    } else if (outcome === 'failed') {
+      toast(S.ibaPa.exportFailed)
     }
   }
 
@@ -84,7 +90,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
         </div>
         <div className="field">
           <label>{S.ibaPa.storeName}</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== store.name && updateStore({ name: name.trim() })} />
+          <input aria-label={S.ibaPa.storeName} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== store.name && updateStore({ name: name.trim() })} />
         </div>
         <div className="field">
           <label>{S.ibaPa.restockDays}</label>
@@ -134,11 +140,11 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
           <>
             <div className="field">
               <label>{S.ibaPa.payday} (×)</label>
-              <input type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } })} />
+              <input aria-label={`${S.ibaPa.payday} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } })} />
             </div>
             <div className="field">
               <label>{S.ibaPa.friSat} (×)</label>
-              <input type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } })} />
+              <input aria-label={`${S.ibaPa.friSat} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } })} />
             </div>
             <button
               type="button"

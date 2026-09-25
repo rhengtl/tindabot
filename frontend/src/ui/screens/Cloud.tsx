@@ -73,6 +73,8 @@ export function CloudCard() {
   }
 
   const pending = sync.pendingEvents + sync.pendingRecords
+  // One visual state per situation: the class drives the colour/dot, the text says it in words.
+  let tone: string = sync.phase
   let line: string
   switch (sync.phase) {
     case 'idle':
@@ -85,7 +87,15 @@ export function CloudCard() {
       line = S.cloud.status.offline(pending)
       break
     case 'error':
-      line = S.cloud.status.error(S.cloud.errors[sync.error?.code ?? 'unknown'])
+      if (sync.error?.code === 'unavailable') {
+        tone = 'unavailable'
+        line = pending ? S.cloud.status.unavailablePending(pending) : S.cloud.status.unavailable
+      } else if (sync.error?.code === 'auth') {
+        tone = 'auth'
+        line = S.cloud.status.authNeeded
+      } else {
+        line = S.cloud.status.error(S.cloud.errors[sync.error?.code ?? 'unknown'])
+      }
       break
     case 'local_only':
       line = S.cloud.status.localOnly
@@ -102,7 +112,7 @@ export function CloudCard() {
       <h3>{S.cloud.title}</h3>
       <div className="card" data-testid="cloud-card">
         <div className="muted small">{S.cloud.signedInAs(sync.user.email ?? sync.user.id)}</div>
-        <div className={`sync-status ${sync.phase}`} style={{ margin: '8px 0' }} data-testid="sync-status">
+        <div className={`sync-status ${tone}`} style={{ margin: '8px 0' }} data-testid="sync-status" data-tone={tone}>
           {line}
         </div>
         {sync.phase === 'idle' && pending > 0 && <div className="muted small">{S.cloud.status.pending(pending)}</div>}
@@ -132,7 +142,10 @@ export function ClaimChoiceSheet() {
   const [busy, setBusy] = useState(false)
   if (!choice) return null
   const onExport = async () => {
-    if (await exportCurrentStore()) toast(S.common.exported)
+    const outcome = await exportCurrentStore()
+    if (outcome === 'shared') toast(S.common.exported)
+    else if (outcome === 'download_started') toast(S.ibaPa.exportUnconfirmed)
+    else if (outcome === 'failed') toast(S.ibaPa.exportFailed)
   }
   const pick = async (c: 'phone' | 'cloud') => {
     setBusy(true)

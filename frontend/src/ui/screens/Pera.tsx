@@ -110,11 +110,11 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
             <div className="card soft">
               <div className="field">
                 <label>{S.pera.customerName}</label>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
+                <input aria-label={S.pera.customerName} value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
               </div>
               <div className="field">
                 <label>{S.pera.customerPhone}</label>
-                <input type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+                <input aria-label={S.pera.customerPhone} type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
               </div>
               <div className="row">
                 <button type="button" className="btn secondary sm" onClick={() => setCreating(false)}>
@@ -127,7 +127,7 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
             </div>
           ) : (
             <>
-              <input className="search" placeholder={S.pera.searchCustomer} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus={customers.length > 0} />
+              <input className="search" aria-label={S.pera.searchCustomer} placeholder={S.pera.searchCustomer} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus={customers.length > 0} />
               <button type="button" className="cat-row" onClick={() => setCreating(true)}>
                 <span>{S.pera.newCustomer}</span>
               </button>
@@ -158,7 +158,7 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
 
           <div className="field">
             <label>{txt.amount}</label>
-            <input type="number" inputMode="decimal" min={0} step="0.01" placeholder="₱" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!!customer || !needsCustomer} />
+            <input aria-label={txt.amount} type="number" inputMode="decimal" min={0} step="0.01" placeholder="₱" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!!customer || !needsCustomer} />
             {amount.trim() !== '' && amountN === null && <div className="muted small" style={{ marginTop: 4 }}>{S.pera.invalidAmount}</div>}
             {kind === 'pera' && (
               <div className="muted small" style={{ marginTop: 4 }}>
@@ -188,14 +188,14 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
           {(kind === 'utang' || kind === 'gastos') && (
             <div className="field">
               <label>{kind === 'utang' ? S.pera.utang.note : S.pera.gastos.note}</label>
-              <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} />
+              <input aria-label={kind === 'utang' ? S.pera.utang.note : S.pera.gastos.note} value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} />
             </div>
           )}
 
           <div className="field">
             <label>{S.pera.when}</label>
             <Segment value={whenKind} options={[['ngayon', S.bumili.ngayon], ['kahapon', S.bumili.kahapon], ['date', S.bumili.ibangAraw]]} onChange={setWhenKind} />
-            {whenKind === 'date' && <input type="date" value={date} max={toLocalDate(Date.now())} onChange={(e) => setDate(e.target.value)} style={{ marginTop: 8 }} />}
+            {whenKind === 'date' && <input aria-label={S.pera.when} type="date" value={date} max={toLocalDate(Date.now())} onChange={(e) => setDate(e.target.value)} style={{ marginTop: 8 }} />}
           </div>
 
           <button type="button" className="btn primary" onClick={save} disabled={!canSave}>

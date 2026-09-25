@@ -79,3 +79,84 @@ Not re-tested and unchanged from the P1 limitations above: home-screen install /
 share-sheet target for the export (the share was intercepted to capture the file); Chrome for
 Android (user-disabled on this phone). Backdating used real *Kahapon* taps and a programmatically
 set `input[type=date]`; the native date picker itself was exercised in P1 only.
+
+## P3a + language physical validation (2026-09-25)
+
+realme RMX3710 (realme C55), Android 15, 1080×2400 @ 408 dpi, **Brave 1.95.104 (Chromium 153)**;
+production build (`npm run build`) served by `vite preview --host 127.0.0.1 --port 4173` with
+`adb reverse tcp:4173 tcp:4173`; real taps/typing via `adb shell input`, state read over CDP
+(`adb forward tcp:9222 localabstract:chrome_devtools_remote`). Only demo/test data on the phone.
+
+Language: Taglish by default on a device with no stored preference (`html lang=tl`, no `meta.lang`
+row); the English chip switches every screen instantly without a reload; the choice survives a
+reload, a force-stop + relaunch and an offline start; switching back to Taglish is immediate.
+English checked on Bahay/Paninda/Listahan/Iba pa, Bakit, Bilang, Bumili, the four Pera sheets, the
+Ulat card, the cloud card, the claim-choice sheet and both sign-in/sync error states: no
+horizontal overflow (423/423 on every tab), no clipped labels, every tap target ≥ 44 px, and the
+focused field stays visible with Gboard open (viewport 794 → 510/476). Business data was
+byte-identical across switches (27 products / 164 events; only `meta.lang` was added).
+
+Workflows re-run on the phone in English: add product (custom name), Bumili with natira and the
+confirmation sum, Bilang numpad (1 case + 4 bote = 16), product detail + history, Bakit, Utang
+₱35.50 and Bayad ₱20 with the running balances, customer history, Gastos (₱0 rejected with the
+English message, then ₱120.75), cash count ₱3,410, Ulat.
+
+P3a on the phone (test account `tindabot-test-a@example.com`, store `test-step6-…`, archived
+afterwards): signed-in card, claim-choice sheet ("Which store do you want to use?"), *Use the one
+in the cloud* → the cloud store and its rows were restored and became current while the phone's own
+stores stayed untouched, a count recorded on the phone reached the server (seq 338), an expense
+recorded while offline queued as "1 entry is not backed up yet" and went up on reconnect (seq 339),
+and sign-out kept every store and entry on the phone. The Google button really does redirect to
+Google's account chooser; no account was chosen (the phone's Google accounts are personal), so the
+consent step and a real PKCE return remain untested. The signed-in session used for the rest was a
+real Supabase session for the test account (email/password, the same path the online suite uses).
+
+Offline: with `adb reverse` removed and Brave force-stopped, the app still started from its service
+worker, showed all data, recorded a cash count and survived a reload — no server, no cloud.
+
+Fixed during this run: **Export did nothing on this phone.** `navigator.canShare({files})` answers
+true and `navigator.share` then rejects with `NotAllowedError`, which the app swallowed as
+"cancelled". The export now falls back to a download (only a real `AbortError` means cancelled),
+and the download link is placed in the document with the blob URL revoked later — four tests in
+`src/ui/__tests__/export_file.test.ts` cover it.
+
+Still not working on this phone (browser/device level, outside the app): Brave refuses file shares
+(`NotAllowedError`) **and** every download fails — an `http`, a `blob:` and a `data:` link all end
+as "1 download failed" with nothing written anywhere under `/sdcard`. So the monthly backup file
+cannot be produced in Brave on this device, and the app still reports success (it cannot see the
+failure). The list *text* share works (the Android chooser opens). Home-screen install /
+standalone behaviour is unchanged from P1/P2: Brave offers it, the realme launcher never places
+the icon.
+
+## Cloud-resilience + UI pass validation (2026-09-25)
+
+Same phone and setup as above (realme C55, Android 15, Brave 1.95.104, `vite preview` +
+`adb reverse`, real taps via `adb shell input`, state over CDP). Desktop widths were checked
+headlessly against the same build (Chromium 1280×720, 1366×768, 1440×900, 1920×1080) together with
+360×800 / 393×852 / 412×915 mobile widths, in both languages.
+
+Cloud unavailable: with every `/rest/v1/` call answered the way a paused project answers (540), the
+phone showed the new state — "Pansamantalang wala ang cloud backup. 10 entry ang naka-antay —
+ligtas lahat sa phone." / "Cloud backup is unavailable right now. 10 entries are waiting — all safe
+on this phone." — with no provider text, a yellow status pill, and the app fully usable: a ₱1,875
+cash count recorded during the outage landed locally and joined the queue (164 → 165 events).
+Lifting the interception and tapping *Sync now* converged to "Backed up · last sync just now" with
+nothing lost or re-entered. The same path was also verified end-to-end headlessly (paused → queue →
+recovery) and by unit tests.
+
+Export bookkeeping: tapping *I-export* on the phone now shows "Sent to your downloads — check that
+the file was really saved.", `last_backup_at` stayed at its previous value (06:35:32Z) and only
+`last_export_attempt_at` was written — the browser still produced no file, and the app no longer
+claims a backup it cannot confirm.
+
+UI pass: all four tabs and the sheets were re-checked in Taglish and English — no horizontal
+overflow (423/423), nothing outside the screen, every tap target ≥ 44 px, no clipped labels, every
+button with an accessible name, and the expense sheet plus its focused field staying above Gboard
+(viewport 794 → 510). Language still switches instantly, survives a reload and a force-stop, and no
+local data changed (27 products / 165 events). Desktop: the app keeps its single centred column
+(620 px at ≥ 1024 px) framed against the page, sheets open centred as dialogs, and the FAB moves
+outside the column above 900 px.
+
+Known and unchanged: Brave on this phone refuses file shares and fails every download, so no export
+file can be produced there; home-screen install / standalone still does not happen on the realme
+launcher; the FAB overlaps list content while scrolling (ordinary FAB behaviour on the phone).

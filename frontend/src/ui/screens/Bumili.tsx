@@ -120,7 +120,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
             </>
           )}
           <h3>{S.bumili.product}</h3>
-          <input className="search" placeholder={S.paninda.search} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <input className="search" aria-label={S.paninda.search} placeholder={S.paninda.search} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
           {filtered.map((p) => (
             <button key={p.id} type="button" className="cat-row" onClick={() => setProductId(p.id)}>
               <span>{p.name}</span>
@@ -143,7 +143,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
           <div className="field">
             <label>{S.bumili.qty}</label>
             <div className="row">
-              <input type="number" inputMode="numeric" min={0} value={qty} onChange={(e) => setQty(e.target.value)} style={{ maxWidth: 110 }} />
+              <input aria-label={S.bumili.qty} type="number" inputMode="numeric" min={0} value={qty} onChange={(e) => setQty(e.target.value)} style={{ maxWidth: 110 }} />
               <div className="grow">
                 <Segment value={mode} options={[['pack', product.pack_label], ['unit', product.unit_label]]} onChange={setMode} />
               </div>
@@ -157,7 +157,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
 
           <div className="field">
             <label>{S.bumili.totalCost}</label>
-            <input
+            <input aria-label={S.bumili.totalCost}
               type="number"
               inputMode="decimal"
               placeholder="₱"
@@ -175,7 +175,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
 
           <div className="field">
             <label>{S.bumili.natira}</label>
-            <input type="number" inputMode="numeric" min={0} placeholder={product.unit_label} value={natira} onChange={(e) => setNatira(e.target.value)} />
+            <input aria-label={S.bumili.natira} type="number" inputMode="numeric" min={0} placeholder={product.unit_label} value={natira} onChange={(e) => setNatira(e.target.value)} />
             <div className="muted small" style={{ marginTop: 4 }}>
               {S.bumili.natiraHint}
             </div>
@@ -189,7 +189,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
           <div className="field">
             <label>{S.bumili.when}</label>
             <Segment value={whenKind} options={[['ngayon', S.bumili.ngayon], ['kahapon', S.bumili.kahapon], ['date', S.bumili.ibangAraw]]} onChange={setWhenKind} />
-            {whenKind === 'date' && <input type="date" value={date} max={toLocalDate(Date.now())} onChange={(e) => setDate(e.target.value)} style={{ marginTop: 8 }} />}
+            {whenKind === 'date' && <input aria-label={S.bumili.when} type="date" value={date} max={toLocalDate(Date.now())} onChange={(e) => setDate(e.target.value)} style={{ marginTop: 8 }} />}
           </div>
 
           <div className="row">

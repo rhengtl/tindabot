@@ -53,7 +53,7 @@ export function Onboarding() {
           </p>
           <div className="field">
             <label>{S.onboarding.storeName}</label>
-            <input value={name} placeholder={S.onboarding.storeNamePh} onChange={(e) => setName(e.target.value)} autoFocus />
+            <input aria-label={S.onboarding.storeName} value={name} placeholder={S.onboarding.storeNamePh} onChange={(e) => setName(e.target.value)} autoFocus />
           </div>
           <button type="button" className="btn primary" onClick={() => setStep(1)}>
             {S.onboarding.next}

@@ -11,7 +11,7 @@
 //
 // Failure injection: `offline` (network errors), `failNext` and `failOn` (one server error).
 
-import { type CloudApi, CloudError, type RecordTable } from '../api'
+import { type CloudApi, CloudError, type CloudErrorCode, type RecordTable } from '../api'
 import type { EventRow, PullWindow, RecordRow, StoreRow } from '../codec'
 
 interface Versioned {
@@ -40,6 +40,8 @@ export class FakeServer {
   active = new Set<number>()
   offline = false
   failNext: string | null = null
+  /** app-level code for the injected `failNext` failure (default 'server') */
+  failNextCode: CloudErrorCode = 'server'
   /** throw once when this call name comes up (e.g. 'pullEvents', 'insertEvents') */
   failOn: string | null = null
   calls: string[] = []
@@ -143,6 +145,9 @@ export class FakeCloud implements CloudApi {
   set failNext(v: string | null) {
     this.server.failNext = v
   }
+  set failNextCode(v: CloudErrorCode) {
+    this.server.failNextCode = v
+  }
   set failOn(v: string | null) {
     this.server.failOn = v
   }
@@ -159,8 +164,10 @@ export class FakeCloud implements CloudApi {
     if (st.offline) throw new CloudError(`${what}: Failed to fetch`, 'network')
     if (st.failNext) {
       const m = st.failNext
+      const code = st.failNextCode
       st.failNext = null
-      throw new CloudError(m, 'server')
+      st.failNextCode = 'server'
+      throw new CloudError(m, code)
     }
     if (st.failOn === what) {
       st.failOn = null

@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 264 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors, language/strings
+npm test           # 289 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (264 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (289 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 
@@ -64,6 +64,11 @@ Setup steps and what goes where: [docs/P3A-SETUP.md](docs/P3A-SETUP.md). Only th
 and the anon key ever reach the frontend; RLS is the security boundary.
 
 P1 (local-only listahan) and P2 (utang/cash) are implemented and device-validated. P3a (Google
-sign-in + cloud backup/sync) is implemented and integration-tested against the online project;
-its physical device validation and deployment are still open. P3b (receipt camera + `/ai/parse`),
+sign-in + cloud backup/sync) is implemented, integration-tested against the online project and
+validated on the phone (restore, push, offline queue, a paused/unavailable cloud, sign-out; see
+[docs/P1-DEVICE-VALIDATION.md](docs/P1-DEVICE-VALIDATION.md)) — the Google consent screen itself
+was not exercised there, and deployment is still open. Known device limitation: on the validation
+phone (realme C55 / Brave 1.95) the browser refuses file shares and fails every download, so the
+export file cannot be produced there; the app reports that as unconfirmed and does not record a
+backup. P3b (receipt camera + `/ai/parse`),
 P4 (assistant) and P5 (household) follow the blueprint roadmap.

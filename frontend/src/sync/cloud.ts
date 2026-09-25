@@ -18,14 +18,34 @@ export interface Cloud {
  * carries an app-level `code` (what the UI shows, localized) and the original message as
  * developer detail (never shown to users; may reach console/meta diagnostics only).
  */
+/**
+ * Statuses that mean "the project itself is not answering right now":
+ *   540 — Supabase returns it for a project paused by inactivity (free plan);
+ *   502/503/504 — the API gateway cannot reach the project (starting up, restarting, maintenance).
+ * They arrive on ordinary responses, so they are checked before the auth/RLS codes: a paused
+ * project answers auth calls with 540 too, and that must not read as "sign in again".
+ */
+const UNAVAILABLE_STATUS = new Set([502, 503, 504, 540])
+/** Postgres/PostgREST equivalents: server starting up, and PostgREST unable to reach the database. */
+const UNAVAILABLE_CODE = new Set(['57P03', '08006', 'PGRST002'])
+
 export function toCloudError(err: unknown, fallback: string): CloudError {
   const e = err as { message?: string; code?: string; status?: number; name?: string } | null
   const msg = `${fallback}: ${e?.message || 'no message'}`
+  const status = typeof e?.status === 'number' ? e.status : undefined
+  if ((status !== undefined && UNAVAILABLE_STATUS.has(status)) || (e?.code && UNAVAILABLE_CODE.has(e.code))) {
+    return new CloudError(msg, 'unavailable')
+  }
+  // Only from the response body/message, and only when nothing above already decided: a project
+  // that is paused or waking up says so in words on some endpoints.
+  if (/project is paused|project is not active|is being restored|temporarily unavailable|service unavailable|bad gateway/i.test(e?.message ?? '')) {
+    return new CloudError(msg, 'unavailable')
+  }
   if (e?.name === 'TypeError' || /fetch|network|Failed to fetch|NetworkError|ECONN|timed? ?out/i.test(e?.message ?? '')) return new CloudError(msg, 'network')
-  if (e?.name === 'AuthError' || e?.name === 'AuthApiError' || e?.name === 'AuthSessionMissingError' || e?.code === 'PGRST301' || e?.status === 401) {
+  if (e?.name === 'AuthError' || e?.name === 'AuthApiError' || e?.name === 'AuthSessionMissingError' || e?.code === 'PGRST301' || status === 401) {
     return new CloudError(msg, 'auth')
   }
-  if (e?.code === '42501' || e?.status === 403) return new CloudError(msg, 'denied')
+  if (e?.code === '42501' || status === 403) return new CloudError(msg, 'denied')
   return new CloudError(msg, 'server')
 }
 

@@ -88,6 +88,8 @@ export interface EngineDeps {
   isOnline?: () => boolean
   debounceMs?: number
   backoffMs?: number[]
+  /** Backoff for `unavailable` (paused/unreachable project); default 1 min → 5 min → 15 min. */
+  unavailableBackoffMs?: number[]
   /** rows per pull page (default PULL_PAGE); tests lower it to exercise multi-page windows */
   pullPage?: number
 }
@@ -137,11 +139,13 @@ export class SyncEngine {
   private readonly isOnline: () => boolean
   private readonly debounceMs: number
   private readonly backoffMs: number[]
+  private readonly unavailableBackoffMs: number[]
   private readonly pullPage: number
   private running: Promise<void> | null = null
   private again: SyncReason | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private retryDelay: number | null = null
   private failures = 0
   private disposed = false
   private choiceDeferred = false
@@ -154,6 +158,7 @@ export class SyncEngine {
     this.isOnline = deps.isOnline ?? (() => (typeof navigator === 'undefined' || navigator.onLine === undefined ? true : navigator.onLine))
     this.debounceMs = deps.debounceMs ?? 2000
     this.backoffMs = deps.backoffMs ?? [10_000, 60_000, 300_000]
+    this.unavailableBackoffMs = deps.unavailableBackoffMs ?? [60_000, 300_000, 900_000]
     this.pullPage = deps.pullPage ?? PULL_PAGE
   }
 
@@ -225,6 +230,11 @@ export class SyncEngine {
         await this.fail(err)
       }
     })
+  }
+
+  /** Delay of the retry currently scheduled after a failure (null when none is pending). */
+  get nextRetryDelayMs(): number | null {
+    return this.retryTimer ? this.retryDelay : null
   }
 
   /** Resolves when no run is in progress (follow-up runs included). */
@@ -326,9 +336,14 @@ export class SyncEngine {
       this.patch({ phase: 'offline', error: null, ...counts })
       return
     }
-    this.patch({ phase: 'error', error: { code: err instanceof CloudError ? err.code : 'unknown', detail: msg }, ...counts })
+    const code = err instanceof CloudError ? err.code : 'unknown'
+    this.patch({ phase: 'error', error: { code, detail: msg }, ...counts })
     this.failures++
-    const delay = this.backoffMs[Math.min(this.failures, this.backoffMs.length) - 1] ?? this.backoffMs[this.backoffMs.length - 1] ?? 60_000
+    // Nothing local is touched here: queued events and records stay queued and the next run
+    // (foreground, online, manual, or this timer) pushes them.
+    const ladder = code === 'unavailable' ? this.unavailableBackoffMs : this.backoffMs
+    const delay = ladder[Math.min(this.failures, ladder.length) - 1] ?? ladder[ladder.length - 1] ?? 60_000
+    this.retryDelay = delay
     this.clearRetry()
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null

@@ -61,7 +61,7 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
       {!draft ? (
         <>
           <h2>{S.paninda.add}</h2>
-          <input className="search" placeholder={S.paninda.search} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+          <input className="search" aria-label={S.paninda.search} placeholder={S.paninda.search} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
           {!q && (
             <div className="chips" style={{ marginBottom: 10 }}>
               <button type="button" className={`chip ${cat === null ? 'on' : ''}`} onClick={() => setCat(null)}>
@@ -101,35 +101,35 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
           <h2>{draft.name || S.paninda.customName}</h2>
           <div className="field">
             <label>{S.common.name}</label>
-            <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            <input aria-label={S.common.name} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </div>
           <div className="row">
             <div className="field grow">
               <label>{S.paninda.unitLabel}</label>
-              <input value={draft.unit_label} onChange={(e) => setDraft({ ...draft, unit_label: e.target.value })} />
+              <input aria-label={S.paninda.unitLabel} value={draft.unit_label} onChange={(e) => setDraft({ ...draft, unit_label: e.target.value })} />
             </div>
             <div className="field grow">
               <label>{S.paninda.packLabel}</label>
-              <input value={draft.pack_label} onChange={(e) => setDraft({ ...draft, pack_label: e.target.value })} />
+              <input aria-label={S.paninda.packLabel} value={draft.pack_label} onChange={(e) => setDraft({ ...draft, pack_label: e.target.value })} />
             </div>
           </div>
           <div className="field">
             <label>
               {S.paninda.packSize} {draft.pack_label}?
             </label>
-            <input type="number" inputMode="numeric" min={1} value={draft.pack_size} onChange={(e) => setDraft({ ...draft, pack_size: Number(e.target.value) })} />
+            <input aria-label={`${S.paninda.packSize} ${draft.pack_label}?`} type="number" inputMode="numeric" min={1} value={draft.pack_size} onChange={(e) => setDraft({ ...draft, pack_size: Number(e.target.value) })} />
           </div>
           <div className="field">
             <label>
               {S.paninda.sellPrice} ({S.paninda.optional})
             </label>
-            <input type="number" inputMode="decimal" placeholder="₱" value={sell} onChange={(e) => setSell(e.target.value)} />
+            <input aria-label={`${S.paninda.sellPrice} (${S.paninda.optional})`} type="number" inputMode="decimal" placeholder="₱" value={sell} onChange={(e) => setSell(e.target.value)} />
           </div>
           <div className="field">
             <label>
               {S.paninda.natiraQ} ({S.paninda.optional})
             </label>
-            <input type="number" inputMode="numeric" placeholder={draft.unit_label} value={natira} onChange={(e) => setNatira(e.target.value)} />
+            <input aria-label={`${S.paninda.natiraQ} (${S.paninda.optional})`} type="number" inputMode="numeric" placeholder={draft.unit_label} value={natira} onChange={(e) => setNatira(e.target.value)} />
           </div>
           <div className="row">
             <button type="button" className="btn secondary" onClick={() => setDraft(null)}>

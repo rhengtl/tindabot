@@ -145,7 +145,10 @@ P2 adds **Utang · Bayad · Gastos · Pera** (decided 2026-09-14, see §E6).
   Cloud/sign-in failures are shown as app-level categories in the chosen language — raw
   Supabase/PostgREST/Google text never reaches the screen. Outside the app's control and
   therefore not switched: Google's own consent screens, browser/OS prompts, and the installed
-  PWA's manifest (`lang: tl`).
+  PWA's manifest (`lang: tl`). Stored text stays as entered — catalog categories, unit labels and
+  the demo store's sample content are data, not UI. Deferred as minor polish (no decision taken,
+  nothing blocked): whether English should say "credit" instead of *utang*, a bilingual manifest
+  description, and an English variant of the demo content.
 
 ## E. Core logic (all in `domain/`, pure, tested)
 
@@ -351,6 +354,21 @@ Pull windows   (decided 2026-09-17, replaces the plain server_seq cursor.)
 Triggers       sign-in, launch, foreground, online, local write (2 s debounce), manual button.
                Errors back off 10 s → 1 min → 5 min; network errors show as "Offline — N entry
                ang hindi pa naka-backup", never as errors.
+Failure kinds  (decided 2026-09-25.) Every raw supabase-js / PostgREST / Postgres failure becomes
+               one app-level code in `toCloudError`, and only its localized wording is shown:
+               network (phone has no connection) · unavailable (the project itself is not
+               answering: 540 = paused by inactivity on the free plan, 502/503/504 from the API
+               gateway, 57P03/08006/PGRST002) · auth (session) · denied (RLS) · store_gone ·
+               server · unknown. The status codes are read before the auth codes, so a paused
+               project answering an auth call never reads as "sign in again".
+Cloud paused   An unavailable cloud is a normal state, not an error to recover from: the phone
+               stays fully usable, every write lands in Dexie and stays queued, nothing local is
+               invalidated or deleted, and the card says so ("Pansamantalang wala ang cloud
+               backup… ligtas ang listahan sa phone"). Retries back off 1 min → 5 min → 15 min
+               (a paused project comes back on the owner's schedule, so the phone does not keep
+               waking its radio), and any ordinary trigger — foreground, online, manual — converges
+               through the same sync run. The app never generates traffic just to keep a project
+               from pausing.
 Clock skew     |device − server| > 5 min → warning line only; sync never blocks.
 Claim (on sign-in / launch while unbound / manual):
                no cloud store           → upload the phone store (it becomes the account's store)

@@ -95,6 +95,17 @@ and holds its transaction open for ≤ 3 s — which is the only way to reproduc
 uncommitted-transaction race on the real database. The suite skips those tests when it is absent.
 Drop it afterwards with the statement at the bottom of that file.
 
+## 5b. If the project pauses (free plan)
+
+A Supabase project with no activity for a week is paused, and its API then answers **540** (while
+it restarts, the gateway can answer 502/503/504). The app treats that as its own state: the Cloud
+card says cloud backup is temporarily unavailable and the list is safe on the phone, everything
+stays usable, new entries queue up, and retries slow to 1 min → 5 min → 15 min. Resume the project
+in the dashboard and the next sync (foreground, reconnect, or *I-sync ngayon*) uploads the queue —
+nothing to reinstall, nothing re-entered. The app deliberately sends no keep-alive traffic. While a
+project is paused its hostname may stop resolving, so the online suite fails at sign-in; that is
+the project being paused, not a code regression.
+
 ## 6. Running the online suite and cleaning up
 
 ```bash

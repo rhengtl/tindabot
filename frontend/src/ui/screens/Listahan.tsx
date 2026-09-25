@@ -66,7 +66,7 @@ export function Listahan({ onUtang, onBayad }: { onUtang: (customerId: string | 
         </div>
       ) : (
         <>
-          <input className="search" placeholder={S.pera.searchCustomer} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="search" aria-label={S.pera.searchCustomer} placeholder={S.pera.searchCustomer} value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="card">
             {rows.map(({ c, st }) => (
               <div key={c.id} className="line">
@@ -176,11 +176,11 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
         <div className="card soft">
           <div className="field">
             <label>{S.pera.customerName}</label>
-            <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            <input aria-label={S.pera.customerName} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </div>
           <div className="field">
             <label>{S.pera.customerPhone}</label>
-            <input type="tel" inputMode="tel" value={draft.phone ?? ''} onChange={(e) => setDraft({ ...draft, phone: e.target.value.trim() || null })} />
+            <input aria-label={S.pera.customerPhone} type="tel" inputMode="tel" value={draft.phone ?? ''} onChange={(e) => setDraft({ ...draft, phone: e.target.value.trim() || null })} />
           </div>
           <div className="row">
             <button type="button" className="btn secondary sm" onClick={() => setEditing(false)}>

@@ -53,8 +53,13 @@ export interface AuthApi {
   onChange(cb: (user: CloudUser | null) => void): () => void
 }
 
-/** App-level failure categories. The UI maps these to localized text; `message` is developer detail. */
-export type CloudErrorCode = 'network' | 'auth' | 'denied' | 'store_gone' | 'server' | 'unknown'
+/**
+ * App-level failure categories. The UI maps these to localized text; `message` is developer detail.
+ * `unavailable` is the cloud answering "not right now" — a project paused for inactivity (540) or
+ * an API gateway that cannot reach it (502/503/504, 57P03). It is not `network` (the phone has no
+ * connection), not `auth` (the session is the problem) and not `server` (the request itself failed).
+ */
+export type CloudErrorCode = 'network' | 'unavailable' | 'auth' | 'denied' | 'store_gone' | 'server' | 'unknown'
 
 /** Why a Google sign-in redirect came back without a session. */
 export type SignInErrorKind = 'cancelled' | 'exchange' | 'provider'
