@@ -67,6 +67,9 @@ interface Harness {
   now: number
 }
 
+/** Every engine a test builds, so afterEach can stop it before the database is deleted. */
+const liveEngines: Engine[] = []
+
 function harness(cloud: FakeCloud, opts: Partial<{ debounceMs: number; backoffMs: number[]; now: number }> = {}): Harness {
   const h = { cloud, statuses: [] as SyncStatus[], pulled: 0, online: true, now: opts.now ?? Date.parse('2026-09-15T10:00:00Z') } as Harness
   h.engine = new SyncEngine({
@@ -80,6 +83,7 @@ function harness(cloud: FakeCloud, opts: Partial<{ debounceMs: number; backoffMs
     debounceMs: opts.debounceMs ?? 0,
     backoffMs: opts.backoffMs,
   })
+  liveEngines.push(h.engine)
   return h
 }
 
@@ -88,8 +92,15 @@ beforeEach(async () => {
   await db.delete()
   await db.open()
 })
-afterEach(() => {
+afterEach(async () => {
+  // A test that ends while the engine still has a retry scheduled (or a run in flight) leaks it
+  // into the next test, whose beforeEach deletes the database underneath it — the run then dies
+  // with DatabaseClosedError and its unhandled rejection is attributed to whatever test happens
+  // to be running. Stopping the engines here is what keeps each test's lifecycle its own.
+  for (const e of liveEngines) e.dispose()
   vi.useRealTimers()
+  for (const e of liveEngines) await e.whenIdle()
+  liveEngines.length = 0
 })
 
 describe('claim: account has no store → upload the phone store', () => {
@@ -163,6 +174,7 @@ describe('claim: account has no store → upload the phone store', () => {
   })
 
   it('marks events synced only after the server acknowledged; a failed batch is retried once, never duplicated', async () => {
+    fakeTimers() // the backoff retry below has to fire on our clock, not on the machine's load
     const local = await seedLocal()
     const cloud = new FakeCloud(USER_A.id)
     const h = harness(cloud, { backoffMs: [10, 20, 30] })
@@ -176,7 +188,7 @@ describe('claim: account has no store → upload the phone store', () => {
     expect(cloud.products.size).toBe(1) // records before events were acknowledged and stay marked
     expect(await repo.countDirtyRecords(local.store.id)).toBe(0)
 
-    await new Promise((r) => setTimeout(r, 30)) // backoff retry
+    await vi.advanceTimersByTimeAsync(10) // the first step of the backoff ladder
     await h.engine.whenIdle()
     expect(h.engine.status.phase).toBe('idle')
     expect(cloud.eventsOf(local.store.id).length).toBe(3)
@@ -327,6 +339,7 @@ describe('claim: nothing to lose on the phone → pull the cloud store and switc
   })
 
   it('an interrupted pull never switches the store and resumes on the next run without duplicating anything', async () => {
+    fakeTimers() // the retry that resumes the pull must fire exactly when this test says so
     const local = await repo.createStore('Fresh phone', [3])
     const cloud = new FakeCloud(USER_A.id)
     const X = cloudStore('X0000000000000000000000003')
@@ -350,7 +363,7 @@ describe('claim: nothing to lose on the phone → pull the cloud store and switc
       if (++pullCalls === 2) throw new Error('mid-pull crash')
       return orig(...args)
     }
-    await new Promise((r) => setTimeout(r, 10))
+    await vi.advanceTimersByTimeAsync(5) // fires the pending retry: one more run, one more page
     await h.engine.whenIdle()
     expect((await repo.currentStore())!.id).toBe(local.id)
     expect(await repo.getMeta(META.claimPending)).toBe(X.id)
@@ -725,6 +738,7 @@ describe('pull windows: an event can never be skipped by the cursor', () => {
   })
 
   it('an interrupted pull resumes in the same frozen window and still ends up complete', async () => {
+    fakeTimers() // this test resumes the pull itself (syncNow); no retry may fire in between
     const localStore = await repo.createStore('Fresh phone', [3])
     const cloud = new FakeCloud(USER_A.id)
     const X = cloudStore('X0000000000000000000000009')

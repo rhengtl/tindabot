@@ -3,7 +3,7 @@
 // is not answering. It must stay distinct from offline / auth / denied / server, must not touch
 // anything local, must keep queued work queued, and must converge once the cloud is back.
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { db } from '../../db/db'
 import * as repo from '../../db/repo'
 import { strings } from '../../ui/strings'
@@ -72,9 +72,27 @@ describe('what the person is told', () => {
 })
 
 describe('the engine while the cloud is unavailable', () => {
+  /** Every engine these tests build, so teardown can stop it even if an assertion threw first. */
+  const liveEngines: SyncEngine[] = []
+  /** Builds an engine and registers it in one step, so none can be forgotten. */
+  function engineFor(deps: ConstructorParameters<typeof SyncEngine>[0]): SyncEngine {
+    const engine = new SyncEngine(deps)
+    liveEngines.push(engine)
+    return engine
+  }
+
   beforeEach(async () => {
     await db.delete()
     await db.open()
+  })
+  afterEach(async () => {
+    // Disposing inside the test body is skipped whenever an assertion throws before it, and the
+    // engine's retry timer (10 min here) would then outlive the test and run against the database
+    // the next beforeEach deletes. Teardown is the only place that happens unconditionally, and
+    // waiting for whenIdle() keeps a run that is still finishing from meeting db.delete().
+    for (const e of liveEngines) e.dispose()
+    for (const e of liveEngines) await e.whenIdle()
+    liveEngines.length = 0
   })
 
   it('keeps local data and the queue, then converges when the cloud comes back', async () => {
@@ -84,7 +102,7 @@ describe('the engine while the cloud is unavailable', () => {
 
     const cloud = new FakeCloud('u1')
     const statuses: string[] = []
-    const engine = new SyncEngine({
+    const engine = engineFor({
       api: cloud,
       onPulled: async () => {},
       onStatus: (s) => statuses.push(`${s.phase}:${s.error?.code ?? '-'}`),
@@ -121,21 +139,19 @@ describe('the engine while the cloud is unavailable', () => {
     expect(cloud.eventsOf(store.id).length).toBe(2)
     const local = await repo.loadSnapshot(store.id)
     expect(local!.events.length).toBe(2) // and nothing was lost or duplicated locally
-    engine.dispose()
   })
 
   it('waits longer before retrying an unavailable cloud than an ordinary failure', async () => {
     await repo.createStore('test-unavailable-backoff', [3])
     const run = async (code: CloudErrorCode) => {
       const cloud = new FakeCloud('u1')
-      const engine = new SyncEngine({ api: cloud, onPulled: async () => {}, debounceMs: 0, backoffMs: [10_000], unavailableBackoffMs: [600_000] })
+      const engine = engineFor({ api: cloud, onPulled: async () => {}, debounceMs: 0, backoffMs: [10_000], unavailableBackoffMs: [600_000] })
       cloud.failNext = 'listMyStores: injected'
       cloud.failNextCode = code
       engine.setUser({ id: 'u1', email: 'tindabot-test-a@example.com' })
       await engine.whenIdle()
-      const out = { code: engine.status.error?.code, delay: engine.nextRetryDelayMs }
-      engine.dispose()
-      return out
+      // read before teardown disposes it: dispose() clears the very timer this asserts on
+      return { code: engine.status.error?.code, delay: engine.nextRetryDelayMs }
     }
     expect(await run('unavailable')).toEqual({ code: 'unavailable', delay: 600_000 })
     expect(await run('server')).toEqual({ code: 'server', delay: 10_000 })
