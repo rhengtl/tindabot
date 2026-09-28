@@ -34,13 +34,12 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   if (!store) return null
 
   async function doExport() {
-    // Only a share the phone confirmed counts as a backup; a download cannot be verified.
+    // Both routes that got the file out of the app count as a backup date; the wording keeps the
+    // difference honest, because only the browser knows where a download finally lands.
     const outcome = await exportCurrentStore()
-    if (outcome === 'shared') {
+    if (outcome === 'shared' || outcome === 'download_started') {
       setLastBackup(new Date().toISOString())
-      toast(S.common.exported)
-    } else if (outcome === 'download_started') {
-      toast(S.ibaPa.exportUnconfirmed)
+      toast(outcome === 'shared' ? S.common.exported : S.ibaPa.exportStarted)
     } else if (outcome === 'failed') {
       toast(S.ibaPa.exportFailed)
     }

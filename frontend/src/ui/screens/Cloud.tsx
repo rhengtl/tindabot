@@ -144,7 +144,7 @@ export function ClaimChoiceSheet() {
   const onExport = async () => {
     const outcome = await exportCurrentStore()
     if (outcome === 'shared') toast(S.common.exported)
-    else if (outcome === 'download_started') toast(S.ibaPa.exportUnconfirmed)
+    else if (outcome === 'download_started') toast(S.ibaPa.exportStarted)
     else if (outcome === 'failed') toast(S.ibaPa.exportFailed)
   }
   const pick = async (c: 'phone' | 'cloud') => {

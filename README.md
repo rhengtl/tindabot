@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 295 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
+npm test           # 296 offline tests: domain vs reference oracles, Dexie markers, sync engine (in-memory cloud), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (295 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (296 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 
@@ -71,7 +71,9 @@ screen, callback, PKCE exchange, signed-in session, sign-out with local data int
 manually on the desktop localhost preview build with the `local_only` demo store current, so no
 cloud rows were created; **claiming and uploading a store under a Google identity is still
 unverified** (the phone runs used the email/password test accounts). Deployment is still open. Known device limitation: on the validation
-phone (realme C55 / Brave 1.95) the browser refuses file shares and fails every download, so the
-export file cannot be produced there; the app reports that as unconfirmed and does not record a
-backup. P3b (receipt camera + `/ai/parse`),
+phone (realme C55 / Brave 1.95) the browser refuses *file* shares (`NotAllowedError`), so the export
+falls back to a download; that download works — a real export file was produced and read back on the
+phone on 2026-09-28 — but Brave asks where to save it, and a web page cannot see how that prompt
+ends. `last_backup_at` therefore means "the export was handed over", never "the file is provably on
+disk", and the app says so in words. P3b (receipt camera + `/ai/parse`),
 P4 (assistant) and P5 (household) follow the blueprint roadmap.

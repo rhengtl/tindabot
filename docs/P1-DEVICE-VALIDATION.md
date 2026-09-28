@@ -121,10 +121,9 @@ and the download link is placed in the document with the blob URL revoked later 
 `src/ui/__tests__/export_file.test.ts` cover it.
 
 Still not working on this phone (browser/device level, outside the app): Brave refuses file shares
-(`NotAllowedError`) **and** every download fails — an `http`, a `blob:` and a `data:` link all end
-as "1 download failed" with nothing written anywhere under `/sdcard`. So the monthly backup file
-cannot be produced in Brave on this device, and the app still reports success (it cannot see the
-failure). The list *text* share works (the Android chooser opens). Home-screen install /
+(`NotAllowedError`). Every download attempted during this run also ended as "1 download failed" —
+**that part was later traced to the harness, not to the device; see the 2026-09-28 section below.**
+The list *text* share works (the Android chooser opens). Home-screen install /
 standalone behaviour is unchanged from P1/P2: Brave offers it, the realme launcher never places
 the icon.
 
@@ -144,10 +143,10 @@ Lifting the interception and tapping *Sync now* converged to "Backed up · last 
 nothing lost or re-entered. The same path was also verified end-to-end headlessly (paused → queue →
 recovery) and by unit tests.
 
-Export bookkeeping: tapping *I-export* on the phone now shows "Sent to your downloads — check that
-the file was really saved.", `last_backup_at` stayed at its previous value (06:35:32Z) and only
-`last_export_attempt_at` was written — the browser still produced no file, and the app no longer
-claims a backup it cannot confirm.
+Export bookkeeping: tapping *I-export* on the phone reached the download route (the share was
+refused) and reported it as started rather than as a finished backup. The bookkeeping this run
+recorded — `last_backup_at` untouched, `last_export_attempt_at` written — was the semantics in force
+at the time; it was replaced on 2026-09-28 (see below) once the download itself was shown to work.
 
 UI pass: all four tabs and the sheets were re-checked in Taglish and English — no horizontal
 overflow (423/423), nothing outside the screen, every tap target ≥ 44 px, no clipped labels, every
@@ -157,9 +156,10 @@ local data changed (27 products / 165 events). Desktop: the app keeps its single
 (620 px at ≥ 1024 px) framed against the page, sheets open centred as dialogs, and the FAB moves
 outside the column above 900 px.
 
-Known and unchanged: Brave on this phone refuses file shares and fails every download, so no export
-file can be produced there; home-screen install / standalone still does not happen on the realme
-launcher; the FAB overlaps list content while scrolling (ordinary FAB behaviour on the phone).
+Known and unchanged: Brave on this phone refuses file shares; home-screen install / standalone still
+does not happen on the realme launcher; the FAB overlaps list content while scrolling (ordinary FAB
+behaviour on the phone). (The download claim in this paragraph was corrected on 2026-09-28 — see the
+export diagnosis section below.)
 
 ## Sheet drag + Show/Hide (2026-09-25, same phone)
 
@@ -232,3 +232,35 @@ Still open from this area: the stale-`?code=` edge case (a return with no matchi
 different browser or cleared storage — is silently ignored by `@supabase/auth-js`, so the app shows
 no message and the parameter stays in the address bar). Deferred deliberately; it produces no session
 and touches nothing.
+
+## Export / download diagnosis (2026-09-28, same phone)
+
+realme RMX3710 (realme C55), Android 15, **Brave 1.95.104** (UA Chrome/153), 1080×2400 @ 408 dpi
+(423 × 794 CSS px). Diagnosis only; the app was not modified during it.
+
+**The earlier "every download fails" conclusion was wrong.** Brave on this phone is set to ask where
+to save each file: a modal *"Choose where to download"* (filename · Downloads · Don't show again ·
+Cancel · **Download**) appears and waits. It is drawn inside Brave's own activity, so the window
+focus never changes and the automated harness never saw it, never answered it, and the pending
+download was then cancelled — which is what produced "1 download failed". A second artefact: while
+a debugger is attached over CDP the dialog does not appear at all and the download fails instantly,
+so download checks must be run with nothing attached.
+
+Answering the prompt saves the file. Measured here: `http` + `Content-Disposition`, `blob:`, `data:`,
+a download 1.5 s after the tap, and the app's own share→reject→download sequence all saved. The app's
+*I-export* produced **`/sdcard/Download/tindabot-2026-09-28.json`, 38,104 bytes**, valid JSON with
+`format, version, exported_at, device_id, store, products, customers, events` for the demo store
+(12 products / 101 events). Brave's own history shows 16 successful downloads on this device,
+the most recent a 29 MB file on 2026-09-26. Storage: 144 GB free; `/sdcard/Download` writable.
+
+**Still true:** `navigator.share({files})` answers `canShare` with `true` and then rejects with
+`NotAllowedError: Permission denied`, reproduced with *and* without a debugger attached. Text sharing
+works. `navigator.storage.persisted()` is still `false` (2,211 KiB used of a 2,048 MiB quota) — a
+separate durability observation, unrelated to the export path.
+
+**Semantics decided from this (2026-09-28):** `last_backup_at` is written when the app has handed the
+export over — a resolved `navigator.share` **or** a download it successfully started. The app never
+claims the file reached disk: a web page cannot observe where a download lands or how the browser's
+save prompt ends, and the toast says so ("Ipinasa na sa browser — baka tanungin ka pa nito kung saan
+i-save." / "Handed to your browser — it may still ask you where to save it."). A route that could not
+be started marks nothing. Covered by six tests in `src/ui/__tests__/export_file.test.ts`.
