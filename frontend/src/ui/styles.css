@@ -194,6 +194,9 @@ h3:first-child { margin-top: 4px; }
 .search { width: 100%; min-height: var(--tap); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 10px; font-size: 1rem; }
 .cat-row { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); width: 100%; text-align: left; }
 .cat-row .meta { color: var(--muted); font-size: 0.8rem; }
+/* The language chips sit above the step dots on onboarding: centred, and out of the way of the
+   step's own controls. Size and colours come from .chip, so the tap target stays the tap size. */
+.onboarding-lang { justify-content: center; margin-bottom: 16px; }
 .step-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
 .step-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .step-dots span.on { background: var(--brand); }

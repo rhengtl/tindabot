@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import type { Weekday } from '../../domain'
+import { LANGS, type Lang, type Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
-import { useStrings } from '../i18n'
+import { useLang, useStrings } from '../i18n'
 import { AddProductSheet } from './AddProduct'
 
 export function Onboarding() {
   const S = useStrings()
+  const lang = useLang()
+  const setLang = useApp((s) => s.setLang)
   const createStore = useApp((s) => s.createStore)
   const init = useApp((s) => s.init)
   const store = useApp((s) => s.store)
@@ -38,6 +40,17 @@ export function Onboarding() {
 
   return (
     <div className="screen" style={{ paddingTop: 24 }}>
+      {/* Language before anything else: someone meeting the app for the first time should be able
+          to read the rest of onboarding. Same chips, same setLang() as Iba pa — one preference,
+          stored once in Dexie meta; it stays chosen when onboarding finishes. */}
+      <div className="chips onboarding-lang" role="group" aria-label={S.lang.title} data-testid="lang-chips">
+        {LANGS.map((l: Lang) => (
+          <button key={l} type="button" className={`chip ${lang === l ? 'on' : ''}`} data-testid={`lang-${l}`} aria-pressed={lang === l} onClick={() => setLang(l)}>
+            {S.lang[l]}
+          </button>
+        ))}
+      </div>
+
       <div className="step-dots">
         {[0, 1, 2].map((i) => (
           <span key={i} className={i <= step ? 'on' : ''} />
