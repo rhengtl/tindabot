@@ -66,8 +66,11 @@ and the anon key ever reach the frontend; RLS is the security boundary.
 P1 (local-only listahan) and P2 (utang/cash) are implemented and device-validated. P3a (Google
 sign-in + cloud backup/sync) is implemented, integration-tested against the online project and
 validated on the phone (restore, push, offline queue, a paused/unavailable cloud, sign-out; see
-[docs/P1-DEVICE-VALIDATION.md](docs/P1-DEVICE-VALIDATION.md)) — the Google consent screen itself
-was not exercised there, and deployment is still open. Known device limitation: on the validation
+[docs/P1-DEVICE-VALIDATION.md](docs/P1-DEVICE-VALIDATION.md)). The real Google round trip — consent
+screen, callback, PKCE exchange, signed-in session, sign-out with local data intact — was verified
+manually on the desktop localhost preview build with the `local_only` demo store current, so no
+cloud rows were created; **claiming and uploading a store under a Google identity is still
+unverified** (the phone runs used the email/password test accounts). Deployment is still open. Known device limitation: on the validation
 phone (realme C55 / Brave 1.95) the browser refuses file shares and fails every download, so the
 export file cannot be produced there; the app reports that as unconfirmed and does not record a
 backup. P3b (receipt camera + `/ai/parse`),

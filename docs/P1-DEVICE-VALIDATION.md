@@ -195,3 +195,40 @@ convention as the "Wag muna" section on Bahay — a filled `btn secondary sm` wi
 a ▼/▲ arrow, `aria-expanded` + `aria-controls`, 44 px tall, in both languages ("Ipakita ▼" /
 "Itago ▲", "Show ▼" / "Hide ▲"). Verified with real taps on the phone and with the keyboard on
 desktop.
+
+## Google sign-in — the real consent round trip (2026-09-28, desktop localhost preview)
+
+Owner-run manual test. This is the one part of P3a that cannot be automated: a real Google account
+has to be chosen and consent granted, and faking the flow was ruled out. Environment: the production
+build (`npm run build`) served by `vite preview --host 127.0.0.1 --port 4173` and opened at
+`http://localhost:4173/` in a **private window on the desktop** — a fresh storage partition, so no
+existing store could be claimed. The browser brand was not recorded. **Option 1**: the current store
+was the `local_only` demo, so by design nothing could be uploaded.
+
+Checked non-interactively first: the project answered (Google provider enabled, new signups not
+disabled); the built bundle inlines only the project URL and the anon key; the Cloud card offers
+*Mag-sign in gamit ang Google*; clicking it really navigates to Google's account chooser with
+`response_type=code`, scope `email profile` and `redirect_uri` = the project's `/auth/v1/callback`,
+with a PKCE code-verifier written to storage before leaving; and the return leg's failure branch
+works (a provider `access_denied` shows the cancelled message and the parameters are stripped).
+
+Verified by the owner in one pass: Google showed its **consent screen**; the browser came back to
+`http://localhost:4173/` with a **clean address bar** — no `code`, no `error`, no fragment, i.e.
+supabase-js exchanged the code and removed it; the Cloud card showed **`Naka-sign in: <the owner's
+Google address>`** together with **`Demo — hindi naka-sync sa cloud.`**; no error text anywhere;
+*Mag-sign out* returned the card to *Mag-sign in gamit ang Google*; and after a reload the demo store
+and all its rows were still present. The whole chain is therefore manually verified: account
+selection → consent → Supabase callback → PKCE exchange → authenticated session in the app →
+sign-out with local data intact.
+
+Deliberately **not** covered by this run, by owner decision (Option 2 was not performed): **claim and
+upload under a Google identity remain unverified.** Everything downstream of the session — the claim
+decision, the first upload, push/pull, the choice sheet — is still verified only with the
+email/password test accounts (2026-09-25 section above), never under a Google-created user. No cloud
+rows were created here: no store, no products, no events. The only server-side effect is that the
+owner's own Google identity now exists as a user in the project.
+
+Still open from this area: the stale-`?code=` edge case (a return with no matching PKCE verifier —
+different browser or cleared storage — is silently ignored by `@supabase/auth-js`, so the app shows
+no message and the parameter stays in the address bar). Deferred deliberately; it produces no session
+and touches nothing.
