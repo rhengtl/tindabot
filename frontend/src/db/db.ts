@@ -38,6 +38,10 @@ export class TindaDB extends Dexie {
     this.version(2).stores({
       customers: 'id, store_id',
     })
+    // The old `last_export_attempt_at` meta row is gone: since exports record a hand-off in
+    // `last_backup_at`, nothing writes or reads it any more, so devices upgraded from v2 drop the
+    // leftover row. Only that one key is touched; a database that never had it upgrades to nothing.
+    this.version(3).upgrade((tx) => tx.table('meta').delete('last_export_attempt_at'))
   }
 }
 

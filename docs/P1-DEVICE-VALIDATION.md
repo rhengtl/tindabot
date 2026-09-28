@@ -264,3 +264,8 @@ claims the file reached disk: a web page cannot observe where a download lands o
 save prompt ends, and the toast says so ("Ipinasa na sa browser — baka tanungin ka pa nito kung saan
 i-save." / "Handed to your browser — it may still ask you where to save it."). A route that could not
 be started marks nothing. Covered by six tests in `src/ui/__tests__/export_file.test.ts`.
+
+The old `last_export_attempt_at` meta key is no longer written by anything. Devices that exported
+under the earlier bookkeeping still carry the row, so Dexie schema version 3 deletes that one key
+while it opens the database — no other meta value, and no business data, is touched. Covered by
+`src/db/__tests__/migration.test.ts`.
