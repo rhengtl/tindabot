@@ -120,8 +120,8 @@ Checked read-only on 2026-09-29:
 - Test account A owns 232 stores and test account B owns 34. All are named `test-…` and all are
   archived; neither has an active store.
 - The optional helper `test_slow_insert_event` is **not** installed.
-- The owner's Google account owns one active store, *Google claim check* (created by the P3a
-  claim/upload verification).
+- The owner's Google account owned one active store, *Google claim check* (created by the P3a
+  claim/upload verification). It has since been archived; see item 5.
 
 1. **Isolation holds through RLS.** Test users see only test stores, and the owner's account sees
    only its own store. Neither the app nor the tests can delete anything.
@@ -146,8 +146,22 @@ Checked read-only on 2026-09-29:
      to it**. The local store is left untouched, but the owner lands in the verification store.
    - If the local store already has entries, the app asks which store to keep. Keeping the phone's
      store archives *Google claim check* (a flag; nothing is deleted).
-   - What to do with that store before production use is an owner decision. Nothing has been done
-     to it.
+   - **Resolved 2026-09-29 (owner decision): archived.** How it was done:
+     - It used the app's own owner-only `archive_store` call (the one behind "Keep the phone's
+       store") with the owner's own Google session. No admin key was used, and RLS and the owner
+       check applied. The store was identified by name, creator and owner membership first.
+     - The app was signed out **before** archiving. That matters because a signed-in device still
+       holding a store re-uploads and un-archives it.
+     - Only `archived_at` changed (plus the `server_rev` bump every update gets). Its 2 products,
+       1 customer, 8 events and the membership row are byte-identical.
+     - The owner's account now has **no active store**. So a first production sign-in with the
+       demo, or with a store that has no entries yet, uploads nothing and pulls nothing. A store
+       with entries becomes the account's store.
+     - **Do not sign in again in the throwaway Edge profile used for the P3a verification.** Its
+       `localhost` origin still holds that store and would un-archive it.
+   - Test isolation re-checked after the archive: the test accounts still see only their own
+     archived `test-…` stores (232 and 34); cross-account reads of stores, products and events
+     return nothing; anonymous reads get HTTP 401.
 6. **Moving existing local data** (e.g. the phone's validation data on `localhost`) to the
    production origin would mean an export on the old origin and an import on the new one. The
    import keeps the store's id. That has not been planned or tested, and it is not proposed here.
