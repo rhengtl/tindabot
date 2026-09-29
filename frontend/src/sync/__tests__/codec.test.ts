@@ -131,4 +131,29 @@ describe('cloud env — fails closed', () => {
     expect(readCloudEnv({ VITE_SUPABASE_URL: 'https://abc.supabase.co/', VITE_SUPABASE_ANON_KEY: 'x'.repeat(40) })).toBeNull()
     expect(readCloudEnv({ VITE_SUPABASE_URL: ' https://abc.supabase.co ', VITE_SUPABASE_ANON_KEY: ` ${'k'.repeat(40)} ` })).toEqual({ url: 'https://abc.supabase.co', anonKey: 'k'.repeat(40) })
   })
+
+  // Referencing `import.meta.env` as an object makes Vite inline every VITE_* variable of the build
+  // into the public bundle — including ones the host adds on its own (Vercel's commit author, commit
+  // message and repository ids reached the first hosted bundle this way). Only named reads of the two
+  // cloud settings may appear anywhere in the app's source.
+  it('the app source reads only the two cloud settings from the build environment, by name', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { fileURLToPath } = await import('node:url')
+    const root = fileURLToPath(new URL('../../', import.meta.url))
+    const files: string[] = []
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name)
+        if (statSync(p).isDirectory()) {
+          if (name !== '__tests__') walk(p)
+        } else if (/\.tsx?$/.test(name)) files.push(p)
+      }
+    }
+    walk(root)
+    const reads: string[] = []
+    for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/import\.meta\.env(\.[A-Za-z_]\w*)?/g)) reads.push(m[0])
+    expect(reads.length).toBeGreaterThan(0)
+    expect([...new Set(reads)].sort()).toEqual(['import.meta.env.VITE_SUPABASE_ANON_KEY', 'import.meta.env.VITE_SUPABASE_URL'])
+  })
 })

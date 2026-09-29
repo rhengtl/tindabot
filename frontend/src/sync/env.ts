@@ -8,7 +8,16 @@ export interface CloudEnv {
   anonKey: string
 }
 
-export function readCloudEnv(env: Record<string, unknown> = import.meta.env as Record<string, unknown>): CloudEnv | null {
+// The two variables are read by name on purpose. When the build-env object itself is referenced,
+// Vite inlines all of it, and a host can add its own `VITE_*` variables to the build (Vercel
+// does: commit author, commit message, repository and project ids), which would then ship in the
+// public bundle. Named reads inline these two values and nothing else.
+const BUILD_ENV = {
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+}
+
+export function readCloudEnv(env: Record<string, unknown> = BUILD_ENV): CloudEnv | null {
   const url = typeof env.VITE_SUPABASE_URL === 'string' ? env.VITE_SUPABASE_URL.trim() : ''
   const anonKey = typeof env.VITE_SUPABASE_ANON_KEY === 'string' ? env.VITE_SUPABASE_ANON_KEY.trim() : ''
   if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url)) return null
