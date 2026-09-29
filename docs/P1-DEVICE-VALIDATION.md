@@ -457,3 +457,31 @@ marker.
 is cleared at startup, so nothing mistakes it for an open sheet, but that first screen needs one extra
 back press. And the FAB's quick-action panel is not a `Sheet`, so it does not consume back; the
 back press there still leaves the app.
+
+## Release-readiness audit (2026-09-29)
+
+Checked against the tests and the code rather than against this document. Three areas had claims with
+no direct evidence behind them; all three were verified now.
+
+**The client carries nothing privileged.** The production build was scanned (648,872 characters of
+js/html/css/json): it contains the project URL and the publishable key from `frontend/.env.local` and
+nothing else from any env file — no test-account email or password, no `service_role`, no
+`client_secret`, no private key, and no JWT of any kind. The key in the build is a publishable
+(`sb_publishable_…`) key, not a secret one. The only occurrences of the word "password" are
+supabase-js' own identifiers (`weak_password`, the `signInWithPassword` body), and the only
+`sb_publishable_` mention in a build without configuration is the library's own prefix check. Both
+env files are git-ignored and untracked.
+
+**A build with no cloud configuration really is local-only.** Built with the env vars empty: the
+output contains no supabase host and no key at all, and the app onboards, records a cash count, and
+offers export/import as usual, while the cloud card reads *"Cloud backup is not available in this
+build. Everything still works on your phone."*, no sign-in appears anywhere, and the page makes no
+request off its own origin.
+
+**The auth wrapper's own rules are now covered offline** (`src/sync/__tests__/auth_api.test.ts`, 9
+tests): which supabase-js events mean "this is who is signed in" (`SIGNED_IN`, `INITIAL_SESSION`,
+`TOKEN_REFRESHED`, `USER_UPDATED`), which mean nobody (`SIGNED_OUT`, and an initial event with no
+session), which are ignored, that the subscription is dropped when the app stops listening, that
+signing out uses `scope: 'local'` so it never ends the owner's sessions elsewhere, and that a failed
+sign-out surfaces as a `CloudError` with the right category instead of being swallowed. Until now
+only the online suite touched this path.
