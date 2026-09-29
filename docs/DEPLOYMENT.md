@@ -2,9 +2,10 @@
 
 Owner decisions (2026-09-29): host the frontend on **Vercel**, and **reuse the existing Supabase
 project** (the one used for P3a and its tests) for production. There is no separate production
-project. This is a personal project, and the owner accepts the shared project. Nothing has been
-deployed yet. This file lists what the first deployment needs and how to check it. It contains
-**no values**: every URL, key and ID below is a placeholder that the owner supplies.
+project. This is a personal project, and the owner accepts the shared project. First deployed on
+2026-09-29 to the production domain `tindabot.vercel.app`. The results of the hosted checks are in
+§6. Apart from that domain, this file contains **no values**: every URL, key and ID below is a
+placeholder that the owner supplies.
 
 Setup of the project itself (schema, providers, test users) is in [P3A-SETUP.md](P3A-SETUP.md).
 
@@ -53,8 +54,16 @@ security boundary. Nothing else goes to Vercel:
 - no Google client secret;
 - none of the `TEST_*` / `TINDABOT_TEST_USERS` variables from `frontend/.env.test.local`.
 
-Only variables starting with `VITE_` can reach the bundle, and the build-output scan below
-confirms which ones do.
+Only variables starting with `VITE_` can reach the bundle. Vercel adds variables of its own to Vite
+builds: `VITE_VERCEL_*`, carrying the commit author, the commit message, and repository and project
+ids.
+
+**Fixed 2026-09-29:** the first hosted bundle carried all of them. `env.ts` referenced the whole
+build-env object, and Vite then inlines every `VITE_*` variable. None of them was a credential, but
+together they published private repository metadata. The two settings are now read by name, and a
+test (`sync/__tests__/codec.test.ts`) fails if any source file reads the env object any other way.
+The redeployed bundle contains only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The
+build-output scan below confirms which values reach the bundle.
 
 **Pitfall:** the app refuses malformed cloud settings and silently builds as local-only
 (`frontend/src/sync/env.ts`). A URL with a trailing `/` counts as malformed. This was checked on
@@ -166,9 +175,9 @@ Checked read-only on 2026-09-29:
    production origin would mean an export on the old origin and an import on the new one. The
    import keeps the store's id. That has not been planned or tested, and it is not proposed here.
 
-## 6. Checks that need the real deployment (not yet done)
+## 6. Checks that need the real deployment
 
-None of these can be verified locally. Deployment-ready is not established until they pass.
+None of these can be verified locally. The checklist is kept as written; results follow it.
 
 1. Production URL on desktop: loads over HTTPS, no console errors, service worker registered,
    offline reload works, and response headers for `sw.js` / `index.html` revalidate.
@@ -186,3 +195,53 @@ None of these can be verified locally. Deployment-ready is not established until
      the app or in a browser tab is unverified.
 4. Update path: redeploy a changed build, and an open app picks it up on its next reload.
 5. Cloud Card on the deployed build is not "not available" (catches the env pitfall in §2).
+
+### Results, 2026-09-29 (`tindabot.vercel.app`, commit `179e6fe`)
+
+**What was deployed.** The hosted `index-B5a79SV4.js` is byte-identical to a local build of that
+commit. `index.html`, `sw.js` and `icon.svg` differ only in line endings (Vercel builds on Linux).
+`/`, `index.html`, `sw.js`, `manifest.webmanifest` and `registerSW.js` are served with
+`Cache-Control: public, max-age=0, must-revalidate`, over HSTS. Unknown paths return 404.
+
+**Desktop** (Edge 154, throwaway profile, demo store) — all PASS:
+- HTTPS load; app shell; no page or console errors.
+- Cloud available: *Sign in with Google*, not the local-only fallback.
+- No off-origin requests before sign-in.
+- Service worker active and controlling; manifest valid; the browser reports no installability
+  errors.
+- Offline reload starts the app.
+- Update: an open tab on the first deployment got the redeploy on its **second** reload. The
+  first reload installed the new worker and swapped the cached bundle; the demo data was kept and
+  the old bundle evicted.
+- `persisted()` is `false` in a tab.
+- **Real Google sign-in from the hosted origin:**
+  - It returned to `tindabot.vercel.app` with a clean address bar and a Google-provider session;
+    the card showed *Signed in* and *Demo — not synced*.
+  - The demo was not bound, and no cloud store was created: the account still has only the
+    archived *Google claim check*.
+  - Sign-out removed the session; local data was identical, also after a reload.
+- The redirect allow-list entry for the domain is therefore confirmed in practice.
+
+**Cloud sync on the hosted origin** (test account A only; two fresh headless browser profiles as
+two devices; store `test-hosted-mumo8ew0`) — all PASS:
+- Device 1 uploaded, and its rows equal the cloud's.
+- Device 2 (demo) signed in and pulled the store, switching to it.
+- One entry on each device, then syncs: 4 events on both devices and in the cloud, identical ids,
+  no duplicates, nothing pending.
+- Test account B got nothing reading A's store, and HTTP 403 inserting into it or archiving it.
+- Both devices were closed, then the store was archived. A is back to no active store (233
+  archived `test-…` stores); the cleanup script can remove it later.
+
+**Phone** (realme C55, Brave; Chrome still disabled; hosted origin only — the `localhost`
+validation data was not touched):
+
+| Check | Result |
+|---|---|
+| HTTPS load, app shell, cloud available, SW active/controlling, manifest valid, no installability errors, offline reload, no off-origin requests, no errors | PASS |
+| `persisted()` in a tab | `false` (recorded; unchanged from before) |
+| Back button (tab): the first back dismisses the keyboard, the next closes the sheet, the app stays, and the entry is handed back; root back leaves the page | PASS |
+| Install | Brave's *Install and create shortcut → Install* → the launcher's *Add to Home screen* → *Add*. Android lists the shortcut as **pinned**: Brave web-app mode, display standalone, scope = the hosted origin. No WebAPK package. |
+| Icon on the home screen | **Not found** by the owner on the realme launcher |
+| Standalone launch | **BLOCKED / not verified.** Replaying the shortcut's own launch intent opened a normal Brave tab (`display-mode: standalone` false). Whether a real icon tap opens standalone is unknown. |
+| `persisted()` / back / sign-in in the installed app | **BLOCKED** (depends on the above) |
+| Real Google sign-in in a Brave tab | PASS: returned to the hosted origin with a clean address and a Google session; demo not uploaded; account still only the archived store; sign-out kept local data, also after a reload |
