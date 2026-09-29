@@ -380,11 +380,23 @@ importing completely once writes worked again (`stores: ["Someone Else Store"], 
 `src/db/__tests__/import_atomic.test.ts` (4 tests) plus the import-message mapping in
 `src/ui/__tests__/write_guard.test.ts`.
 
-**Known limitation, unchanged (no decision taken):** `isExportFile` validates only the file's shape —
-`format`, `version`, a store object and arrays — never the contents, which BLUEPRINT §C leaves to entry
-validation. A hand-edited or foreign file that keeps that shape but carries a malformed store row is
-therefore accepted, replaces the current store, and then cannot be derived; startup reports it through
-the storage-error screen (the same screen as an unopenable database), which is the wrong explanation
-even though no data is lost. Events with wrong or missing fields are accepted and ignored by
-derivation. Deciding how strict import validation should be, and whether a data-shape failure deserves
-its own screen, is the owner's call.
+**Import validation (owner decision, 2026-09-29):** `isExportFile` now also requires the file's *store*
+to be one the app can open — `id`, `name`, `restock_days`, `multipliers.payday`, `multipliers.fri_sat`
+and `updated_at`, with `next_trip_override` optional. These are the fields derivation and the screens
+actually read (`list.ts`, Bahay, Iba pa), and they are the same ones the cloud decoder insists on
+(`sync/codec.ts` `rowToStore`). The check runs in `importJson` before `repo.importFile`, so a file the
+app could not open is refused **before** replace mode deletes anything, and it reuses the existing
+*"Hindi ito TindaBot export file." / "This is not a TindaBot export file."* message. Contents beyond the
+store are still not validated: amounts and quantities are checked at entry (BLUEPRINT §C), and events
+the domain does not recognise are simply never derived.
+
+Verified through the built app on the throwaway origin: a malformed export is refused with that
+message and leaves the store, its history and the current-store pointer untouched, and the app still
+opens their store after a reload; a good file interrupted partway rolls back completely and reports
+*"The file could not be imported."*; the same file uninterrupted imports completely (*"Imported: 2 new
+entries."*) and opens; importing it again duplicates nothing.
+
+**Left unchanged by decision:** a data-shape failure still reports through the shared storage-error
+screen rather than a screen of its own, and multi-tab freshness is untouched — a second tab still does
+not learn about the first tab's writes, and refocus re-derives from memory rather than re-reading the
+log, which keeps the accepted ~1.3 s read out of the refocus path.

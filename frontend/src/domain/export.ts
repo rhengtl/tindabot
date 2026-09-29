@@ -35,10 +35,41 @@ export function buildExport(s: Snapshot, deviceId: ULID, exportedAt: ISODateTime
   }
 }
 
+function isObj(x: unknown): x is Record<string, unknown> {
+  return !!x && typeof x === 'object' && !Array.isArray(x)
+}
+
+/**
+ * The store the file carries must be a store this app can actually open: `restock_days` and
+ * `multipliers` decide every trip and quantity (list.ts), `name` is the header, `updated_at` decides
+ * import LWW, and `id` is what merge-or-replace is chosen on. The same fields the cloud decoder
+ * insists on (sync/codec.ts `rowToStore`), for the same reason — a row missing them cannot be
+ * derived — plus the two multipliers, which are read by number. `next_trip_override` may be absent
+ * or null: nothing breaks without it.
+ *
+ * Contents beyond the store are deliberately not validated here: amounts and quantities are checked
+ * at entry (BLUEPRINT §C), and events the domain does not recognise are simply never derived.
+ */
+function isStoreShape(x: unknown): boolean {
+  if (!isObj(x)) return false
+  const m = x.multipliers
+  return (
+    typeof x.id === 'string' &&
+    x.id.length > 0 &&
+    typeof x.name === 'string' &&
+    Array.isArray(x.restock_days) &&
+    typeof x.updated_at === 'string' &&
+    isObj(m) &&
+    typeof m.payday === 'number' &&
+    typeof m.fri_sat === 'number' &&
+    (x.next_trip_override === undefined || x.next_trip_override === null || typeof x.next_trip_override === 'string')
+  )
+}
+
 export function isExportFile(x: unknown): x is ExportFile {
   if (!x || typeof x !== 'object') return false
   const f = x as Partial<ExportFile>
-  return f.format === 'tindabot-export' && f.version === 1 && !!f.store && Array.isArray(f.products) && Array.isArray(f.events) && (f.customers === undefined || Array.isArray(f.customers))
+  return f.format === 'tindabot-export' && f.version === 1 && isStoreShape(f.store) && Array.isArray(f.products) && Array.isArray(f.events) && (f.customers === undefined || Array.isArray(f.customers))
 }
 
 export interface MergeResult {
