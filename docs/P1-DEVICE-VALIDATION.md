@@ -400,3 +400,42 @@ entries."*) and opens; importing it again duplicates nothing.
 screen rather than a screen of its own, and multi-tab freshness is untouched — a second tab still does
 not learn about the first tab's writes, and refocus re-derives from memory rather than re-reading the
 log, which keeps the accepted ~1.3 s read out of the refocus path.
+
+## Release lifecycle — a new version reaching an open app (2026-09-29)
+
+How every future fix reaches a phone had never been exercised end to end, so two consecutive
+production builds were served from a throwaway origin and swapped underneath a running session
+(version A `index-4oz9MP1k.js`, version B `index-D1bOUZbQ.js`, distinguishable in the page).
+
+The service worker is Workbox `generateSW` with `skipWaiting`, `clientsClaim` and
+`cleanupOutdatedCaches`, and the injected `registerSW.js` only registers — **it never reloads the
+page**. Measured behaviour, all as intended:
+
+| Moment | What happens |
+|---|---|
+| Version B released while the app is open | The new worker installs, precaches B and drops A from the cache, and takes control — **the open page is not reloaded from under the person** and keeps running A |
+| Recording during that window | Still works; their entries are untouched (verified before and after the swap) |
+| Next reload | Version B, confirmed by both the bundle hash and the new code running |
+| Offline immediately after the update | The app starts on B from the precache, shows their entries, and records new ones |
+
+Consequence worth knowing rather than fixing: a person keeps the version they loaded until they
+reload, and the old bundle is evicted from the cache as soon as the new worker activates. With one
+bundle and no code splitting, nothing the running page needs is fetched again, so this window is
+harmless today; it would stop being harmless if the app were ever split into lazily loaded chunks.
+
+## Everyday interruptions (2026-09-29)
+
+Driven through the built app, with the entry sheets:
+
+| Interruption | Result |
+|---|---|
+| Reload with a half-filled sheet | The app comes back up; the unsaved entry is simply gone, never half-written |
+| Double tap on save | Exactly one entry recorded (the `saving` guard plus write-once by event id) |
+| Reload the instant after tapping save | The entry is either fully there or not at all; nothing else damaged |
+| The same amount entered again on purpose | Kept — a fresh id per sheet opening, so deliberate repeats are not swallowed |
+| **The phone's back button with a sheet open** | First press dismisses the keyboard (Android's own behaviour). The next press **closes the tab and drops to the launcher** — the app never takes a back press, because no sheet pushes a history entry (`history.length` was 1) |
+
+Nothing is corrupted by any of these: after back, reopening the app restores the store and nothing
+half-entered was written. But an open sheet is lost with the tab, and in an installed (standalone)
+app the same press would exit the app. Whether a sheet should consume a back press is a UX decision
+for the owner; nothing was changed here.
