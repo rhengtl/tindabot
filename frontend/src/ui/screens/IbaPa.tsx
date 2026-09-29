@@ -3,6 +3,7 @@ import { LANGS, type Lang, type Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
 import { useToast, useWrite } from '../components'
+import { importFailureKind } from '../write'
 import { exportCurrentStore } from '../exportFile'
 import { useLang, useStrings } from '../i18n'
 import { CloudCard } from './Cloud'
@@ -48,16 +49,25 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
 
   async function doImport(f: File) {
     const text = await f.text()
+    const reportFailure = (e: unknown) => {
+      console.error('[tindabot] import failed:', e) // the reason for diagnosis; the toast for the person
+      toast(importFailureKind(e) === 'not_export_file' ? S.ibaPa.importNotExport : S.ibaPa.importFailed)
+    }
     try {
       const r = await importJson(text, 'merge')
       toast(S.ibaPa.imported(r.added_events))
+      return
     } catch (e) {
-      if ((e as Error).message === 'different_store') {
-        if (window.confirm(S.ibaPa.importReplaceQ)) {
-          const r = await importJson(text, 'replace')
-          toast(S.ibaPa.imported(r.added_events))
-        }
-      } else toast((e as Error).message === 'not_export_file' ? S.ibaPa.importNotExport : S.ibaPa.importFailed)
+      if (importFailureKind(e) !== 'different_store') return reportFailure(e)
+    }
+    // Replacing is the destructive path, so it reports its own failures too: the import itself rolls
+    // back as one transaction (see repo.importFile), and the person is told it did not happen.
+    if (!window.confirm(S.ibaPa.importReplaceQ)) return
+    try {
+      const r = await importJson(text, 'replace')
+      toast(S.ibaPa.imported(r.added_events))
+    } catch (e) {
+      reportFailure(e)
     }
   }
 

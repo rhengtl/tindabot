@@ -143,11 +143,20 @@ export async function loadSnapshot(storeId: string): Promise<Snapshot | null> {
   return { store: stripStore(store), products, customers, events }
 }
 
-/** Import into the current store (same id) or replace the current store entirely. Never used by sync. */
+/**
+ * Import into the current store (same id) or replace the current store entirely. Never used by sync.
+ *
+ * One transaction covers the whole import, events included: an import that is interrupted — the tab
+ * closed, storage refused halfway, the phone out of space — must leave the database exactly as it
+ * was. In `replace` mode that is what stands between an interruption and real loss, because the
+ * first thing this does is delete the store being replaced.
+ */
 export async function importFile(file: ExportFile, mode: 'merge' | 'replace'): Promise<{ added_events: number; updated_products: number; updated_customers: number }> {
   const customers = file.customers ?? [] // P1 export files have an empty (or missing) customers array
+  const tables = [db.stores, db.products, db.customers, db.events, db.meta]
   if (mode === 'replace') {
-    await db.transaction('rw', [db.stores, db.products, db.customers, db.events, db.meta], async () => {
+    let added = 0
+    await db.transaction('rw', tables, async () => {
       const cur = await getMeta('current_store')
       if (cur) {
         await db.products.where('store_id').equals(cur).delete()
@@ -159,21 +168,22 @@ export async function importFile(file: ExportFile, mode: 'merge' | 'replace'): P
       await db.products.bulkPut(file.products)
       await db.customers.bulkPut(customers)
       await setMeta('current_store', file.store.id)
+      added = await addEvents(file.events) // nested in this transaction, not a second one
     })
-    const added = await addEvents(file.events)
     return { added_events: added, updated_products: file.products.length, updated_customers: customers.length }
   }
   const existing = await loadSnapshot(file.store.id)
   if (!existing) throw new Error('store not found')
   const merged = mergeImport(existing, file)
-  await db.transaction('rw', [db.stores, db.products, db.customers], async () => {
+  let added = 0
+  await db.transaction('rw', tables, async () => {
     // Imported records replace the domain fields but keep the row's sync marker, so a record that
     // changed through the import becomes dirty and is pushed.
     if (merged.store_updated) await saveRecordKeepingMarker(marked<Store>(db.stores), merged.snapshot.store)
     for (const p of merged.snapshot.products) await saveRecordKeepingMarker(marked<Product>(db.products), p)
     for (const c of merged.snapshot.customers) await saveRecordKeepingMarker(marked<Customer>(db.customers), c)
+    added = await addEvents(file.events)
   })
-  const added = await addEvents(file.events)
   return { added_events: added, updated_products: merged.updated_products, updated_customers: merged.updated_customers }
 }
 

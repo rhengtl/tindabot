@@ -353,3 +353,38 @@ consequence of a failure is that the nudge reappears. Separately, clearing site 
 open does not fail writes at all — Dexie recreates the database and later writes land in the new,
 empty one; the app shows onboarding on the next reload. That is a different scenario from these two
 and was not part of this change.
+
+## Data integrity under interruption — import (2026-09-29)
+
+An import used to be written in two transactions: the records first, the events after. An
+interruption in between — the tab closed, the device out of space, storage revoked — left it half
+applied. In `replace` mode (BLUEPRINT §E: the only destructive local path) that was worse than half,
+because the first thing it does is delete the store being replaced: reproduced with event writes made
+to fail at exactly that point, the person's store, product and both events were **gone** and the
+imported store arrived with no history at all. Merge mode left records updated with the imported
+events missing.
+
+**Fixed:** the whole import, events included, now runs in one transaction (`repo.importFile`), so an
+interrupted import leaves the database exactly as it was. Re-importing the same file afterwards
+completes normally and stays idempotent (write-once by event id inside that one transaction).
+
+A second, separate defect surfaced in the same run: the *replace* branch of Iba pa's import ran inside
+the merge branch's `catch` with no error handling of its own, so when the destructive import failed the
+person was told **nothing**. It now reports the existing *"Hindi na-import ang file." / "The file could
+not be imported."* message, with the reason in the console.
+
+Verified through the built app on the throwaway origin: a store with two recorded cash counts, an
+import of a file from a different store, event writes failing partway → their store, history and
+current-store pointer all unchanged, the failure toast shown, the app still usable, and the same file
+importing completely once writes worked again (`stores: ["Someone Else Store"], events: 2`). Covered by
+`src/db/__tests__/import_atomic.test.ts` (4 tests) plus the import-message mapping in
+`src/ui/__tests__/write_guard.test.ts`.
+
+**Known limitation, unchanged (no decision taken):** `isExportFile` validates only the file's shape —
+`format`, `version`, a store object and arrays — never the contents, which BLUEPRINT §C leaves to entry
+validation. A hand-edited or foreign file that keeps that shape but carries a malformed store row is
+therefore accepted, replaces the current store, and then cannot be derived; startup reports it through
+the storage-error screen (the same screen as an unopenable database), which is the wrong explanation
+even though no data is lost. Events with wrong or missing fields are accepted and ignored by
+derivation. Deciding how strict import validation should be, and whether a data-shape failure deserves
+its own screen, is the owner's call.

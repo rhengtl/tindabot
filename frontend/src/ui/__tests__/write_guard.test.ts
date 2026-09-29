@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { db } from '../../db/db'
 import * as repo from '../../db/repo'
 import { EN, TL } from '../strings'
-import { guardedWrite } from '../write'
+import { guardedWrite, importFailureKind } from '../write'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -115,5 +115,37 @@ describe('every screen that writes goes through the guard', () => {
     }
     expect(offenders).toEqual([])
     expect(checked).toBeGreaterThanOrEqual(9) // the screens that write today
+  })
+})
+
+describe('importFailureKind', () => {
+  it('separates the question about replacing from a real failure', () => {
+    expect(importFailureKind(new Error('different_store'))).toBe('different_store')
+    expect(importFailureKind(new Error('not_export_file'))).toBe('not_export_file')
+  })
+
+  it('treats everything else as a failure the person must be told about', () => {
+    for (const thrown of [
+      new Error('store not found'),
+      new DOMException('Data provided to an operation does not meet requirements.', 'DataError'),
+      new DOMException('The quota has been exceeded.', 'QuotaExceededError'),
+      new Error(''),
+      'a string',
+      undefined,
+      null,
+    ]) {
+      expect(importFailureKind(thrown)).toBe('failed')
+    }
+  })
+
+  it('the import messages exist in both languages and claim nothing about the file being applied', () => {
+    for (const S of [TL, EN]) {
+      expect(S.ibaPa.importFailed.length).toBeGreaterThan(8)
+      expect(S.ibaPa.importNotExport.length).toBeGreaterThan(8)
+      expect(S.ibaPa.importFailed).not.toBe(S.ibaPa.importNotExport)
+      for (const text of [S.ibaPa.importFailed, S.ibaPa.importNotExport]) {
+        expect(text).not.toMatch(/Error|IndexedDB|Dexie|DataError/)
+      }
+    }
   })
 })

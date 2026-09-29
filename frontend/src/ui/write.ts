@@ -21,3 +21,16 @@ export async function guardedWrite(write: () => Promise<unknown>, onFail: () => 
     return false
   }
 }
+
+/**
+ * Which import message a failure should get. `store not found` / `different_store` is not a failure
+ * at all — it is the question about replacing the store — so the caller checks for that first and
+ * everything else falls back to "could not be imported": a file the app cannot read and a device
+ * that would not finish the write are the same thing to the person holding the phone.
+ */
+export type ImportFailureKind = 'not_export_file' | 'different_store' | 'failed'
+
+export function importFailureKind(e: unknown): ImportFailureKind {
+  const message = e instanceof Error ? e.message : ''
+  return message === 'not_export_file' || message === 'different_store' ? message : 'failed'
+}
