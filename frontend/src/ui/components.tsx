@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { useStrings } from './i18n'
 import { dragOffset, shouldDismiss } from './sheetDrag'
+import { sheetHistory } from './sheetHistory'
 import { guardedWrite } from './write'
 
 // ---------- Sheet (bottom modal) ----------
@@ -12,12 +13,24 @@ import { guardedWrite } from './write'
 export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: number; startY: number; startMs: number; dy: number } | null>(null)
+  // Closing is triggered from three places (Escape, back, the sheet's own buttons) and most callers
+  // pass a fresh arrow every render, so the handler lives in a ref: the effects below then depend on
+  // `open` alone and a re-render can never register a second time.
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open])
+  // One history entry per opening, so the phone's back button dismisses this sheet instead of
+  // leaving the app; closing it any other way takes that entry back out (see sheetHistory.ts).
+  useEffect(() => {
+    if (!open) return
+    const release = sheetHistory.open(() => closeRef.current())
+    return release
+  }, [open])
   if (!open) return null
 
   const draw = (dy: number | null) => {

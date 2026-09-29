@@ -435,7 +435,25 @@ Driven through the built app, with the entry sheets:
 | The same amount entered again on purpose | Kept — a fresh id per sheet opening, so deliberate repeats are not swallowed |
 | **The phone's back button with a sheet open** | First press dismisses the keyboard (Android's own behaviour). The next press **closes the tab and drops to the launcher** — the app never takes a back press, because no sheet pushes a history entry (`history.length` was 1) |
 
-Nothing is corrupted by any of these: after back, reopening the app restores the store and nothing
-half-entered was written. But an open sheet is lost with the tab, and in an installed (standalone)
-app the same press would exit the app. Whether a sheet should consume a back press is a UX decision
-for the owner; nothing was changed here.
+Nothing was corrupted by any of these, but an open sheet was lost with the tab.
+
+**Fixed (owner decision, 2026-09-29): a bottom sheet now takes the back press.** The shared `Sheet`
+component adds one history entry when it opens and hands it back when it closes by any other route,
+so back dismisses the sheet; with no sheet open nothing is registered and back is the browser
+navigation it always was. The URL never changes, tabs get no history entries, and the OAuth callback's
+`replaceState` is untouched. The rule itself lives in `src/ui/sheetHistory.ts` behind a small port, so
+it is tested without a DOM (`src/ui/__tests__/sheet_history.test.ts`, 10 tests).
+
+Verified on the phone against the production build: opening the cash sheet gives it its own history
+entry; the first back press still dismisses the keyboard (Android's own behaviour) and the next closes
+the sheet with the app still on screen in Brave; reopening behaves the same; closing with the sheet's
+own backdrop hands the entry back; and with no sheet open, back is again ordinary browser navigation
+(it left the page). Headlessly on the built app, 17 further checks: exactly one entry per opening,
+no further entries while typing in it, four open/back cycles leaving the history where it started,
+tab switches adding no entries, and a reload with a sheet open coming back with no sheet and no stale
+marker.
+
+**Edge cases worth knowing:** a reload while a sheet is open leaves one spent entry behind — its marker
+is cleared at startup, so nothing mistakes it for an open sheet, but that first screen needs one extra
+back press. And the FAB's quick-action panel is not a `Sheet`, so it does not consume back; the
+back press there still leaves the app.

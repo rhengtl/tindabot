@@ -14,6 +14,7 @@ import { type PeraKind, PeraSheet } from './screens/Pera'
 import { Onboarding } from './screens/Onboarding'
 import { Paninda } from './screens/Paninda'
 import { useStrings } from './i18n'
+import { forgetStaleSheetEntry } from './sheetHistory'
 
 type Tab = 'bahay' | 'paninda' | 'listahan' | 'ibapa'
 
@@ -85,6 +86,9 @@ function Shell() {
 
   useEffect(() => {
     init()
+    // A reload with a sheet open leaves one of the sheet entries behind; drop its marker so nothing
+    // later takes it for an open sheet (see sheetHistory.ts).
+    forgetStaleSheetEntry()
   }, [init])
 
   // A failed Google sign-in lands back here on whatever tab was open: say so once (the Cloud card
