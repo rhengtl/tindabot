@@ -222,7 +222,8 @@ selection → consent → Supabase callback → PKCE exchange → authenticated 
 sign-out with local data intact.
 
 Deliberately **not** covered by this run, by owner decision (Option 2 was not performed): **claim and
-upload under a Google identity remain unverified.** Everything downstream of the session — the claim
+upload under a Google identity remain unverified.** (Verified afterwards, 2026-09-29; see the claim
+and upload section below.) Everything downstream of the session — the claim
 decision, the first upload, push/pull, the choice sheet — is still verified only with the
 email/password test accounts (2026-09-25 section above), never under a Google-created user. No cloud
 rows were created here: no store, no products, no events. The only server-side effect is that the
@@ -232,6 +233,52 @@ Still open from this area: the stale-`?code=` edge case (a return with no matchi
 different browser or cleared storage — is silently ignored by `@supabase/auth-js`, so the app shows
 no message and the parameter stays in the address bar). Deferred deliberately; it produces no session
 and touches nothing.
+
+## Claim and upload under a Google identity (2026-09-29, desktop localhost preview)
+
+Owner-approved ("Option 2"), closing the gap left above. The demo store could not be the source: it
+is `local_only` and by design is never uploaded or claimed (`claim.ts`, decided 2026-09-15). The
+phone's validation store was not usable either: it is already a cloud store under test account A,
+and it had to stay untouched. So, by owner decision, a **fresh, clearly labelled store** was used.
+Environment: the production build served by `vite preview` at `http://localhost:4173/`, opened in
+desktop Edge 154 with a separate, empty throwaway profile (not the owner's browser profile).
+
+Before sign-in, through the normal UI: onboarding created a real store, *Google claim check*. It got
+2 catalog products with starting counts, 1 purchase with natira, 1 customer with 1 utang and 1
+bayad, and 1 expense: 2 products, 1 customer, 7 events (3 COUNT, PURCHASE, UTANG, BAYAD, EXPENSE),
+none synced. The owner then signed in with their real Google account (consent screen) in that
+window. Nothing was faked and no step was bypassed. The app took its own path: the account owned no
+cloud store, so the decision was `upload`, with no choice sheet.
+
+Observed (IndexedDB read directly; the cloud read with the app's own session inside the page, so RLS
+applied exactly as for the app; only counts and comparisons were printed, never a token, the email
+or the user id):
+
+| Check | Result |
+|---|---|
+| Return from Google | address bar clean (no `code`, no fragment); session provider `google` |
+| Local store after sign-in | same store id, same product/customer/event ids as before |
+| Local markers | `cloud_store_id` = current store; `auth_user_id` = the session's user; `claim_pending` absent; `last_sync_error` absent; `last_sync_at` set; three cursors set; 0 unsynced events, 0 dirty records |
+| Cloud store | exactly 1 visible and active; `created_by` = the session user; one membership, role `owner`, the session user |
+| Cloud rows | products 2/2, customers 1/1, events 7/7; id sets identical to local; no missing, no extra, no duplicate ids |
+| Cloud contents | every row's `body` equals the local object (storage-only markers removed); event `type`/`ts`/`store_id` columns and record `updated_at` match: 0 mismatches |
+| Further syncs | focus-triggered runs, then a manual *Sync now*: `last_sync_at` advanced and cloud counts stayed 7/7 |
+| A new entry after binding | 1 expense added → pushed once: events 8/8, ids identical, 0 content mismatches |
+| Reload | same store, still bound to it and to the same user, status *Backed up*, cloud still 8/8 |
+| Sign-out | one `logout` request with `scope=local`; session gone from storage; card back to *Sign in with Google*; store, 2 products, 1 customer and 8 events unchanged (identical ids), also after a reload; onboarding not shown |
+
+The card showed *Syncing…* briefly several times. Each time it was a run started when the probe
+attached to the tab (sync on focus), and it settled to *Backed up* within seconds. No page errors.
+
+After sign-out the binding markers (`cloud_store_id`, `auth_user_id`, cursors) are kept, which is the
+existing behaviour. The engine reuses them only for the same user; another account discovers
+again. Not exercised here: the choice sheet under a Google identity, and a second device pulling
+this store.
+
+Left in place: the owner's Google account now owns one active cloud store, *Google claim check*,
+with 2 products, 1 customer and 8 events. It was not deleted, and the test-account cleanup script
+does not apply to it. When the owner later signs in with a populated real store, the app will ask
+which store to keep. Keeping the phone's store archives this one (a flag; nothing is deleted).
 
 ## Export / download diagnosis (2026-09-28, same phone)
 
