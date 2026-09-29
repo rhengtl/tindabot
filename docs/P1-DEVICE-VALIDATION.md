@@ -238,8 +238,11 @@ and touches nothing.
 
 Owner-approved ("Option 2"), closing the gap left above. The demo store could not be the source: it
 is `local_only` and by design is never uploaded or claimed (`claim.ts`, decided 2026-09-15). The
-phone's validation store was not usable either: it is already a cloud store under test account A,
-and it had to stay untouched. So, by owner decision, a **fresh, clearly labelled store** was used.
+phone's validation store was not usable either: it is tied to the email/password test accounts
+from the earlier phone runs, and it had to stay untouched. (A read-only check on 2026-09-29 found
+that the test accounts own only `test-…` stores, all archived. So whether that phone store still
+has an active cloud copy was not established.) By owner decision, a **fresh, clearly labelled
+store** was used instead.
 Environment: the production build served by `vite preview` at `http://localhost:4173/`, opened in
 desktop Edge 154 with a separate, empty throwaway profile (not the owner's browser profile).
 

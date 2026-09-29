@@ -69,8 +69,9 @@ validated on the phone (restore, push, offline queue, a paused/unavailable cloud
 [docs/P1-DEVICE-VALIDATION.md](docs/P1-DEVICE-VALIDATION.md)). The real Google round trip — consent
 screen, callback, PKCE exchange, signed-in session, sign-out with local data intact — was verified
 manually on the desktop localhost preview build with the `local_only` demo store current, so no
-cloud rows were created; **claiming and uploading a store under a Google identity is still
-unverified** (the phone runs used the email/password test accounts). Deployment is still open. Known device limitation: on the validation
+cloud rows were created. Claiming and uploading a store under a Google identity was verified on
+2026-09-29 on the same kind of preview. Deployment (Vercel + the existing Supabase project) is being
+prepared, not done: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Known device limitation: on the validation
 phone (realme C55 / Brave 1.95) the browser refuses *file* shares (`NotAllowedError`), so the export
 falls back to a download; that download works — a real export file was produced and read back on the
 phone on 2026-09-28 — but Brave asks where to save it, and a web page cannot see how that prompt
