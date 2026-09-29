@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 310 offline tests: domain vs reference oracles, grouped-derivation equivalence, Dexie markers, schema upgrades, sync engine (in-memory cloud), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
+npm test           # 322 offline tests: domain vs reference oracles, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage and failed-write handling, sync engine (in-memory cloud), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (310 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (322 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 

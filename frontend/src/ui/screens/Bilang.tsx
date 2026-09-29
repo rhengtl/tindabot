@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { type Product, ulid } from '../../domain'
 import { useApp } from '../../state/store'
-import { NumberPad, Sheet, useToast } from '../components'
+import { NumberPad, Sheet, useToast, useWrite } from '../components'
 import { useStrings } from '../i18n'
 
 /** Full-screen count mode: stalest first, packs + loose pad, skip/next, exit anytime. */
@@ -12,6 +12,7 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
   const recordCount = useApp((s) => s.recordCount)
   const S = useStrings()
   const toast = useToast()
+  const write = useWrite()
 
   const queue = useMemo(() => {
     const list = (only ? products.filter((p) => only.includes(p.id)) : products).slice()
@@ -56,7 +57,9 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
 
   async function save() {
     if (!p) return
-    await recordCount(id, p.id, total, { kind: 'ngayon' })
+    // A count that did not reach the database must not be counted as done, and must not move the
+    // queue on: the person stays on this product with the failure toast in front of them.
+    if (!(await write(() => recordCount(id, p.id, total, { kind: 'ngayon' })))) return
     setDone((d) => d + 1)
     next()
   }

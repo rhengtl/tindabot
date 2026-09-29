@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CATALOG } from '../../catalog/catalog'
 import { type Product, templates, toLocalDate, ulid } from '../../domain'
 import { useApp, type DateChoice } from '../../state/store'
-import { Segment, Sheet, useToast } from '../components'
+import { Segment, Sheet, useToast, useWrite } from '../components'
 import { useStrings } from '../i18n'
 
 const HIGH_COST_FACTOR = 5
@@ -15,6 +15,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
   const recordPurchase = useApp((s) => s.recordPurchase)
   const S = useStrings()
   const toast = useToast()
+  const write = useWrite()
 
   const [ids, setIds] = useState(() => ({ id: ulid(), countId: ulid() }))
   const [productId, setProductId] = useState<string | null>(initialProductId ?? null)
@@ -84,7 +85,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
     setSaving(true)
     try {
       const when: DateChoice = whenKind === 'date' ? { kind: 'date', date } : { kind: whenKind }
-      await recordPurchase({ id: ids.id, countId: ids.countId, product_id: product.id, qty_units: qtyUnits, total_cost: totalCost, natira: natiraN, when })
+      if (!(await write(() => recordPurchase({ id: ids.id, countId: ids.countId, product_id: product.id, qty_units: qtyUnits, total_cost: totalCost, natira: natiraN, when })))) return
       toast(S.common.recordedToast(`${product.name} — ${qtyUnits} ${product.unit_label}`))
       // new ids for the next submit (write-once)
       setIds({ id: ulid(), countId: ulid() })

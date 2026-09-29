@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useStrings } from './i18n'
 import { dragOffset, shouldDismiss } from './sheetDrag'
+import { guardedWrite } from './write'
 
 // ---------- Sheet (bottom modal) ----------
 // The grip at the top is the drag area: pull it down and the sheet follows the finger, release
@@ -105,6 +107,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 export const useToast = () => useContext(ToastCtx)
+
+/**
+ * Attempts a local write and returns whether it happened. A failed write shows the app's own
+ * "not saved" toast (never the browser's error text) so the caller can simply skip its success
+ * path; see src/ui/write.ts.
+ */
+export function useWrite(): (write: () => Promise<unknown>) => Promise<boolean> {
+  const toast = useToast()
+  const S = useStrings()
+  return useCallback((write: () => Promise<unknown>) => guardedWrite(write, () => toast(S.common.notSaved)), [toast, S])
+}
 
 // ---------- Number pad ----------
 export function NumberPad({ value, onChange }: { value: string; onChange: (v: string) => void }) {

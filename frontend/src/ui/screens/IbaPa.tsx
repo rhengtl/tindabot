@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LANGS, type Lang, type Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
-import { useToast } from '../components'
+import { useToast, useWrite } from '../components'
 import { exportCurrentStore } from '../exportFile'
 import { useLang, useStrings } from '../i18n'
 import { CloudCard } from './Cloud'
@@ -19,6 +19,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   const lang = useLang()
   const S = useStrings()
   const toast = useToast()
+  const write = useWrite()
   const fileRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(store?.name ?? '')
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -64,7 +65,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
     const set = new Set(store!.restock_days)
     if (set.has(d)) set.delete(d)
     else set.add(d)
-    updateStore({ restock_days: [...set].sort() as Weekday[] })
+    void write(() => updateStore({ restock_days: [...set].sort() as Weekday[] }))
   }
 
   const backupOld = !lastBackup || Date.now() - Date.parse(lastBackup) > 30 * 86_400_000
@@ -89,7 +90,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
         </div>
         <div className="field">
           <label>{S.ibaPa.storeName}</label>
-          <input aria-label={S.ibaPa.storeName} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== store.name && updateStore({ name: name.trim() })} />
+          <input aria-label={S.ibaPa.storeName} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name !== store.name) void write(() => updateStore({ name: name.trim() })) }} />
         </div>
         <div className="field">
           <label>{S.ibaPa.restockDays}</label>
@@ -99,7 +100,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
                 {d}
               </button>
             ))}
-            <button type="button" className={`chip ${store.restock_days.length === 0 ? 'on' : ''}`} onClick={() => updateStore({ restock_days: [] })}>
+            <button type="button" className={`chip ${store.restock_days.length === 0 ? 'on' : ''}`} onClick={() => write(() => updateStore({ restock_days: [] }))}>
               {S.onboarding.whenNeeded}
             </button>
           </div>
@@ -148,18 +149,18 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
           <div id="advanced-settings">
             <div className="field">
               <label style={{ marginTop: 6 }}>{S.ibaPa.payday} (×)</label>
-              <input aria-label={`${S.ibaPa.payday} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } })} />
+              <input aria-label={`${S.ibaPa.payday} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } }))} />
             </div>
             <div className="field">
               <label>{S.ibaPa.friSat} (×)</label>
-              <input aria-label={`${S.ibaPa.friSat} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } })} />
+              <input aria-label={`${S.ibaPa.friSat} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } }))} />
             </div>
             <button
               type="button"
               className="btn danger sm"
               onClick={async () => {
                 if (!window.confirm(S.ibaPa.demoHint)) return
-                await loadDemo()
+                if (!(await write(() => loadDemo()))) return
                 await init()
                 toast(S.ibaPa.demoLoaded)
               }}

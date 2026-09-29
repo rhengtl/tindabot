@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CATALOG, CATEGORIES, searchCatalog, type CatalogItem } from '../../catalog/catalog'
 import { useApp } from '../../state/store'
-import { Sheet, useToast } from '../components'
+import { Sheet, useToast, useWrite } from '../components'
 import { useStrings } from '../i18n'
 
 type Draft = Pick<CatalogItem, 'name' | 'category' | 'unit_label' | 'pack_size' | 'pack_label'>
@@ -11,6 +11,7 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
   const addProduct = useApp((s) => s.addProduct)
   const S = useStrings()
   const toast = useToast()
+  const write = useWrite()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -37,11 +38,14 @@ export function AddProductSheet({ open, onClose, onAdded }: { open: boolean; onC
     if (!draft.name.trim()) return
     setSaving(true)
     try {
-      await addProduct(
-        { ...draft, name: draft.name.trim(), pack_size: Math.max(1, Math.round(draft.pack_size)) },
-        sell.trim() === '' ? null : Number(sell),
-        natira.trim() === '' ? null : Math.max(0, Math.round(Number(natira))),
+      const ok = await write(() =>
+        addProduct(
+          { ...draft, name: draft.name.trim(), pack_size: Math.max(1, Math.round(draft.pack_size)) },
+          sell.trim() === '' ? null : Number(sell),
+          natira.trim() === '' ? null : Math.max(0, Math.round(Number(natira))),
+        ),
       )
+      if (!ok) return
       toast(S.common.addedToast(draft.name))
       reset()
       onAdded?.()

@@ -301,7 +301,55 @@ are identical: `src/domain/__tests__/grouping.test.ts` holds the grouped path ag
 one over randomized logs, and on the phone every screen of the real validation store (165 events,
 27 products, 5 customers) rendered byte-identical text before and after, with no page errors.
 
-**Still true after the fix:** opening the app on two years of data takes ~2 s, now dominated by the
-IndexedDB read of the whole event log (~1.3 s), not by derivation. Loading 19,585 event rows into
-the phone's IndexedDB took ~7.6 s, so importing a very large export file is slow (correct, but
-slow); that path has no progress indication. Neither was changed here.
+### Accepted after the fix — measured, decided, not blockers (owner decision, 2026-09-29)
+
+Two costs were measured at the same ~19,585-event / 200-product scale on the same realme C55 and
+are **accepted as they stand**. Both are correct, neither loses data, and neither is a release
+blocker; both remain candidates for a future optimisation if a real store ever reports the wait.
+
+| Measured | At that scale | Decision |
+|---|---|---|
+| Opening the app | **~2 s** to the first cards | **Leave as is.** |
+| — of which the IndexedDB read of the whole event log | **~1.3 s** (derivation is no longer the cost) | **Leave as is:** no cached derived snapshot, no windowed event loading. The full active event log stays the single source of truth and every recompute keeps reading all of it. |
+| Loading / importing the 19,585-row fixture into the phone's IndexedDB | **~7.6 s** | **Leave as is:** no chunked import, no progress UI. Import stays exactly as it is — correct, idempotent, and slow on a very large file. |
+
+Recorded as accepted limitations and future optimisation/UX candidates. Nothing in this repository
+is approved for architectural remediation of either one: a cached snapshot, windowed loading,
+chunked import or import progress would each need the owner's explicit approval first.
+
+## Startup failure modes — what a person sees when the local database will not open (2026-09-29)
+
+Verified headlessly against the production build (Chromium, three fresh contexts per case), because
+the app's whole promise rests on that database and a schema upgrade now exists that could be met by
+an older cached bundle. No code was changed for this; one case is an open question for the owner.
+
+| Case | What happens | Verdict |
+|---|---|---|
+| The database is at a **higher version** than the running bundle (a cached older bundle after an upgrade) | Dexie opens it anyway; the store and its data render normally (verified with a real store row and an IndexedDB version far above the schema) | **Safe** — the v3 upgrade creates no downgrade hazard |
+| **Two tabs** across the upgrade: an older tab holds version 2 open while a new tab must upgrade | The new tab shows the loading ellipsis while IndexedDB blocks the upgrade, then **recovers by itself** the moment the other tab closes — no reload needed, upgrade completes, the stale meta key is dropped as designed | **Safe** — transient and self-healing |
+| A **write fails** mid-session (storage full, storage revoked) | Was silent: no false "saved", but nothing said either. **Fixed 2026-09-29** — a failed write now shows *"Hindi na-save. Subukan ulit." / "Not saved. Please try again."*, the success toast is skipped, and the browser's error goes to the console | **Fixed** |
+| **IndexedDB is denied or missing** (site data blocked for the origin, some embedded/WebView contexts, a corrupted profile) | Was the loading ellipsis `…` **forever**, with an unhandled `DatabaseClosedError` and nothing to act on. **Fixed 2026-09-29** — an error screen explains that the local storage cannot be opened, names the one thing to check (allow site data and cookies; no private/incognito browsing) and offers *Subukan muli / Try again*, which really re-opens the database | **Fixed** |
+
+### How the two failures are handled (2026-09-29, owner-approved)
+
+`init()` opens the database explicitly (`repo.openDatabase()`) and treats a refusal as state, not as a
+rejected promise: it logs the browser's exception to the console, closes the connection — Dexie keeps
+a failed open on the instance and will not auto-open a closed one, so a retry must start clean — and
+sets `storageError`, which the UI shows instead of the loading dots. *Retry* simply calls `init()`
+again and succeeds as soon as the browser allows storage, with the existing successful start
+untouched. Writes go through one guard (`src/ui/write.ts`, used as `useWrite()` in every screen that
+writes): it awaits the write, skips the caller's success toast on failure, shows the app's own "not
+saved" wording, and puts the reason in the console only.
+
+Verified against the production build: both refusals render the error screen with no endless dots and
+no browser error text on screen; *Retry* recovers once storage is allowed and stays usable when it is
+still refused; a healthy start and a full onboarding are unaffected; and, with the storage layer made
+to refuse writes, a recorded cash count produces the failure toast in Taglish and in English while a
+healthy one still produces *"Naitala…" / "Recorded…"*.
+
+One write is deliberately **not** guarded: dismissing the monthly backup nudge (a device preference
+written by `setMeta('nudge_dismissed', …)` on Bahay). A toast there would be noise, and the only
+consequence of a failure is that the nudge reappears. Separately, clearing site data while the app is
+open does not fail writes at all — Dexie recreates the database and later writes land in the new,
+empty one; the app shows onboarding on the next reload. That is a different scenario from these two
+and was not part of this change.

@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { type Customer, type CustomerState, type DomainEvent, type Lang, compareEvents, daysBetweenMs, templates, toLocalDate, toMs } from '../../domain'
 import { useApp } from '../../state/store'
-import { Sheet, useToast } from '../components'
+import { Sheet, useToast, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
 import type { Strings } from '../strings'
 
@@ -106,6 +106,7 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
   const S = useStrings()
   const lang = useLang()
   const toast = useToast()
+  const write = useWrite()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Customer | null>(null)
 
@@ -162,7 +163,7 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
             type="button"
             className={`btn sm ${customer.archived ? 'secondary' : 'danger'}`}
             onClick={async () => {
-              await saveCustomer({ ...customer, archived: !customer.archived })
+              if (!(await write(() => saveCustomer({ ...customer, archived: !customer.archived })))) return
               toast(customer.archived ? S.listahan.ibalik : S.listahan.itigil)
               onClose()
             }}
@@ -191,7 +192,7 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
               className="btn primary sm grow"
               disabled={!draft.name.trim()}
               onClick={async () => {
-                await saveCustomer({ ...draft, name: draft.name.trim() })
+                if (!(await write(() => saveCustomer({ ...draft, name: draft.name.trim() })))) return
                 setEditing(false)
                 toast(S.common.saved)
               }}
@@ -216,11 +217,11 @@ function CustomerDetail({ customerId, onClose, onUtang, onBayad }: { customerId:
               </div>
             </span>
             {voided ? (
-              <button type="button" className="btn ghost sm" onClick={() => restoreEvent(e)}>
+              <button type="button" className="btn ghost sm" onClick={() => write(() => restoreEvent(e))}>
                 {S.paninda.ibalik}
               </button>
             ) : (
-              <button type="button" className="btn ghost sm" onClick={() => voidEvent(e.id)}>
+              <button type="button" className="btn ghost sm" onClick={() => write(() => voidEvent(e.id))}>
                 {S.paninda.burahin}
               </button>
             )}

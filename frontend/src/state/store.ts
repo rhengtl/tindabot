@@ -70,6 +70,13 @@ interface AppState {
   deviceId: string
   persisted: boolean
   /**
+   * The local database could not be opened at all (site data blocked for this origin, a private
+   * context without IndexedDB, a corrupted profile). Nothing can be read or written in that state,
+   * so the UI says so and offers `init()` again instead of waiting forever. The exception itself
+   * goes to the console only.
+   */
+  storageError: boolean
+  /**
    * P3a — absent configuration means `available: false` and every cloud action is a no-op.
    * `signInError` is set when this page load came back from a failed Google sign-in redirect
    * (supabase-js reports that only through initialize(), never as an auth event); it is cleared
@@ -223,15 +230,30 @@ export const useApp = create<AppState>((set, get) => {
     nowMs: Date.now(),
     deviceId: '',
     persisted: false,
+    storageError: false,
     cloud: { available: false, sync: SYNC_INITIAL, signInError: null },
     lang: DEFAULT_LANG,
 
     async init() {
-      const [deviceId, persisted, onboarded, storedLang] = await Promise.all([repo.deviceId(), repo.requestPersistentStorage(), repo.getMeta('onboarded'), repo.getMeta(META_LANG)])
-      const lang = parseLang(storedLang)
-      applyDocumentLang(lang)
-      set({ deviceId, persisted, onboarded: onboarded === '1', lang })
-      await reload()
+      // Every step here needs the database. If it cannot be opened there is nothing to show and
+      // nothing to save, so the failure becomes a state the UI can speak about (and retry) rather
+      // than a rejected promise that leaves the loading dots on screen for good.
+      set({ storageError: false })
+      try {
+        await repo.openDatabase() // the one call that can fail because the browser said no
+        const [deviceId, persisted, onboarded, storedLang] = await Promise.all([repo.deviceId(), repo.requestPersistentStorage(), repo.getMeta('onboarded'), repo.getMeta(META_LANG)])
+        const lang = parseLang(storedLang)
+        applyDocumentLang(lang)
+        set({ deviceId, persisted, onboarded: onboarded === '1', lang })
+        await reload()
+      } catch (e) {
+        // The reason is for whoever is debugging, never for the person holding the phone.
+        console.error('[tindabot] local database unavailable:', e)
+        // Dexie remembers a failed open, so drop the connection: "Subukan muli" must really try.
+        repo.closeDatabase()
+        set({ storageError: true, loaded: false })
+        return
+      }
       ensureEngine()
       // First launch: evaluate the cloud binding (may resume a pending claim). A re-init after
       // "Subukan ang demo" only re-checks locally, so the demo is not switched away automatically.

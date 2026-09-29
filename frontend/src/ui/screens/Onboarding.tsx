@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { LANGS, type Lang, type Weekday } from '../../domain'
 import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
+import { useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
 import { AddProductSheet } from './AddProduct'
 
@@ -9,6 +10,7 @@ export function Onboarding() {
   const S = useStrings()
   const lang = useLang()
   const setLang = useApp((s) => s.setLang)
+  const write = useWrite()
   const createStore = useApp((s) => s.createStore)
   const init = useApp((s) => s.init)
   const store = useApp((s) => s.store)
@@ -29,12 +31,15 @@ export function Onboarding() {
   }
 
   async function finishStore() {
-    await createStore(name.trim() || S.onboarding.defaultStoreName, whenNeeded ? [] : ([...days].sort() as Weekday[]))
+    // Onboarding cannot go on without the store actually being written, so a failure keeps the
+    // person on this step with the toast rather than moving to a step about a store that does not
+    // exist.
+    if (!(await write(() => createStore(name.trim() || S.onboarding.defaultStoreName, whenNeeded ? [] : ([...days].sort() as Weekday[]))))) return
     setStep(2)
   }
 
   async function done() {
-    await setMeta('onboarded', '1')
+    if (!(await write(() => setMeta('onboarded', '1')))) return
     await init()
   }
 
@@ -76,8 +81,7 @@ export function Onboarding() {
             className="btn ghost"
             style={{ width: '100%', marginTop: 8 }}
             onClick={async () => {
-              await loadDemo()
-              await setMeta('onboarded', '1')
+              if (!(await write(async () => { await loadDemo(); await setMeta('onboarded', '1') }))) return
               await init()
             }}
           >

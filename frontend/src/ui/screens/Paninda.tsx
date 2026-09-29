@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { type DomainEvent, type Lang, type Product, type ProductState, compareEvents, templates, toLocalDate, ulid } from '../../domain'
 import { useApp } from '../../state/store'
-import { Dot, Sheet, fmtNum, useToast } from '../components'
+import { Dot, Sheet, fmtNum, useToast, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
 import type { Strings } from '../strings'
 
@@ -112,6 +112,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
   const S = useStrings()
   const lang = useLang()
   const toast = useToast()
+  const write = useWrite()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Product | null>(null)
   const [nasira, setNasira] = useState<string | null>(null)
@@ -177,7 +178,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
             type="button"
             className={`btn sm ${product.archived ? 'secondary' : 'danger'}`}
             onClick={async () => {
-              await saveProduct({ ...product, archived: !product.archived })
+              if (!(await write(() => saveProduct({ ...product, archived: !product.archived })))) return
               toast(product.archived ? S.paninda.ibalikSaListahan : S.paninda.itigil)
               onClose()
             }}
@@ -202,7 +203,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
               className="btn primary sm grow"
               disabled={!(Number(nasira) > 0)}
               onClick={async () => {
-                await recordAdjust(ulid(), product.id, -Math.round(Number(nasira)), 'sira')
+                if (!(await write(() => recordAdjust(ulid(), product.id, -Math.round(Number(nasira)), 'sira')))) return
                 setNasira(null)
                 toast(S.paninda.nasiraSaved)
               }}
@@ -247,7 +248,7 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
               type="button"
               className="btn primary sm grow"
               onClick={async () => {
-                await saveProduct({ ...draft, pack_size: Math.max(1, Math.round(draft.pack_size)) })
+                if (!(await write(() => saveProduct({ ...draft, pack_size: Math.max(1, Math.round(draft.pack_size)) })))) return
                 setEditing(false)
                 toast(S.common.saved)
               }}
@@ -272,11 +273,11 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
               </div>
             </span>
             {voided ? (
-              <button type="button" className="btn ghost sm" onClick={() => restoreEvent(e)}>
+              <button type="button" className="btn ghost sm" onClick={() => write(() => restoreEvent(e))}>
                 {S.paninda.ibalik}
               </button>
             ) : (
-              <button type="button" className="btn ghost sm" onClick={() => voidEvent(e.id)}>
+              <button type="button" className="btn ghost sm" onClick={() => write(() => voidEvent(e.id))}>
                 {S.paninda.burahin}
               </button>
             )}

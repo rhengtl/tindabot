@@ -6,6 +6,24 @@ import Dexie, { type EntityTable } from 'dexie'
 import { type Customer, type DomainEvent, type ExportFile, type Product, type Snapshot, type Store, mergeImport, ulid } from '../domain'
 import { type StoredCustomer, type StoredEvent, type StoredProduct, type StoredStore, db } from './db'
 
+/**
+ * Opens the database, or rejects with the browser's own reason when it will not allow it (site data
+ * blocked, no IndexedDB, a corrupted profile). Safe to call when it is already open, which is why
+ * `init()` can use it both on the first launch and on a retry.
+ */
+export async function openDatabase(): Promise<void> {
+  if (!db.isOpen()) await db.open()
+}
+
+/**
+ * Drops the connection. Dexie keeps a failed open on the instance and will not auto-open a closed
+ * one, so a retry after the browser starts allowing storage again has to close it first and then
+ * open it explicitly. Harmless when the database was never open.
+ */
+export function closeDatabase(): void {
+  db.close()
+}
+
 export async function getMeta(key: string): Promise<string | null> {
   const row = await db.meta.get(key)
   return row?.value ?? null

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EXPENSE_CATEGORIES, type Customer, type ExpenseCategory, pesos, templates, toLocalDate, ulid } from '../../domain'
 import { type DateChoice, useApp } from '../../state/store'
-import { Segment, Sheet, useToast } from '../components'
+import { Segment, Sheet, useToast, useWrite } from '../components'
 import { useStrings } from '../i18n'
 
 export type PeraKind = 'utang' | 'bayad' | 'gastos' | 'pera'
@@ -26,6 +26,7 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
   const recordCashCount = useApp((s) => s.recordCashCount)
   const S = useStrings()
   const toast = useToast()
+  const write = useWrite()
 
   const [id, setId] = useState(() => ulid())
   const [customerId, setCustomerId] = useState<string | null>(initialCustomerId ?? null)
@@ -73,8 +74,9 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
   async function createCustomer() {
     const name = newName.trim()
     if (!name) return
-    const c = await addCustomer(name, newPhone.trim() || null)
-    setCustomerId(c.id)
+    let created: Customer | null = null
+    if (!(await write(async () => { created = await addCustomer(name, newPhone.trim() || null) }))) return
+    setCustomerId(created!.id)
     setCreating(false)
   }
 
@@ -85,10 +87,13 @@ export function PeraSheet({ open, kind, onClose, initialCustomerId }: { open: bo
     try {
       const when: DateChoice = whenKind === 'date' ? { kind: 'date', date } : { kind: whenKind }
       const noteN = note.trim() || null
-      if (kind === 'utang') await recordUtang({ id, amount: amountN, when, customer_id: customer!.id, note: noteN })
-      else if (kind === 'bayad') await recordBayad({ id, amount: amountN, when, customer_id: customer!.id })
-      else if (kind === 'gastos') await recordExpense({ id, amount: amountN, when, category, note: noteN })
-      else await recordCashCount({ id, amount: amountN, when })
+      const ok = await write(() => {
+        if (kind === 'utang') return recordUtang({ id, amount: amountN, when, customer_id: customer!.id, note: noteN })
+        if (kind === 'bayad') return recordBayad({ id, amount: amountN, when, customer_id: customer!.id })
+        if (kind === 'gastos') return recordExpense({ id, amount: amountN, when, category, note: noteN })
+        return recordCashCount({ id, amount: amountN, when })
+      })
+      if (!ok) return
       toast(S.common.recordedToast(`${txt.title} ${templates.pesoExact(amountN)}`))
       setId(ulid())
       onClose()

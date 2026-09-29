@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { type DomainEvent, compareEvents, roundTo10, templates, toLocalDate } from '../../domain'
 import { useApp } from '../../state/store'
-import { Sheet } from '../components'
+import { Sheet, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
 
 export function UlatCard({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
@@ -88,6 +88,7 @@ function FinanceHistory({ onClose }: { onClose: () => void }) {
   const restoreEvent = useApp((s) => s.restoreEvent)
   const S = useStrings()
   const lang = useLang()
+  const write = useWrite()
   const timeline = useMemo(() => {
     const voids = new Set(events.filter((e) => e.type === 'VOID').map((e) => (e as { target: string }).target))
     return events
@@ -118,11 +119,11 @@ function FinanceHistory({ onClose }: { onClose: () => void }) {
               </div>
             </span>
             {voided ? (
-              <button type="button" className="btn ghost sm" onClick={() => restoreEvent(e)}>
+              <button type="button" className="btn ghost sm" onClick={() => write(() => restoreEvent(e))}>
                 {S.paninda.ibalik}
               </button>
             ) : (
-              <button type="button" className="btn ghost sm" onClick={() => voidEvent(e.id)}>
+              <button type="button" className="btn ghost sm" onClick={() => write(() => voidEvent(e.id))}>
                 {S.paninda.burahin}
               </button>
             )}

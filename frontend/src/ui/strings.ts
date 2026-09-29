@@ -29,10 +29,19 @@ export const TL = {
     recorded: 'naitala',
     recordedToast: (what: string) => `Naitala: ${what}`,
     addedToast: (name: string) => `Naidagdag: ${name}`,
+    notSaved: 'Hindi na-save. Subukan ulit.',
     days: (n: number) => `${n} araw`,
   },
 
   lang: { title: 'Wika / Language', tl: 'Taglish', en: 'English' },
+
+  /** Shown when the local database cannot be opened at all — the app has nothing to read or save. */
+  storage: {
+    title: 'Hindi mabuksan ang listahan',
+    body: 'Hindi mabuksan ni TindaBot ang local storage ng browser na pinagtataguan ng listahan mo.',
+    check: 'I-allow ang site data at cookies para sa site na ito, at huwag gamitin ang private o incognito browsing.',
+    retry: 'Subukan muli',
+  },
 
   onboarding: {
     welcome: 'Maligayang pagdating!',
@@ -365,10 +374,18 @@ export const EN: Strings = {
     recorded: 'recorded',
     recordedToast: (what: string) => `Recorded: ${what}`,
     addedToast: (name: string) => `Added: ${name}`,
+    notSaved: 'Not saved. Please try again.',
     days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
   },
 
   lang: { title: 'Wika / Language', tl: 'Taglish', en: 'English' },
+
+  storage: {
+    title: 'Cannot open your listahan',
+    body: "TindaBot cannot open the browser's local storage where your listahan is kept.",
+    check: 'Allow site data and cookies for this site, and do not use private or incognito browsing.',
+    retry: 'Try again',
+  },
 
   onboarding: {
     welcome: 'Welcome!',

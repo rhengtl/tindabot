@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { type ListLine, type Product, addDays, applyBudget, budgetPrefill, isPayday, templates, toLocalDate } from '../../domain'
 import { useApp } from '../../state/store'
-import { Dot, useToast } from '../components'
+import { Dot, useToast, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
 import type { Strings } from '../strings'
 
@@ -34,6 +34,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
   const lang = useLang()
   const S = useStrings()
   const toast = useToast()
+  const write = useWrite()
   const [showWag, setShowWag] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(true)
   const finance = useApp((s) => s.finance)
@@ -134,7 +135,7 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
           </div>
         </div>
         <div className="row" style={{ marginTop: 8 }}>
-          <button type="button" className="btn secondary sm" onClick={() => updateStore({ next_trip_override: goingToday ? null : today })}>
+          <button type="button" className="btn secondary sm" onClick={() => write(() => updateStore({ next_trip_override: goingToday ? null : today }))}>
             {goingToday ? S.bahay.cancelGoingToday : S.bahay.goingToday}
           </button>
           <button type="button" className="btn secondary sm" onClick={share} disabled={lines.length === 0}>

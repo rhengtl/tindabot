@@ -25,8 +25,48 @@ export default function App() {
   )
 }
 
+/**
+ * The database could not be opened, so there is nothing to show and nothing to save. Say what
+ * happened in the person's own language, name the one thing they can usefully check, and let them
+ * try again — the browser's own exception stays in the console. The wording follows the runtime
+ * language like every other screen; with no stored preference readable, that is Taglish.
+ */
+function StorageError() {
+  const init = useApp((s) => s.init)
+  const S = useStrings()
+  const [retrying, setRetrying] = useState(false)
+  return (
+    <div className="app" data-testid="storage-error">
+      <main className="screen">
+        <div className="banner">{S.storage.title}</div>
+        <div className="card">
+          <p>{S.storage.body}</p>
+          <p className="muted small">{S.storage.check}</p>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={retrying}
+            data-testid="storage-retry"
+            onClick={async () => {
+              setRetrying(true)
+              try {
+                await init()
+              } finally {
+                setRetrying(false)
+              }
+            }}
+          >
+            {S.storage.retry}
+          </button>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 function Shell() {
   const loaded = useApp((s) => s.loaded)
+  const storageError = useApp((s) => s.storageError)
   const store = useApp((s) => s.store)
   const init = useApp((s) => s.init)
   const refreshNow = useApp((s) => s.refreshNow)
@@ -80,6 +120,7 @@ function Shell() {
   const openBumili = useCallback((productId: string | null = null) => setBumili({ open: true, productId }), [])
   const openPera = useCallback((kind: PeraKind, customerId: string | null = null) => setPera({ open: true, kind, customerId }), [])
 
+  if (storageError) return <StorageError />
   if (!loaded) return <div className="empty">…</div>
   if (!store || !onboarded) return <Onboarding />
 
