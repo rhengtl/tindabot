@@ -269,3 +269,39 @@ The old `last_export_attempt_at` meta key is no longer written by anything. Devi
 under the earlier bookkeeping still carry the row, so Dexie schema version 3 deletes that one key
 while it opens the database — no other meta value, and no business data, is touched. Covered by
 `src/db/__tests__/migration.test.ts`.
+
+## Years of data — recompute cost on the phone (2026-09-28, realme C55 / Brave)
+
+Every write recomputes the whole store from its full active event log (BLUEPRINT §B). Until now
+that was only ever measured on the validation store's 165 events, so a store's second and third
+year were unverified. Measured on a **throwaway origin** (`127.0.0.1:4173`, its own storage; the
+validation store on `localhost:4173` was not used for this) seeded with a fixture of **200 products,
+40 customers and 19,585 events ≈ two years** of daily use:
+
+| | before | after |
+|---|---|---|
+| open the app → first cards on Bahay | 3,264 ms | **1,981 ms** |
+| longest main-thread block (the recompute) | 1,705 ms | **433 ms** |
+
+Every save blocks on the same recompute, so that block was also the per-tap freeze. The cause was
+not the recompute itself but how it read the log: it was re-scanned once per product and, in the
+weekly summaries, once per customer per week. Desktop measurements of the same fixture sizes:
+
+| fixture | recompute before | after |
+|---|---|---|
+| 60 products, 4 months (3.2k events) | 37 ms | 14 ms |
+| 120 products, 1 year (9.8k events) | 85 ms | 32 ms |
+| 200 products, 2 years (19.6k events) | 383 ms | 46 ms |
+| 300 products, 3 years (29.4k events) | 634 ms | 123 ms |
+
+The fix groups the active log by product and by customer once per recompute (`stockEventsByProduct`,
+`ledgerByCustomer` / `deriveCustomers`) and parses each timestamp once when sorting. The rule itself
+is unchanged — still a full recompute from the full active list, never incremental — and the outputs
+are identical: `src/domain/__tests__/grouping.test.ts` holds the grouped path against the scanning
+one over randomized logs, and on the phone every screen of the real validation store (165 events,
+27 products, 5 customers) rendered byte-identical text before and after, with no page errors.
+
+**Still true after the fix:** opening the app on two years of data takes ~2 s, now dominated by the
+IndexedDB read of the whole event log (~1.3 s), not by derivation. Loading 19,585 event rows into
+the phone's IndexedDB took ~7.6 s, so importing a very large export file is slow (correct, but
+slow); that path has no progress indication. Neither was changed here.

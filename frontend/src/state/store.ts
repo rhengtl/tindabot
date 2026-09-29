@@ -21,13 +21,12 @@ import {
   addDays,
   buildExport,
   buildList,
-  customerIds,
-  deriveCustomer,
+  deriveCustomers,
   deriveProduct,
   deriveStoreFinance,
-  forProduct,
   isExportFile,
   localTimeMs,
+  stockEventsByProduct,
   toISOWithOffset,
   toLocalDate,
   ulid,
@@ -153,12 +152,14 @@ export function resolveTs(when: DateChoice, kind: 'PURCHASE' | 'COUNT' | 'FINANC
 }
 
 function derive(store: Store, products: Product[], events: DomainEvent[], nowMs: number, lang: Lang) {
+  // Still a full recompute from the whole active log (BLUEPRINT §B) — but the log is grouped by
+  // product and by customer once per recompute, instead of being re-scanned for each of them.
   const active = activeEvents(events)
+  const byProduct = stockEventsByProduct(active)
   const states = new Map<string, ProductState>()
-  for (const p of products) states.set(p.id, deriveProduct(p, forProduct(active, p.id), nowMs))
+  for (const p of products) states.set(p.id, deriveProduct(p, byProduct.get(p.id) ?? [], nowMs))
   const list = buildList({ store, products, states, nowMs, lang })
-  const customerStates = new Map<string, CustomerState>()
-  for (const id of customerIds(active)) customerStates.set(id, deriveCustomer(id, active))
+  const customerStates = deriveCustomers(active)
   const finance = deriveStoreFinance({ events: active, products, states, nowMs })
   return { states, list, customerStates, finance }
 }

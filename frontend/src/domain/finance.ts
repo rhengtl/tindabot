@@ -15,6 +15,8 @@ import type {
   ProductState,
   ShoppingList,
   StoreState,
+  UtangEvent,
+  BayadEvent,
   WeekSummary,
 } from './types'
 
@@ -26,21 +28,56 @@ export function pesos(v: number): number {
   return Math.round(v * 100) / 100 + 0 // + 0 normalizes -0
 }
 
+/** A customer's own ledger events, in total order. */
+type LedgerEvent = UtangEvent | BayadEvent
+
+function isLedgerEvent(e: ActiveEvent): e is LedgerEvent {
+  return e.type === 'UTANG' || e.type === 'BAYAD'
+}
+
+/**
+ * Every customer's utang/bayad events, in total order, from one walk of the active list — the same
+ * events `deriveCustomer` would filter out for each of them. Customers appear in the order they
+ * first do in the log, so a sum over this map adds the same numbers in the same sequence.
+ */
+export function ledgerByCustomer(events: Iterable<ActiveEvent>): Map<string, LedgerEvent[]> {
+  const byCustomer = new Map<string, LedgerEvent[]>()
+  for (const e of events) {
+    if (!isLedgerEvent(e)) continue
+    const own = byCustomer.get(e.customer_id)
+    if (own) own.push(e)
+    else byCustomer.set(e.customer_id, [e])
+  }
+  return byCustomer
+}
+
 /**
  * @param events ACTIVE events in total order (any customer / type; filtered here)
  */
 export function deriveCustomer(customerId: string, events: ActiveEvent[]): CustomerState {
+  return customerState(customerId, events.filter((e): e is LedgerEvent => isLedgerEvent(e) && e.customer_id === customerId))
+}
+
+/** Every customer with a ledger, derived from one walk of the active list. */
+export function deriveCustomers(events: ActiveEvent[]): Map<string, CustomerState> {
+  const states = new Map<string, CustomerState>()
+  for (const [id, own] of ledgerByCustomer(events)) states.set(id, customerState(id, own))
+  return states
+}
+
+/** @param own this customer's ledger events only, in total order. */
+function customerState(customerId: string, own: LedgerEvent[]): CustomerState {
   let totalUtang = 0
   let totalBayad = 0
   let lastUtang: ISODateTime | null = null
   let lastBayad: ISODateTime | null = null
   const utangs: Array<{ ts: ISODateTime; amount: number }> = []
-  for (const e of events) {
-    if (e.type === 'UTANG' && e.customer_id === customerId) {
+  for (const e of own) {
+    if (e.type === 'UTANG') {
       totalUtang = pesos(totalUtang + e.amount)
       lastUtang = e.ts
       utangs.push({ ts: e.ts, amount: e.amount })
-    } else if (e.type === 'BAYAD' && e.customer_id === customerId) {
+    } else {
       totalBayad = pesos(totalBayad + e.amount)
       lastBayad = e.ts
     }
@@ -78,8 +115,12 @@ export function customerIds(events: ActiveEvent[]): string[] {
 
 /** Σ max(0, balance) over every customer with events. */
 export function utangOutstanding(events: ActiveEvent[]): number {
+  return outstandingOf(ledgerByCustomer(events))
+}
+
+function outstandingOf(ledgers: Map<string, LedgerEvent[]>): number {
   let total = 0
-  for (const id of customerIds(events)) total = pesos(total + Math.max(0, deriveCustomer(id, events).balance))
+  for (const [id, own] of ledgers) total = pesos(total + Math.max(0, customerState(id, own).balance))
   return total
 }
 
@@ -98,10 +139,14 @@ function summarizeWeek(start: LocalDate, events: ActiveEvent[]): WeekSummary {
   let given = 0
   let received = 0
   let cash: number | null = null
-  const upToEnd: ActiveEvent[] = []
+  const ledgerUpToEnd = new Map<string, LedgerEvent[]>()
   for (const e of events) {
     const ms = toMs(e.ts)
-    if (ms < endMs) upToEnd.push(e)
+    if (ms < endMs && isLedgerEvent(e)) {
+      const own = ledgerUpToEnd.get(e.customer_id)
+      if (own) own.push(e)
+      else ledgerUpToEnd.set(e.customer_id, [e])
+    }
     if (ms < startMs || ms >= endMs) continue
     if (e.type === 'EXPENSE') gastos = pesos(gastos + e.amount)
     else if (e.type === 'PURCHASE' && e.total_cost !== null) nabili = pesos(nabili + e.total_cost)
@@ -109,7 +154,7 @@ function summarizeWeek(start: LocalDate, events: ActiveEvent[]): WeekSummary {
     else if (e.type === 'BAYAD') received = pesos(received + e.amount)
     else if (e.type === 'CASH_COUNT') cash = e.amount // events are in total order → last wins
   }
-  return { start, end, gastos, nabili, utang_given: given, utang_received: received, cash_count: cash, outstanding_end: utangOutstanding(upToEnd) }
+  return { start, end, gastos, nabili, utang_given: given, utang_received: received, cash_count: cash, outstanding_end: outstandingOf(ledgerUpToEnd) }
 }
 
 export interface StoreFinanceInput {
