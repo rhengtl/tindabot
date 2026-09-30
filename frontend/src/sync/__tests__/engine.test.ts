@@ -381,8 +381,8 @@ describe('claim: nothing to lose on the phone → pull the cloud store and switc
   })
 })
 
-describe('claim: two populated stores → explicit choice', () => {
-  async function askSetup() {
+describe('several stores per account (decided 2026-09-30)', () => {
+  it('two populated stores with different ids: the phone store is uploaded as a second store, the cloud store is pulled in alongside, nothing switches', async () => {
     const local = await seedLocal('Phone store')
     const cloud = new FakeCloud(USER_A.id)
     const X = cloudStore('X0000000000000000000000004', 'Cloud store')
@@ -391,57 +391,117 @@ describe('claim: two populated stores → explicit choice', () => {
     const h = harness(cloud)
     h.engine.setUser(USER_A)
     await h.engine.whenIdle()
-    expect(h.engine.status.phase).toBe('needs_choice')
-    expect(h.engine.status.choice).toEqual({ cloud: { id: X.id, name: 'Cloud store', updated_at: X.updated_at }, local: { id: local.store.id, name: 'Phone store' } })
-    // nothing moved in either direction while waiting
-    expect(cloud.calls.filter((c) => c !== 'listMyStores')).toEqual([])
-    expect(await repo.countUnsyncedEvents(local.store.id)).toBe(3)
-    return { local, cloud, X, xEvents, h }
-  }
 
-  it('"Panatilihin ang nasa phone": archives the cloud store (kept, not deleted) and uploads the phone store', async () => {
-    const { local, cloud, X, xEvents, h } = await askSetup()
-    await h.engine.resolveClaim('phone')
     expect(h.engine.status.phase).toBe('idle')
-    expect(cloud.stores.get(X.id)!.archived_at).toBeTruthy()
-    expect(cloud.eventsOf(X.id).length).toBe(xEvents.length) // archived store data intact
-    expect(cloud.stores.get(local.store.id)!.archived_at).toBeNull()
-    expect(cloud.eventsOf(local.store.id).length).toBe(3)
-    expect((await repo.currentStore())!.id).toBe(local.store.id)
+    expect((await repo.currentStore())!.id).toBe(local.store.id) // the phone keeps using its store
     expect(await repo.getMeta(META.boundStore)).toBe(local.store.id)
-    expect((await cloud.listMyStores()).map((s) => s.id)).toEqual([local.store.id]) // exactly one active store
-    expect(await repo.storeExists(X.id)).toBe(false) // never pulled
-  })
-
-  it('"Gamitin ang nasa cloud": switches to the cloud store after a full pull; the phone store stays in Dexie and is never uploaded', async () => {
-    const { local, cloud, X, h } = await askSetup()
-    await h.engine.resolveClaim('cloud')
-    expect(h.engine.status.phase).toBe('idle')
-    expect((await repo.currentStore())!.id).toBe(X.id)
-    expect((await repo.loadSnapshot(X.id))!.events.length).toBe(2)
-    expect(await repo.storeExists(local.store.id)).toBe(true)
-    expect((await repo.loadSnapshot(local.store.id))!.events.length).toBe(3)
-    expect(cloud.stores.has(local.store.id)).toBe(false)
-    expect(cloud.stores.get(X.id)!.archived_at).toBeNull()
+    expect((await cloud.listMyStores()).map((s) => s.id).sort()).toEqual([local.store.id, X.id].sort()) // both active
+    expect(cloud.eventsOf(local.store.id).length).toBe(3)
+    expect(cloud.eventsOf(X.id).length).toBe(2) // the cloud store is untouched
+    const x = (await repo.loadSnapshot(X.id))!
+    expect(x.events.map((e) => e.id).sort()).toEqual(xEvents.map((e) => e.id).sort())
+    expect(x.products.length).toBe(1)
+    expect(x.customers.length).toBe(1)
+    expect(await repo.countUnsyncedEvents(X.id)).toBe(0) // pulled rows arrive already synced
+    expect(await repo.countDirtyRecords(X.id)).toBe(0)
+    expect(await repo.getMeta(META.adoptPending(X.id))).toBeNull()
     expect(h.pulled).toBeGreaterThanOrEqual(1)
-  })
 
-  it('"Mamaya na": stays unbound; local writes do not re-open the choice, a manual sync does', async () => {
-    const { local, cloud, h } = await askSetup()
-    await h.engine.resolveClaim('later')
-    expect(h.engine.status.phase).toBe('unbound')
-    expect(h.engine.status.choice).toBeNull()
+    // a second run pulls nothing again and pushes nothing
     const calls = cloud.calls.length
-    await repo.addEvents([event(local.store.id)])
-    h.engine.requestSync('write')
-    await settle(h)
-    expect(h.engine.status.phase).toBe('unbound')
-    expect(cloud.calls.length).toBe(calls)
     await h.engine.syncNow()
-    expect(h.engine.status.phase).toBe('needs_choice')
+    expect(cloud.calls.slice(calls)).not.toContain('insertEvents')
+    expect((await repo.loadSnapshot(X.id))!.events.length).toBe(2)
   })
 
-  it('when another device archived the bound store, the next sync unbinds and asks again instead of pushing into an archived store', async () => {
+  it('switching stores: the store switched to is the one that syncs; the other keeps its cloud copy and catches up when switched back', async () => {
+    const local = await seedLocal('Phone store')
+    const cloud = new FakeCloud(USER_A.id)
+    const X = cloudStore('X0000000000000000000000005', 'Cloud store')
+    await seedCloud(cloud, X, [product(X.id)], [], [event(X.id)])
+    const h = harness(cloud)
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+
+    await repo.setCurrentStore(X.id)
+    await repo.addEvents([event(X.id)])
+    await repo.addEvents([event(local.store.id)]) // written while X is current: waits for its turn
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect(await repo.getMeta(META.boundStore)).toBe(X.id)
+    expect(cloud.eventsOf(X.id).length).toBe(2)
+    expect(cloud.eventsOf(local.store.id).length).toBe(3)
+
+    await repo.setCurrentStore(local.store.id)
+    await h.engine.syncNow()
+    expect(await repo.getMeta(META.boundStore)).toBe(local.store.id)
+    expect(cloud.eventsOf(local.store.id).length).toBe(4)
+    expect(await repo.countUnsyncedEvents(local.store.id)).toBe(0)
+    expect((await cloud.listMyStores()).length).toBe(2)
+  })
+
+  it('a new empty store made next to an existing one is uploaded, not swapped for a cloud store', async () => {
+    const first = await seedLocal('First store')
+    const cloud = new FakeCloud(USER_A.id)
+    const h = harness(cloud)
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+
+    const second = await repo.createStore('Second store', [3]) // becomes current, still empty
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect((await repo.currentStore())!.id).toBe(second.id)
+    expect((await cloud.listMyStores()).map((s) => s.id).sort()).toEqual([first.store.id, second.id].sort())
+    expect(await repo.getMeta(META.boundStore)).toBe(second.id)
+  })
+
+  it('deleting a store: gone from the phone at once, archived in the cloud once online (every row kept there), never pulled back', async () => {
+    const a = await seedLocal('Store A')
+    const cloud = new FakeCloud(USER_A.id)
+    const h = harness(cloud)
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+    const b = await seedLocal('Store B') // current
+    await h.engine.syncNow()
+    expect((await cloud.listMyStores()).length).toBe(2)
+
+    h.online = false
+    await repo.deleteStore(a.store.id)
+    expect(await repo.storeExists(a.store.id)).toBe(false)
+    expect(await db.events.where('store_id').equals(a.store.id).count()).toBe(0)
+    expect(await db.products.where('store_id').equals(a.store.id).count()).toBe(0)
+    expect(await db.customers.where('store_id').equals(a.store.id).count()).toBe(0)
+    expect(await repo.getMeta(META.cursorEvents(a.store.id))).toBeNull()
+    expect(await repo.deletedStoreIds()).toEqual([a.store.id])
+    expect((await repo.loadSnapshot(b.store.id))!.events.length).toBe(3) // the other store untouched
+    await h.engine.syncNow()
+    expect(cloud.stores.get(a.store.id)!.archived_at).toBeNull() // offline: still queued
+
+    h.online = true
+    await h.engine.syncNow()
+    expect(cloud.stores.get(a.store.id)!.archived_at).toBeTruthy()
+    expect(cloud.eventsOf(a.store.id).length).toBe(3) // archived, not deleted
+    expect(await repo.deletedStoreIds()).toEqual([])
+    expect(await repo.storeExists(a.store.id)).toBe(false) // not pulled back
+    expect((await cloud.listMyStores()).map((s) => s.id)).toEqual([b.store.id])
+    expect(h.engine.status.phase).toBe('idle')
+  })
+
+  it('deleting a store that never reached the cloud clears its queue entry without error', async () => {
+    const cloud = new FakeCloud(USER_A.id)
+    const h = harness(cloud)
+    const keep = await seedLocal('Kept')
+    const never = await repo.createStore('Never uploaded', [3])
+    await repo.deleteStore(never.id)
+    await repo.setCurrentStore(keep.store.id)
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+    expect(h.engine.status.phase).toBe('idle')
+    expect(await repo.deletedStoreIds()).toEqual([])
+    expect(cloud.stores.has(never.id)).toBe(false)
+  })
+
+  it('a store deleted on another device is not re-uploaded or un-archived here; this phone keeps its copy and stops syncing it', async () => {
     const local = await seedLocal()
     const cloud = new FakeCloud(USER_A.id)
     const h = harness(cloud)
@@ -449,20 +509,51 @@ describe('claim: two populated stores → explicit choice', () => {
     await h.engine.whenIdle()
     expect(h.engine.status.phase).toBe('idle')
 
-    // other device: "keep the phone" with its own store Y
-    await cloud.archiveStore(local.store.id)
-    const Y = cloudStore('Y0000000000000000000000001', 'Other phone')
-    await seedCloud(cloud, Y, [product(Y.id)], [], [event(Y.id)])
-
+    await cloud.archiveStore(local.store.id) // the other device deleted it
     await repo.addEvents([event(local.store.id)])
     await h.engine.syncNow()
-    expect(h.engine.status.phase).toBe('needs_choice')
-    expect(h.engine.status.choice?.cloud.id).toBe(Y.id)
-    expect(cloud.eventsOf(local.store.id).length).toBe(3) // the new event was not pushed into the archived store
-    await h.engine.resolveClaim('phone')
-    expect(cloud.stores.get(local.store.id)!.archived_at).toBeNull() // un-archived
-    expect(cloud.stores.get(Y.id)!.archived_at).toBeTruthy()
-    expect(cloud.eventsOf(local.store.id).length).toBe(4)
+    expect(h.engine.status.phase).toBe('error')
+    expect(h.engine.status.error?.code).toBe('store_gone')
+    expect(cloud.stores.get(local.store.id)!.archived_at).toBeTruthy() // still archived
+    expect(cloud.eventsOf(local.store.id).length).toBe(3) // the new entry was not pushed
+    expect((await repo.loadSnapshot(local.store.id))!.events.length).toBe(4) // the phone's copy is intact
+    expect(await repo.getMeta(META.gone(local.store.id))).toBeTruthy()
+
+    // later runs do not keep trying
+    const calls = cloud.calls.length
+    await h.engine.syncNow()
+    expect(cloud.calls.slice(calls)).toEqual([])
+    expect(h.engine.status.error?.code).toBe('store_gone')
+  })
+
+  it('an interrupted pull of an additional store is finished on a later run, without switching and without duplicates', async () => {
+    const local = await seedLocal('Phone store')
+    const cloud = new FakeCloud(USER_A.id)
+    const X = cloudStore('X0000000000000000000000006', 'Cloud store')
+    await seedCloud(cloud, X, [product(X.id)], [], Array.from({ length: 700 }, () => event(X.id)))
+    const orig = cloud.pullEvents.bind(cloud)
+    let failX = true
+    cloud.pullEvents = async (storeId, ...rest) => {
+      if (storeId === X.id && failX) {
+        failX = false
+        throw new Error('mid-pull crash')
+      }
+      return orig(storeId, ...rest)
+    }
+    const h = harness(cloud)
+    h.engine.setUser(USER_A)
+    await h.engine.whenIdle()
+    expect(h.engine.status.phase).toBe('error')
+    expect(await repo.storeExists(X.id)).toBe(true) // the store row arrived first…
+    expect(await repo.getMeta(META.adoptPending(X.id))).toBe('1') // …so it is marked unfinished
+    expect((await repo.currentStore())!.id).toBe(local.store.id)
+
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect(await repo.getMeta(META.adoptPending(X.id))).toBeNull()
+    expect((await repo.loadSnapshot(X.id))!.events.length).toBe(700)
+    expect(await db.events.where('store_id').equals(X.id).count()).toBe(700)
+    expect((await repo.currentStore())!.id).toBe(local.store.id)
   })
 })
 

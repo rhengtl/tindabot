@@ -5,7 +5,11 @@
 //   - sync markers are set only after the server acknowledged the batch
 //   - the device switches `current_store` only after a complete initial pull; an interrupted
 //     pull is resumed from `claim_pending` + per-store cursors on the next run
-//   - two populated stores with different ids are never merged or replaced automatically
+//   - several stores per account (2026-09-30): a phone store missing from the cloud is uploaded as
+//     its own store, and the account's stores missing from the phone are pulled in as additional
+//     local stores without switching; stores are never merged or replaced
+//   - a store deleted on this phone is archived in the cloud (never deleted there) and never pulled
+//     back; a store archived by another device is not re-uploaded or un-archived here
 //   - a `local_only` (demo) store is never pushed, never claimed
 //   - clock skew > 5 min is a warning only
 //
@@ -45,8 +49,6 @@ export type SyncPhase =
   | 'unbound'
   /** current store is the demo (never synced) */
   | 'local_only'
-  /** two populated stores — waiting for the user's choice */
-  | 'needs_choice'
   | 'idle'
   | 'syncing'
   | 'offline'
@@ -55,11 +57,6 @@ export type SyncPhase =
 export interface SyncError {
   code: CloudErrorCode
   detail: string
-}
-
-export interface ClaimChoiceInfo {
-  cloud: { id: string; name: string; updated_at: string }
-  local: { id: string; name: string }
 }
 
 export interface SyncStatus {
@@ -74,10 +71,9 @@ export interface SyncStatus {
   /** device − server, ms; warning when |skew| > SKEW_WARN_MS */
   skewMs: number | null
   skewWarning: boolean
-  choice: ClaimChoiceInfo | null
 }
 
-export type SyncReason = 'init' | 'signin' | 'write' | 'foreground' | 'online' | 'manual' | 'retry' | 'choice'
+export type SyncReason = 'init' | 'signin' | 'write' | 'foreground' | 'online' | 'manual' | 'retry'
 
 export interface EngineDeps {
   api: CloudApi
@@ -109,6 +105,10 @@ export const META = {
   windowEvents: (id: string) => `window_events:${id}`,
   windowProducts: (id: string) => `window_products:${id}`,
   windowCustomers: (id: string) => `window_customers:${id}`,
+  /** an additional cloud store whose first pull onto this phone has not finished yet */
+  adoptPending: (id: string) => `adopt_pending:${id}`,
+  /** this store was archived in the cloud (deleted on another device): not uploaded again */
+  gone: (id: string) => `cloud_gone:${id}`,
 } as const
 
 const INITIAL: SyncStatus = {
@@ -121,7 +121,6 @@ const INITIAL: SyncStatus = {
   error: null,
   skewMs: null,
   skewWarning: false,
-  choice: null,
 }
 
 function describe(err: unknown): string {
@@ -148,7 +147,6 @@ export class SyncEngine {
   private retryDelay: number | null = null
   private failures = 0
   private disposed = false
-  private choiceDeferred = false
 
   constructor(deps: EngineDeps) {
     this.api = deps.api
@@ -170,7 +168,7 @@ export class SyncEngine {
     this.patch({ user })
     if (!user) {
       this.clearTimers()
-      this.patch({ phase: 'signed_out', choice: null, boundStoreId: null, error: null })
+      this.patch({ phase: 'signed_out', boundStoreId: null, error: null })
       return
     }
     if (changed) this.requestSync('signin')
@@ -201,35 +199,6 @@ export class SyncEngine {
     this.clearTimers()
     await this.start('manual')
     await this.whenIdle()
-  }
-
-  /** The user's answer to the two-populated-stores sheet. */
-  async resolveClaim(choice: 'phone' | 'cloud' | 'later'): Promise<void> {
-    const info = this.status.choice
-    if (!info) return
-    this.patch({ choice: null })
-    if (choice === 'later') {
-      // Stay unbound; only a manual sync or a new sign-in asks again (writes never re-open the sheet).
-      this.choiceDeferred = true
-      this.patch({ phase: 'unbound' })
-      return
-    }
-    this.choiceDeferred = false
-    await this.startExclusive('choice', async () => {
-      try {
-        if (choice === 'phone') {
-          // Archive first: if the upload fails afterwards the account simply has no active store
-          // and the next run resumes the upload. Archiving is a flag; nothing is deleted.
-          await this.api.archiveStore(info.cloud.id)
-          await this.bindLocal(info.local.id, this.status.user!.id)
-        } else {
-          await this.pullSwitch(info.cloud.id)
-        }
-        await this.sync()
-      } catch (err) {
-        await this.fail(err)
-      }
-    })
   }
 
   /** Delay of the retry currently scheduled after a failure (null when none is pending). */
@@ -291,8 +260,10 @@ export class SyncEngine {
   private async run(reason: SyncReason): Promise<void> {
     const user = this.status.user
     if (!user) return
-    if (reason === 'manual' || reason === 'signin') this.choiceDeferred = false
     try {
+      // Stores deleted on this phone leave the account's active list first, so nothing below can
+      // pull them back.
+      if (this.isOnline()) await this.archiveDeleted()
       const cur = await repo.getMeta('current_store')
       if (!cur) {
         this.patch({ phase: 'unbound', boundStoreId: null })
@@ -303,29 +274,78 @@ export class SyncEngine {
         // account that owns a store switches to it (and a pending pull resumes); ordinary
         // write triggers stay local.
         const pending = await repo.getMeta(META.claimPending)
-        if (!pending && reason !== 'signin' && reason !== 'manual' && reason !== 'init' && reason !== 'choice') {
-          this.patch({ phase: 'local_only', boundStoreId: null, choice: null })
+        if (!pending && reason !== 'signin' && reason !== 'manual' && reason !== 'init') {
+          this.patch({ phase: 'local_only', boundStoreId: null })
           return
         }
+      }
+      if (await repo.getMeta(META.gone(cur))) {
+        // Archived in the cloud, i.e. deleted on another device: this copy stays on the phone and
+        // is not uploaded or un-archived again. Nothing to retry.
+        this.patch({ phase: 'error', error: { code: 'store_gone', detail: 'store archived in the cloud' }, boundStoreId: null })
+        return
       }
       let bound = await repo.getMeta(META.boundStore)
       const boundUser = await repo.getMeta(META.boundUser)
       if (bound && boundUser !== user.id) bound = null // another account: never reuse the binding
       const pending = await repo.getMeta(META.claimPending)
       if (!bound || bound !== cur || pending) {
-        if (this.choiceDeferred && !pending) {
-          this.patch({ phase: 'unbound', boundStoreId: null })
-          return
-        }
         const proceed = await this.discover(cur, user)
         if (!proceed) return
       } else {
         this.patch({ boundStoreId: bound })
       }
       await this.sync()
+      // The account's other stores: pulled in on launch, sign-in, foreground and manual runs, not
+      // after every local write.
+      if (reason !== 'write') await this.adoptMissing()
     } catch (err) {
       await this.fail(err)
     }
+  }
+
+  /** Archives, in the cloud, every store deleted on this phone (queued while offline or signed out). */
+  private async archiveDeleted(): Promise<void> {
+    for (const id of await repo.deletedStoreIds()) {
+      try {
+        await this.api.archiveStore(id)
+      } catch (err) {
+        // Not the account's store, or never uploaded: nothing in the cloud to hide.
+        if (!(err instanceof CloudError && (err.code === 'denied' || err.code === 'store_gone'))) throw err
+      }
+      await repo.forgetDeletedStore(id)
+    }
+  }
+
+  /**
+   * Every active store of the account that is not (completely) on this phone is pulled in as an
+   * additional local store, without switching to it. A pull interrupted half-way is finished on a
+   * later run (`adopt_pending`); stores deleted on this phone are never pulled back.
+   */
+  private async adoptMissing(): Promise<void> {
+    const cur = await repo.getMeta('current_store')
+    const deleted = new Set(await repo.deletedStoreIds())
+    let changed = false
+    for (const row of await this.api.listMyStores()) {
+      if (row.archived_at || row.id === cur || deleted.has(row.id)) continue
+      const unfinished = await repo.getMeta(META.adoptPending(row.id))
+      if (!unfinished && (await repo.storeExists(row.id))) continue
+      const store = rowToStore(row)
+      if (!store) continue
+      await repo.setMeta(META.adoptPending(row.id), '1')
+      await repo.applyPulledRecords({ store })
+      await this.pullStoreData(row.id)
+      await repo.deleteMeta(META.adoptPending(row.id))
+      changed = true
+    }
+    if (changed) await this.onPulled()
+  }
+
+  /** Pulls a store's records and events up to one fresh watermark (resumable through its cursors). */
+  private async pullStoreData(storeId: string): Promise<void> {
+    const watermark = await this.api.syncWatermark()
+    await this.pullRecords(storeId, watermark)
+    await this.pullEvents(storeId, watermark)
   }
 
   private async fail(err: unknown): Promise<void> {
@@ -371,7 +391,14 @@ export class SyncEngine {
     const snap = await repo.loadSnapshot(cur)
     const counts = await repo.countStoreData(cur)
     const decision = decideClaim({
-      local: snap ? { store: snap.store, populated: counts.products + counts.customers + counts.events > 0, localOnly: await repo.isLocalOnly(cur) } : null,
+      local: snap
+        ? {
+            store: snap.store,
+            populated: counts.products + counts.customers + counts.events > 0,
+            localOnly: await repo.isLocalOnly(cur),
+            otherRealStores: (await repo.latestRealStore(cur)) !== null,
+          }
+        : null,
       cloudStores,
       pendingCloudId: await repo.getMeta(META.claimPending),
     })
@@ -392,29 +419,20 @@ export class SyncEngine {
       case 'pull_switch':
         await this.pullSwitch(d.cloudStoreId)
         return true
-      case 'ask': {
-        const name = rowToStore(d.cloud)?.name ?? d.cloud.id
-        this.patch({
-          phase: 'needs_choice',
-          boundStoreId: null,
-          choice: { cloud: { id: d.cloud.id, name, updated_at: d.cloud.updated_at }, local: { id: d.local.id, name: d.local.name } },
-        })
-        return false
-      }
     }
   }
 
   private async bind(storeId: string, userId: string): Promise<void> {
     await repo.setMeta(META.boundStore, storeId)
     await repo.setMeta(META.boundUser, userId)
-    this.patch({ boundStoreId: storeId, choice: null })
+    this.patch({ boundStoreId: storeId })
   }
 
   /**
-   * Make the phone's store the account's store. If the cloud already has the row (e.g. archived by
-   * a "keep the phone" choice on another device) it is un-archived; if it has none, the row is
-   * created here so products/customers/events can reference it. Cursors restart from 0 when the
-   * server knows nothing about the store.
+   * Make the phone's store one of the account's stores. If the cloud has no row, it is created here
+   * so products/customers/events can reference it, and cursors restart from 0. If the row is
+   * archived, the store was deleted on another device: it is not un-archived, and this phone stops
+   * syncing it (`cloud_gone`) while keeping its copy.
    */
   private async bindLocal(storeId: string, userId: string): Promise<void> {
     const local = await repo.loadSnapshot(storeId)
@@ -427,15 +445,17 @@ export class SyncEngine {
       await repo.setMeta(META.cursorProducts(storeId), '0')
       await repo.setMeta(META.cursorCustomers(storeId), '0')
     } else if (remote.archived_at) {
-      await this.api.unarchiveStore(storeId)
+      await repo.setMeta(META.gone(storeId), new Date(this.now()).toISOString())
+      throw new CloudError('store archived in the cloud', 'store_gone')
     }
     await this.bind(storeId, userId)
   }
 
   /**
-   * "Gamitin ang nasa cloud": pull the cloud store completely into Dexie as an additional local
-   * store, then switch. The previous local store is left untouched. `claim_pending` + cursors make
-   * an interrupted pull resumable; nothing is switched until the pull completed.
+   * A fresh phone (demo, or its only store still empty): pull the account's store completely into
+   * Dexie as an additional local store, then switch. The previous local store is left untouched.
+   * `claim_pending` + cursors make an interrupted pull resumable; nothing is switched until the pull
+   * completed.
    */
   private async pullSwitch(cloudStoreId: string): Promise<void> {
     await repo.setMeta(META.claimPending, cloudStoreId)
@@ -447,9 +467,7 @@ export class SyncEngine {
       throw new CloudError('cloud store archived or missing', 'store_gone')
     }
     await repo.applyPulledRecords({ store })
-    const watermark = await this.api.syncWatermark()
-    await this.pullRecords(cloudStoreId, watermark)
-    await this.pullEvents(cloudStoreId, watermark)
+    await this.pullStoreData(cloudStoreId)
     await repo.setCurrentStore(cloudStoreId)
     await this.bind(cloudStoreId, this.status.user!.id)
     await repo.deleteMeta(META.claimPending)

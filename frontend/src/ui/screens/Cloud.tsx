@@ -1,10 +1,9 @@
-// P3a — Cloud backup card (Iba pa) and the two-populated-stores choice sheet.
+// P3a — Cloud backup card (Iba pa).
 // Pure presentation over the store's `cloud` slice; every action is a store method, and all of
 // them are no-ops when the build has no cloud configuration.
 import { useState } from 'react'
 import { useApp } from '../../state/store'
-import { Sheet, useToast } from '../components'
-import { exportCurrentStore } from '../exportFile'
+import { useToast } from '../components'
 import { useStrings } from '../i18n'
 import type { Strings } from '../strings'
 
@@ -100,9 +99,6 @@ export function CloudCard() {
     case 'local_only':
       line = S.cloud.status.localOnly
       break
-    case 'needs_choice':
-      line = S.cloud.status.needsChoice
-      break
     default:
       line = S.cloud.status.unbound
   }
@@ -130,60 +126,5 @@ export function CloudCard() {
         </p>
       </div>
     </>
-  )
-}
-
-/** Mounted app-wide (App.tsx) so the choice is visible whichever tab is open. */
-export function ClaimChoiceSheet() {
-  const choice = useApp((s) => s.cloud.sync.choice)
-  const resolveClaim = useApp((s) => s.resolveClaim)
-  const S = useStrings()
-  const toast = useToast()
-  const [busy, setBusy] = useState(false)
-  if (!choice) return null
-  const onExport = async () => {
-    const outcome = await exportCurrentStore()
-    if (outcome === 'shared') toast(S.common.exported)
-    else if (outcome === 'download_started') toast(S.ibaPa.exportStarted)
-    else if (outcome === 'failed') toast(S.ibaPa.exportFailed)
-  }
-  const pick = async (c: 'phone' | 'cloud') => {
-    setBusy(true)
-    try {
-      await resolveClaim(c)
-      if (useApp.getState().cloud.sync.phase === 'idle') toast(S.cloud.choice.done)
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <Sheet open onClose={() => resolveClaim('later')}>
-      <h2>{S.cloud.choice.title}</h2>
-      <p className="muted">{S.cloud.choice.intro(choice.cloud.name, choice.local.name)}</p>
-      <div className="card soft">
-        <button type="button" className="btn primary" style={{ width: '100%' }} disabled={busy} onClick={() => pick('phone')}>
-          {S.cloud.choice.keepPhone}
-        </button>
-        <p className="muted small" style={{ margin: '6px 0 0' }}>
-          {S.cloud.choice.keepPhoneHint}
-        </p>
-      </div>
-      <div className="card soft">
-        <button type="button" className="btn secondary" style={{ width: '100%' }} disabled={busy} onClick={() => pick('cloud')}>
-          {S.cloud.choice.useCloud}
-        </button>
-        <p className="muted small" style={{ margin: '6px 0 0' }}>
-          {S.cloud.choice.useCloudHint}
-        </p>
-      </div>
-      <div className="row" style={{ marginTop: 6, flexWrap: 'wrap' }}>
-        <button type="button" className="btn ghost sm" disabled={busy} onClick={() => onExport()}>
-          {S.cloud.choice.exportFirst}
-        </button>
-        <button type="button" className="btn ghost sm" disabled={busy} onClick={() => resolveClaim('later')}>
-          {S.cloud.choice.later}
-        </button>
-      </div>
-    </Sheet>
   )
 }

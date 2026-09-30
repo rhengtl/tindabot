@@ -7,7 +7,6 @@ import { Bahay } from './screens/Bahay'
 import { BakitSheet } from './screens/Bakit'
 import { BilangSheet } from './screens/Bilang'
 import { BumiliSheet } from './screens/Bumili'
-import { ClaimChoiceSheet } from './screens/Cloud'
 import { IbaPa } from './screens/IbaPa'
 import { Listahan } from './screens/Listahan'
 import { type PeraKind, PeraSheet } from './screens/Pera'
@@ -220,7 +219,6 @@ function Shell() {
       <AddProductSheet open={adding} onClose={() => setAdding(false)} />
       <PeraSheet open={pera.open} kind={pera.kind} initialCustomerId={pera.customerId} onClose={() => setPera((p) => ({ ...p, open: false }))} />
       {bakit && <BakitSheet product={bakitProduct} state={bakitState} line={bakitLine} onClose={() => setBakit(null)} />}
-      <ClaimChoiceSheet />
     </div>
   )
 }

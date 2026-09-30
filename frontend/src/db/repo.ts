@@ -86,6 +86,62 @@ export async function latestRealStore(exceptId: string | null): Promise<Store | 
   return latest ? stripStore(latest) : null
 }
 
+export interface StoreSummary {
+  id: string
+  name: string
+  demo: boolean
+  updated_at: string
+}
+
+/** Every store on this device: real stores by name, the demo last. */
+export async function listStores(): Promise<StoreSummary[]> {
+  const rows = await db.stores.toArray()
+  return rows
+    .map((r) => ({ id: r.id, name: r.name, demo: r.local_only === true, updated_at: r.updated_at }))
+    .sort((a, b) => Number(a.demo) - Number(b.demo) || a.name.localeCompare(b.name) || (a.id < b.id ? -1 : 1))
+}
+
+/** The demo store on this device, if there is one. */
+export async function demoStoreId(): Promise<string | null> {
+  return (await db.stores.filter((r) => r.local_only === true).first())?.id ?? null
+}
+
+const DELETED_PREFIX = 'store_deleted:'
+
+/** Stores deleted on this device whose cloud copy still has to be archived (the sync engine does it). */
+export async function deletedStoreIds(): Promise<string[]> {
+  const keys = await db.meta.where('key').startsWith(DELETED_PREFIX).primaryKeys()
+  return keys.map((k) => String(k).slice(DELETED_PREFIX.length))
+}
+
+export async function forgetDeletedStore(id: string): Promise<void> {
+  await db.meta.delete(DELETED_PREFIX + id)
+}
+
+/**
+ * Deletes a store from this device: its row, products, customers and events, and its per-store sync
+ * state (cursors, windows, markers), all in one transaction. `current_store`, the cloud binding and
+ * a pending pull are dropped if they pointed at it; the caller chooses the next current store.
+ * A real store is queued for archiving in the cloud (never deleted there — clients have no DELETE);
+ * the demo never reached the cloud. Every other store is untouched.
+ */
+export async function deleteStore(id: string): Promise<void> {
+  await db.transaction('rw', [db.stores, db.products, db.customers, db.events, db.meta], async () => {
+    const row = await db.stores.get(id)
+    if (!row) return
+    await db.events.where('store_id').equals(id).delete()
+    await db.products.where('store_id').equals(id).delete()
+    await db.customers.where('store_id').equals(id).delete()
+    await db.stores.delete(id)
+    const perStore = (await db.meta.toCollection().primaryKeys()).filter((k) => String(k).endsWith(`:${id}`))
+    await db.meta.bulkDelete(perStore)
+    for (const key of ['current_store', 'cloud_store_id', 'claim_pending']) {
+      if ((await db.meta.get(key))?.value === id) await db.meta.delete(key)
+    }
+    if (row.local_only !== true) await db.meta.put({ key: DELETED_PREFIX + id, value: new Date().toISOString() })
+  })
+}
+
 /**
  * Leaves the current store for a fresh onboarding without deleting anything: no store is current
  * and onboarding is not done, so the app starts at the store-name step. The store that was current

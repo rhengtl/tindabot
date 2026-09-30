@@ -33,6 +33,7 @@ import {
 } from '../domain'
 import type { CatalogItem } from '../catalog/catalog'
 import * as repo from '../db/repo'
+import { openDemo } from './demo'
 import { type Cloud, type SignInError, type SyncEngine as SyncEngineT, type SyncReason, type SyncStatus, createCloud } from '../sync'
 import { SyncEngine } from '../sync/engine'
 
@@ -63,6 +64,8 @@ interface AppState {
   demo: boolean
   /** While in the demo: the real store on this device to go back to, if there is one. */
   demoExit: { id: string; name: string } | null
+  /** Every store on this device (the store list in Iba pa). */
+  stores: repo.StoreSummary[]
   products: Product[]
   customers: Customer[]
   events: DomainEvent[]
@@ -121,12 +124,22 @@ interface AppState {
    * (`demoExit`), otherwise to onboarding so the person can set up their own store.
    */
   leaveDemo(): Promise<void>
+  /** Makes another store on this device the current one (also from onboarding, which it ends). */
+  switchStore(id: string): Promise<void>
+  /**
+   * Deletes a store from this device (and hides it in the cloud, see repo.deleteStore). When it was
+   * the current store, the most recently updated remaining real store takes over, else onboarding.
+   */
+  deleteStore(id: string): Promise<void>
+  /** Onboarding for an additional store; every existing store stays as it is. */
+  newStore(): Promise<void>
+  /** Opens the demo on this device (the existing one if there is one) as the current store. */
+  openDemo(): Promise<void>
   // P3a cloud backup
   signInGoogle(): Promise<void>
   signOutCloud(): Promise<void>
   syncNow(): Promise<void>
   requestSync(reason: SyncReason): void
-  resolveClaim(choice: 'phone' | 'cloud' | 'later'): Promise<void>
 }
 
 const SYNC_INITIAL: SyncStatus = {
@@ -139,7 +152,6 @@ const SYNC_INITIAL: SyncStatus = {
   error: null,
   skewMs: null,
   skewWarning: false,
-  choice: null,
 }
 
 /** Meta key of the language preference. Anything but a known language falls back to Taglish. */
@@ -184,7 +196,7 @@ export const useApp = create<AppState>((set, get) => {
   async function reload(nowMs = Date.now()) {
     const store = await repo.currentStore()
     if (!store) {
-      set({ loaded: true, store: null, demo: false, demoExit: null, products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
+      set({ loaded: true, store: null, demo: false, demoExit: null, stores: await repo.listStores(), products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
       return
     }
     const snap = await repo.loadSnapshot(store.id)
@@ -192,7 +204,18 @@ export const useApp = create<AppState>((set, get) => {
     const demo = await repo.isLocalOnly(store.id)
     const exit = demo ? await repo.latestRealStore(store.id) : null
     const d = derive(snap.store, snap.products, snap.events, nowMs, get().lang)
-    set({ loaded: true, store: snap.store, demo, demoExit: exit && { id: exit.id, name: exit.name }, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
+    const stores = await repo.listStores()
+    set({ loaded: true, store: snap.store, demo, demoExit: exit && { id: exit.id, name: exit.name }, stores, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
+  }
+
+  /**
+   * Onboarding for a new store, deleting nothing. The store is dropped before "not onboarded" is set:
+   * onboarding opens at the add-products step whenever a store is loaded, so it must never see both.
+   */
+  async function toOnboarding() {
+    await repo.leaveForOnboarding()
+    await commit()
+    set({ onboarded: false })
   }
 
   /** After a local write: recompute, then let the engine push (debounced). Pulls call reload() only. */
@@ -233,6 +256,7 @@ export const useApp = create<AppState>((set, get) => {
     store: null,
     demo: false,
     demoExit: null,
+    stores: [],
     products: [],
     customers: [],
     events: [],
@@ -303,11 +327,39 @@ export const useApp = create<AppState>((set, get) => {
         await commit()
         return
       }
-      await repo.leaveForOnboarding()
-      // Drop the store first: onboarding opens at the add-products step whenever a store exists, so
-      // it must never see "not onboarded" while the demo is still loaded.
+      await toOnboarding()
+    },
+
+    async switchStore(id) {
+      await repo.setCurrentStore(id)
+      if (!get().onboarded) {
+        await repo.setMeta('onboarded', '1')
+        set({ onboarded: true })
+      }
       await commit()
-      set({ onboarded: false })
+    },
+
+    async deleteStore(id) {
+      const wasCurrent = get().store?.id === id
+      await repo.deleteStore(id)
+      if (!wasCurrent) return commit()
+      const next = await repo.latestRealStore(null)
+      if (!next) return toOnboarding()
+      await repo.setCurrentStore(next.id)
+      await commit()
+    },
+
+    async newStore() {
+      await toOnboarding()
+    },
+
+    async openDemo() {
+      await openDemo()
+      if (!get().onboarded) {
+        await repo.setMeta('onboarded', '1')
+        set({ onboarded: true })
+      }
+      await commit()
     },
 
     async updateStore(patch) {
@@ -448,10 +500,6 @@ export const useApp = create<AppState>((set, get) => {
 
     requestSync(reason) {
       engine?.requestSync(reason)
-    },
-
-    async resolveClaim(choice) {
-      await engine?.resolveClaim(choice)
     },
   }
 })

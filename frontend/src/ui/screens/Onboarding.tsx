@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { LANGS, type Lang, type Weekday } from '../../domain'
-import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
 import { useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
@@ -16,6 +15,9 @@ export function Onboarding() {
   const store = useApp((s) => s.store)
   const products = useApp((s) => s.products)
   const setMeta = useApp((s) => s.setMeta)
+  const openDemo = useApp((s) => s.openDemo)
+  const switchStore = useApp((s) => s.switchStore)
+  const stores = useApp((s) => s.stores)
   const [step, setStep] = useState(store ? 2 : 0)
   const [name, setName] = useState('')
   const [days, setDays] = useState<Set<Weekday>>(new Set([3, 6]))
@@ -37,6 +39,10 @@ export function Onboarding() {
     if (!(await write(() => createStore(name.trim() || S.onboarding.defaultStoreName, whenNeeded ? [] : ([...days].sort() as Weekday[]))))) return
     setStep(2)
   }
+
+  // Adding another store from Iba pa: the way back to the store this phone was using, until the new
+  // store exists (from the add-products step on, there is nothing to go back from).
+  const backTo = store ? undefined : [...stores].filter((st) => !st.demo).sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0]
 
   async function done() {
     if (!(await write(() => setMeta('onboarded', '1')))) return
@@ -83,13 +89,15 @@ export function Onboarding() {
               type="button"
               className="btn ghost"
               style={{ width: '100%', marginTop: 8 }}
-              onClick={async () => {
-                if (!(await write(async () => { await loadDemo(); await setMeta('onboarded', '1') }))) return
-                await init()
-              }}
+              onClick={() => write(() => openDemo())}
             >
               {S.ibaPa.demo}
             </button>
+            {backTo && (
+              <button type="button" className="btn ghost" style={{ width: '100%' }} data-testid="onboarding-back" onClick={() => write(() => switchStore(backTo.id))}>
+                {S.stores.back(backTo.name)}
+              </button>
+            )}
           </>
         )}
 

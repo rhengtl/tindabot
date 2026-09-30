@@ -380,26 +380,41 @@ Cloud paused   An unavailable cloud is a normal state, not an error to recover f
                through the same sync run. The app never generates traffic just to keep a project
                from pausing.
 Clock skew     |device − server| > 5 min → warning line only; sync never blocks.
-Claim (on sign-in / launch while unbound / manual):
-               no cloud store           → upload the phone store (it becomes the account's store)
-               same id                  → normal sync
-               phone empty or demo      → pull the cloud store completely, then switch to it
-               both populated, ids ≠    → sheet: "Panatilihin ang nasa phone" (archive the cloud
-                                          store via RPC — kept, not deleted — then upload the
-                                          phone store) / "Gamitin ang nasa cloud" (pull, then
-                                          switch; the phone store stays in Dexie untouched) /
-                                          "I-export muna" / "Mamaya na" (stay unbound; writes do
-                                          not re-ask, a manual sync does). Never a second active
-                                          store, never an automatic merge of two stores.
-               Switching current_store happens only after a complete pull; `claim_pending` +
-               per-store cursors and windows resume an interrupted pull on the next run. A bound store found
-               archived/missing on the server → unbind and re-run the claim (asks when needed).
-               A different account never reuses this device's binding.
-Demo           local_only: never pushed, never claimed; signing in with the demo current only
-               switches to the account's cloud store if one exists.
+Claim (on sign-in / launch / switching to a store not yet bound / manual). Multi-store rules
+               decided 2026-09-30; they replace the 2026-09-15 two-store choice sheet:
+               same id in the cloud     → normal sync
+               fresh phone (the demo, or its only store still empty) and the account has stores
+                                        → pull the most recently updated one completely, then
+                                          switch to it
+               otherwise (a real store not in the cloud) → upload it as one more store of the
+                                          account; a store on the phone never competes with a
+                                          different one in the cloud, nothing is asked, merged or
+                                          replaced
+               The account's other active stores that are not (completely) on the phone are pulled
+               in as additional local stores, without switching (`adopt_pending:<id>` resumes an
+               interrupted one); only the current store syncs continuously, the others when
+               switched to. Switching current_store after a pull happens only once it is complete;
+               `claim_pending` + per-store cursors and windows resume an interrupted pull. A bound
+               store found archived/missing on the server → unbind and re-run the claim. A
+               different account never reuses this device's binding.
+Stores         (decided 2026-09-30.) Iba pa → *Mga tindahan* lists every store on the phone:
+               *Gamitin* (switch), *Burahin* (delete, after a confirmation naming the store and what
+               goes), *＋ Bagong tindahan* (onboarding for another store, with *← Bumalik sa ‹name›*
+               until it exists), *Subukan ang demo* (at most one demo on a phone).
+Delete         removes the store's row, products, customers, events and per-store sync state from
+               the phone in one transaction. In the cloud it is ARCHIVED through archive_store()
+               (every row kept — clients have no DELETE), queued as `store_deleted:<id>` until online
+               and signed in, and never pulled back. Deleting the current store switches to the most
+               recently updated remaining real store, else onboarding. The demo was never in the
+               cloud. A store archived by another device is not un-archived or re-uploaded here: the
+               phone keeps its copy, stops syncing it (`cloud_gone:<id>`) and says the store is no
+               longer available in the cloud.
+Demo           local_only: never pushed, never claimed; signing in with the demo current switches
+               to the account's cloud store if one exists.
 Membership     owner-only in P3a; store_members has `role` for households later (P5).
 Sign-out       stops sync; local data untouched; signing in again resumes on the same binding.
-Never          importFile('replace') (the only destructive local path) — sync never calls it;
+Never          sync never deletes anything locally; the destructive local paths are importFile
+               ('replace') and deleting a store, both only on the person's explicit confirmation;
                no service-role key, DB password, access token or OAuth secret in the client.
 ```
 
@@ -433,7 +448,9 @@ Never          importFile('replace') (the only destructive local path) — sync 
   receipt camera.
 - **P4 Katulong:** Ilista text/voice via parse, `/ai/chat` with client tools, briefing card.
 - **P5 Abot:** household second device, push via Edge Function running `domain/`, supplier price
-  memory, CSV import, tally (`SALE`, additive), English toggle, multi-store.
+  memory, CSV import, tally (`SALE`, additive), English toggle, multi-store. (Multi-store on one
+  account was brought forward and done on 2026-09-30, see §E7 *Stores*/*Delete*; the English toggle
+  was done in P3a, see *Language*.)
 
 ## H. Migration / reuse
 

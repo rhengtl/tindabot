@@ -1,6 +1,7 @@
-// Store-claim decision (P3a, decided 2026-09-15). Pure: given what is on the phone and what the
-// account owns in the cloud, say what may happen. Every outcome is non-destructive; the only case
-// that touches two populated stores ('ask') requires an explicit user choice made elsewhere.
+// Store-claim decision (P3a, decided 2026-09-15; multi-store rules decided 2026-09-30). Pure: given
+// what is on the phone and what the account owns in the cloud, say what may happen to the current
+// store. Every outcome is non-destructive. An account may own several stores, so a store on the
+// phone never competes with a different one in the cloud: each is kept as its own store.
 
 import type { Store } from '../domain'
 import type { StoreRow } from './codec'
@@ -11,6 +12,8 @@ export interface LocalStoreInfo {
   populated: boolean
   /** demo store: never uploaded, never claimed */
   localOnly: boolean
+  /** another real (non-demo) store exists on this phone besides this one */
+  otherRealStores: boolean
 }
 
 export interface ClaimInput {
@@ -23,14 +26,12 @@ export interface ClaimInput {
 
 export type ClaimDecision =
   | { kind: 'none'; reason: 'no_local' | 'local_only' }
-  /** account owns nothing yet → the phone store becomes the account's store */
+  /** the phone store is not in the cloud yet → it becomes one of the account's stores */
   | { kind: 'upload'; storeId: string }
   /** same id on both sides → ordinary sync */
   | { kind: 'sync'; storeId: string }
-  /** nothing to lose on the phone (empty or demo) → pull the cloud store and switch to it */
+  /** a fresh phone (demo, or its only store still empty) → pull the account's store and switch */
   | { kind: 'pull_switch'; cloudStoreId: string; resume: boolean }
-  /** two populated stores → user chooses */
-  | { kind: 'ask'; cloud: StoreRow; local: Store }
 
 /** Prefer the store matching the phone's id; otherwise the most recently updated one. */
 export function pickCloudStore(stores: StoreRow[], localId: string | null): StoreRow | null {
@@ -48,9 +49,11 @@ export function decideClaim(input: ClaimInput): ClaimDecision {
   }
   if (!input.local) return { kind: 'none', reason: 'no_local' }
   const local = input.local
-  const cloud = pickCloudStore(active, local.store.id)
-  if (!cloud) return local.localOnly ? { kind: 'none', reason: 'local_only' } : { kind: 'upload', storeId: local.store.id }
-  if (cloud.id === local.store.id) return { kind: 'sync', storeId: local.store.id }
-  if (local.localOnly || !local.populated) return { kind: 'pull_switch', cloudStoreId: cloud.id, resume: false }
-  return { kind: 'ask', cloud, local: local.store }
+  if (active.some((s) => s.id === local.store.id)) return { kind: 'sync', storeId: local.store.id }
+  const cloud = pickCloudStore(active, null)
+  // Restoring onto a fresh phone: the demo, or a phone whose only store has nothing in it yet.
+  // With another real store on the phone, an empty new store was made on purpose: it is uploaded.
+  const fresh = local.localOnly || (!local.populated && !local.otherRealStores)
+  if (cloud && fresh) return { kind: 'pull_switch', cloudStoreId: cloud.id, resume: false }
+  return local.localOnly ? { kind: 'none', reason: 'local_only' } : { kind: 'upload', storeId: local.store.id }
 }

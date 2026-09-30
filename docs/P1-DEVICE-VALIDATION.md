@@ -535,3 +535,43 @@ session), which are ignored, that the subscription is dropped when the app stops
 signing out uses `scope: 'local'` so it never ends the owner's sessions elsewhere, and that a failed
 sign-out surfaces as a `CloudError` with the right category instead of being swallowed. Until now
 only the online suite touched this path.
+
+## Leaving the demo, and several stores per phone and account (2026-09-30)
+
+Owner decisions of 2026-09-30, recorded in BLUEPRINT (*Leaving the demo*; §E7 *Claim*, *Stores*,
+*Delete*). The two-store **claim-choice sheet** described in earlier sections of this log
+("Which store do you want to use?", *Panatilihin ang nasa phone* / *Gamitin ang nasa cloud*) **no
+longer exists**. Those entries are kept as the record of what was verified at the time.
+
+What changed:
+- **Leaving the demo:** *Demo ito.* on Bahay and Iba pa, with *Simulan ang sariling tindahan* when
+  the phone has no real store, else *Bumalik sa ‹name›*.
+- **Stores list** in Iba pa: switch, delete with confirmation, add (onboarding with a way back),
+  and at most one demo.
+- **Sync:**
+  - A real store missing from the cloud is uploaded as one more store of the account.
+  - The account's other stores are pulled in without switching.
+  - A deleted store is archived in the cloud (queued while offline) and never pulled back.
+  - A store archived elsewhere is not re-uploaded.
+
+Verified:
+- Offline suite: 375 tests. New or updated:
+  - `claim.test.ts`: 9;
+  - `engine.test.ts`: 41, including 7 multi-store scenarios;
+  - `stores.test.ts`: 9;
+  - `demo_exit.test.ts`: 5.
+- Mutation checks: pulling deleted stores back, not archiving them, un-archiving a store deleted
+  elsewhere, and opening onboarding at the products step. Each made a test fail.
+- **Online suite against the real project, test accounts only:** 21 passed, 1 skipped (the
+  race test needs the optional `test_helpers.sql`, which is not installed). This includes three new
+  multi-store tests: both stores are kept, delete archives in the cloud with every row kept, and a
+  store archived by another client is neither un-archived nor re-uploaded.
+- **Real UI** on the local production preview (fresh storage, 360 px, headless Chromium):
+  - create two stores, and back out of a third onboarding;
+  - switch;
+  - open the demo once;
+  - delete another store and then the current one; with only the demo left, onboarding opens at
+    the store-name step;
+  - "Subukan ang demo" reopens the same demo.
+
+  No overflow and no page errors. The leaving-the-demo flows were also checked in English.

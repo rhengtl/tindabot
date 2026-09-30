@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 362 offline tests: domain vs reference oracles, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, sync engine (in-memory cloud), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
+npm test           # 375 offline tests: domain vs reference oracles, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, several stores (switch/add/delete), sync engine (in-memory cloud incl. multi-store), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (362 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (375 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 
@@ -60,6 +60,9 @@ supabase/scripts/          manual cleanup of automated-test data (run in the SQL
 ## Cloud backup (P3a)
 
 Optional. Without `frontend/.env.local` the app runs exactly as before (no sign-in, no sync).
+A phone can hold several stores (Iba pa → *Mga tindahan*: switch, add, delete, try the demo), and
+an account backs up all of them. Deleting a store removes it from the phone and archives it in the
+cloud. Rules: BLUEPRINT §E7.
 Setup steps and what goes where: [docs/P3A-SETUP.md](docs/P3A-SETUP.md). Only the project URL
 and the anon key ever reach the frontend; RLS is the security boundary.
 

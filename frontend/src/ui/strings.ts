@@ -51,6 +51,19 @@ export const TL = {
     hint: 'Mananatili ang demo sa phone na ito, pero hindi na ito ang gagamitin.',
   },
 
+  /** The stores on this phone (Iba pa): switch, delete, add. */
+  stores: {
+    title: 'Mga tindahan',
+    current: 'Ginagamit',
+    use: 'Gamitin',
+    delete: 'Burahin',
+    add: '＋ Bagong tindahan',
+    deleteQ: (name: string) =>
+      `Burahin ang "${name}"? Mabubura sa phone na ito ang lahat ng paninda, suki, utang at listahan nito, at hindi na ito lalabas sa cloud backup mo. Hindi na ito maibabalik — mag-export muna kung gusto mo ng kopya.`,
+    deleted: (name: string) => `Nabura ang "${name}".`,
+    back: (name: string) => `← Bumalik sa ${name}`,
+  },
+
   onboarding: {
     welcome: 'Maligayang pagdating!',
     intro: 'Sasabihin ni TindaBot kung ano ang bibilhin mo, ilan, kailan, at magkano ang dadalhin — base sa bili at bilang mo.',
@@ -217,8 +230,6 @@ export const TL = {
     exportFailed: 'Hindi na-export ang file.',
     importFailed: 'Hindi na-import ang file.',
     demo: 'Subukan ang demo',
-    demoHint: 'Palitan ang laman ng sample na tindahan (pagsubok lang).',
-    demoLoaded: 'Demo loaded.',
     advanced: 'Advanced',
     payday: 'Dagdag benta tuwing kinsenas/katapusan',
     friSat: 'Dagdag benta tuwing Biyernes/Sabado',
@@ -319,7 +330,6 @@ export const TL = {
       authNeeded: 'Mag-sign in ulit para magpatuloy ang backup. Nasa phone pa rin ang listahan.',
       localOnly: 'Demo — hindi naka-sync sa cloud.',
       unbound: 'Hindi pa naka-connect ang tindahan na ito sa cloud. I-tap ang "I-sync ngayon".',
-      needsChoice: 'May ibang tindahan sa cloud account mo — pumili sa ibaba.',
       pending: (n: number) => `${n} entry ang hindi pa naka-backup`,
     },
     /** Sync failures by app-level category (never raw server text). Shown inside status.error(). */
@@ -334,17 +344,6 @@ export const TL = {
     } satisfies Record<CloudErrorCode, string>,
     ago: { justNow: 'kanina lang', minutes: (n: number) => `${n} min ang nakalipas`, hours: (n: number) => `${n} oras ang nakalipas`, days: (n: number) => `${n} araw ang nakalipas` },
     skew: (min: number) => `Mali yata ang oras ng phone mo (≈ ${min} min ang layo sa server). Ayusin sa Settings ng phone para tama ang pagkakasunod ng mga entry.`,
-    choice: {
-      title: 'Aling tindahan ang gagamitin?',
-      intro: (cloudName: string, localName: string) => `May tindahan na sa cloud account mo ("${cloudName}") at iba ang nasa phone na ito ("${localName}"). Walang mabubura sa alinmang pipiliin mo.`,
-      keepPhone: 'Panatilihin ang nasa phone',
-      keepPhoneHint: 'Ia-archive ang nasa cloud (hindi mabubura); ia-upload ang nasa phone.',
-      useCloud: 'Gamitin ang nasa cloud',
-      useCloudHint: 'Lilipat sa tindahan mula sa cloud. Nasa phone pa rin ang kasalukuyan, pero hindi na ipapakita.',
-      exportFirst: 'I-export muna ang nasa phone',
-      later: 'Mamaya na',
-      done: 'Tapos na.',
-    },
   },
 
   days: ['Lin', 'Lun', 'Mar', 'Miy', 'Huw', 'Biy', 'Sab'],
@@ -400,6 +399,18 @@ export const EN: Strings = {
     start: 'Start my own store →',
     back: (name: string) => `Back to ${name} →`,
     hint: 'The demo stays on this phone, but the app stops using it.',
+  },
+
+  stores: {
+    title: 'Stores',
+    current: 'In use',
+    use: 'Use',
+    delete: 'Delete',
+    add: '＋ New store',
+    deleteQ: (name: string) =>
+      `Delete "${name}"? All its products, customers, utang and entries are removed from this phone, and it no longer appears in your cloud backup. This cannot be undone — export it first if you want a copy.`,
+    deleted: (name: string) => `"${name}" deleted.`,
+    back: (name: string) => `← Back to ${name}`,
   },
 
   onboarding: {
@@ -568,8 +579,6 @@ export const EN: Strings = {
     exportFailed: 'The file could not be exported.',
     importFailed: 'The file could not be imported.',
     demo: 'Try the demo',
-    demoHint: 'Replace the contents with a sample store (for trying things out).',
-    demoLoaded: 'Demo loaded.',
     advanced: 'Advanced',
     payday: 'Extra sales on payday (15th/30th)',
     friSat: 'Extra sales on Fridays/Saturdays',
@@ -669,7 +678,6 @@ export const EN: Strings = {
       authNeeded: 'Sign in again to keep backing up. Your list stays on the phone.',
       localOnly: 'Demo — not synced to the cloud.',
       unbound: 'This store is not connected to the cloud yet. Tap "Sync now".',
-      needsChoice: 'Your cloud account has a different store — choose below.',
       pending: (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'} not backed up yet`,
     },
     errors: {
@@ -683,17 +691,6 @@ export const EN: Strings = {
     },
     ago: { justNow: 'just now', minutes: (n: number) => `${n} min ago`, hours: (n: number) => `${n} ${n === 1 ? 'hour' : 'hours'} ago`, days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'} ago` },
     skew: (min: number) => `Your phone’s clock looks wrong (≈ ${min} min off from the server). Fix it in the phone’s Settings so entries stay in the right order.`,
-    choice: {
-      title: 'Which store do you want to use?',
-      intro: (cloudName: string, localName: string) => `Your cloud account already has a store ("${cloudName}") and this phone has a different one ("${localName}"). Nothing is deleted whichever you choose.`,
-      keepPhone: 'Keep the one on this phone',
-      keepPhoneHint: 'The cloud store is archived (not deleted); the phone’s store is uploaded.',
-      useCloud: 'Use the one in the cloud',
-      useCloudHint: 'Switches to the cloud store. The current list stays on the phone but is no longer shown.',
-      exportFirst: 'Export the phone’s list first',
-      later: 'Later',
-      done: 'Done.',
-    },
   },
 
   days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],

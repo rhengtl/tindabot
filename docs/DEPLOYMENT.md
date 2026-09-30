@@ -194,7 +194,9 @@ Checked read-only on 2026-09-29:
      entries yet, or is the demo, the app **automatically pulls *Google claim check* and switches
      to it**. The local store is left untouched, but the owner lands in the verification store.
    - If the local store already has entries, the app asks which store to keep. Keeping the phone's
-     store archives *Google claim check* (a flag; nothing is deleted).
+     store archives *Google claim check* (a flag; nothing is deleted). *(Superseded 2026-09-30: an
+     account now holds several stores and nothing is asked — see BLUEPRINT §E7. The store is
+     archived anyway, so it is never pulled in.)*
    - **Resolved 2026-09-29 (owner decision): archived.** How it was done:
      - It used the app's own owner-only `archive_store` call (the one behind "Keep the phone's
        store") with the owner's own Google session. No admin key was used, and RLS and the owner

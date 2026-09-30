@@ -44,6 +44,13 @@ const SPECS: Spec[] = [
     purchases: [], counts: [] },
 ]
 
+/** Opens the demo: the one already on this device if there is one, otherwise a new one. */
+export async function openDemo(): Promise<void> {
+  const existing = await repo.demoStoreId()
+  if (existing) await repo.setCurrentStore(existing)
+  else await loadDemo()
+}
+
 export async function loadDemo(): Promise<void> {
   const deviceId = await repo.deviceId()
   const store = await repo.createStore('Tindahan ni Aling Nena (demo)', [3, 6])

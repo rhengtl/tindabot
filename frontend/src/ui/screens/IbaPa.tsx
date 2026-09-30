@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { LANGS, type Lang, type Weekday } from '../../domain'
-import { loadDemo } from '../../state/demo'
 import { useApp } from '../../state/store'
 import { useToast, useWrite } from '../components'
 import { importFailureKind } from '../write'
@@ -8,6 +7,7 @@ import { exportCurrentStore } from '../exportFile'
 import { useLang, useStrings } from '../i18n'
 import { CloudCard } from './Cloud'
 import { DemoExit } from './DemoExit'
+import { StoresCard } from './Stores'
 import { UlatCard } from './Ulat'
 
 export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
@@ -15,7 +15,6 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   const persisted = useApp((s) => s.persisted)
   const updateStore = useApp((s) => s.updateStore)
   const importJson = useApp((s) => s.importJson)
-  const init = useApp((s) => s.init)
   const meta = useApp((s) => s.meta)
   const setLang = useApp((s) => s.setLang)
   const lang = useLang()
@@ -86,6 +85,8 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
       <h2>{S.ibaPa.title}</h2>
 
       <DemoExit hint />
+
+      <StoresCard />
 
       {backupOld && <div className="card flag">{S.ibaPa.backupNudge}</div>}
 
@@ -168,18 +169,6 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
               <label>{S.ibaPa.friSat} (×)</label>
               <input aria-label={`${S.ibaPa.friSat} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } }))} />
             </div>
-            <button
-              type="button"
-              className="btn danger sm"
-              onClick={async () => {
-                if (!window.confirm(S.ibaPa.demoHint)) return
-                if (!(await write(() => loadDemo()))) return
-                await init()
-                toast(S.ibaPa.demoLoaded)
-              }}
-            >
-              {S.ibaPa.demo}
-            </button>
           </div>
         )}
       </div>

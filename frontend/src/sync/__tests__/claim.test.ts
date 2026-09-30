@@ -9,9 +9,9 @@ function store(id: string, updated = '2026-09-01T00:00:00Z'): Store {
 function row(id: string, updated = '2026-09-01T00:00:00Z', archived: string | null = null): StoreRow {
   return { id, body: store(id, updated), updated_at: updated, archived_at: archived }
 }
-const local = (id: string, populated: boolean, localOnly = false) => ({ store: store(id), populated, localOnly })
+const local = (id: string, populated: boolean, localOnly = false, otherRealStores = false) => ({ store: store(id), populated, localOnly, otherRealStores })
 
-describe('claim decision table (P3a, decided 2026-09-15)', () => {
+describe('claim decision table (P3a, decided 2026-09-15; multi-store 2026-09-30)', () => {
   it('no cloud store → upload the phone store (never the demo)', () => {
     expect(decideClaim({ local: local('L', true), cloudStores: [], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'L' })
     expect(decideClaim({ local: local('L', false), cloudStores: [], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'L' })
@@ -23,23 +23,26 @@ describe('claim decision table (P3a, decided 2026-09-15)', () => {
     expect(decideClaim({ local: local('L', true), cloudStores: [row('X', '2026-09-10T00:00:00Z'), row('L')], pendingCloudId: null })).toEqual({ kind: 'sync', storeId: 'L' })
   })
 
-  it('different id, nothing to lose on the phone (empty or demo) → pull and switch, no prompt', () => {
+  it('a fresh phone (the demo, or its only store still empty) → pull the account’s store and switch, no prompt', () => {
     expect(decideClaim({ local: local('L', false), cloudStores: [row('X')], pendingCloudId: null })).toEqual({ kind: 'pull_switch', cloudStoreId: 'X', resume: false })
     expect(decideClaim({ local: local('D', true, true), cloudStores: [row('X')], pendingCloudId: null })).toEqual({ kind: 'pull_switch', cloudStoreId: 'X', resume: false })
+    // several cloud stores: the most recently updated one
+    expect(decideClaim({ local: local('L', false), cloudStores: [row('X', '2026-09-01T00:00:00Z'), row('Y', '2026-09-09T00:00:00Z')], pendingCloudId: null })).toEqual({ kind: 'pull_switch', cloudStoreId: 'Y', resume: false })
   })
 
-  it('different ids, both populated → ask; never merge, never replace', () => {
-    const d = decideClaim({ local: local('L', true), cloudStores: [row('X')], pendingCloudId: null })
-    expect(d.kind).toBe('ask')
-    if (d.kind === 'ask') {
-      expect(d.cloud.id).toBe('X')
-      expect(d.local.id).toBe('L')
-    }
+  it('different ids, phone store populated → it is uploaded as another store of the account; nothing is asked, merged or replaced', () => {
+    expect(decideClaim({ local: local('L', true), cloudStores: [row('X')], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'L' })
+    expect(decideClaim({ local: local('L', true, false, true), cloudStores: [row('X'), row('Y')], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'L' })
+  })
+
+  it('an empty store made next to other stores on the phone is uploaded, not swapped for a cloud store', () => {
+    expect(decideClaim({ local: local('N', false, false, true), cloudStores: [row('X')], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'N' })
   })
 
   it('archived cloud stores are invisible to the decision', () => {
     expect(decideClaim({ local: local('L', true), cloudStores: [row('X', '2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z')], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'L' })
-    // the phone store itself archived in the cloud (another device chose "keep the phone") → upload path un-archives it
+    // the phone store itself archived in the cloud (deleted on another device) → the upload path finds
+    // it archived and stops syncing it there, without un-archiving (engine: cloud_gone)
     expect(decideClaim({ local: local('L', true), cloudStores: [row('L', '2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z')], pendingCloudId: null })).toEqual({ kind: 'upload', storeId: 'L' })
   })
 

@@ -704,12 +704,12 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       eng.dispose()
     })
 
-    it('claim choice "Panatilihin ang nasa phone": archives the cloud store (all rows kept) and uploads the phone store', async () => {
-      const L = await localStore('L-phone')
+    it('several stores: a populated phone store and a different cloud store are both kept — the phone one uploaded, the cloud one pulled in; nothing switches', async () => {
+      const L = await localStore('L-multi')
       await repo.saveProduct(mkProduct(L.id))
       const lEvents = [mkEvent(L.id), mkEvent(L.id)]
       await repo.addEvents(lEvents)
-      const X = await seedStore(apiA2, 'X-phone')
+      const X = await seedStore(apiA2, 'X-multi')
       const xEvents = [mkEvent(X.id), mkEvent(X.id), mkEvent(X.id)]
       await apiA2.insertEvents(xEvents.map(eventToRow))
       const xProduct = mkProduct(X.id, 'x-product')
@@ -718,62 +718,57 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       const eng = engine(apiA)
       eng.setUser(user())
       await eng.whenIdle()
-      expect(eng.status.phase).toBe('needs_choice')
-      expect(eng.status.choice?.cloud.id).toBe(X.id)
-      expect((await rawEvents(cA, L.id)).length).toBe(0) // nothing moved before the choice
-      await eng.resolveClaim('phone')
       expect(eng.status.phase).toBe('idle')
-      expect((await apiA.fetchStore(X.id))?.archived_at).toBeTruthy()
-      expect((await rawEvents(cA, X.id)).map((r) => r.id).sort()).toEqual(xEvents.map((e) => e.id).sort()) // archived, not deleted
-      expect((await apiA.fetchRecords('products', X.id, [xProduct.id])).length).toBe(1) // archived store keeps its records
-      expect((await apiA.listMyStores()).map((x) => x.id)).toEqual([L.id])
-      expect((await rawEvents(cA, L.id)).map((r) => r.id).sort()).toEqual(lEvents.map((e) => e.id).sort())
       expect((await repo.currentStore())!.id).toBe(L.id)
-      expect(await repo.storeExists(X.id)).toBe(false)
+      expect((await apiA.listMyStores()).map((x) => x.id).sort()).toEqual([L.id, X.id].sort())
+      expect((await rawEvents(cA, L.id)).map((r) => r.id).sort()).toEqual(lEvents.map((e) => e.id).sort())
+      expect((await rawEvents(cA, X.id)).map((r) => r.id).sort()).toEqual(xEvents.map((e) => e.id).sort()) // untouched
+      const x = (await repo.loadSnapshot(X.id))!
+      expect(x.events.map((e) => e.id).sort()).toEqual(xEvents.map((e) => e.id).sort())
+      expect(x.products.map((p) => p.id)).toEqual([xProduct.id])
       await assertCursorInvariant(L.id)
-      eng.dispose()
-    })
-
-    it('claim choice "Gamitin ang nasa cloud": switches after a complete pull; the phone store stays local and is never uploaded', async () => {
-      const L = await localStore('L-cloud')
-      await repo.addEvents([mkEvent(L.id), mkEvent(L.id)])
-      const X = await seedStore(apiA2, 'X-cloud')
-      const xEvents = Array.from({ length: 5 }, () => mkEvent(X.id))
-      await apiA2.insertEvents(xEvents.map(eventToRow))
-      const eng = engine(apiA, 2)
-      eng.setUser(user())
-      await eng.whenIdle()
-      expect(eng.status.phase).toBe('needs_choice')
-      await eng.resolveClaim('cloud')
-      expect(eng.status.phase).toBe('idle')
-      expect((await repo.currentStore())!.id).toBe(X.id)
-      expect((await repo.loadSnapshot(X.id))!.events.map((e) => e.id).sort()).toEqual(xEvents.map((e) => e.id).sort())
-      expect((await repo.loadSnapshot(L.id))!.events.length).toBe(2) // untouched
-      expect(await apiA.fetchStore(L.id)).toBeNull() // never uploaded
-      expect((await apiA.fetchStore(X.id))?.archived_at).toBeNull()
       await assertCursorInvariant(X.id)
       eng.dispose()
     })
 
-    it('claim choice "Mamaya na": stays unbound; a local write does not re-ask, a manual sync does', async () => {
-      const L = await localStore('L-later')
+    it('deleting a store on the phone archives it in the cloud (every row kept) and it is never pulled back', async () => {
+      const L = await localStore('L-keep')
       await repo.addEvents([mkEvent(L.id)])
-      const X = await seedStore(apiA2, 'X-later')
-      await apiA2.insertEvents([eventToRow(mkEvent(X.id))])
+      const X = await seedStore(apiA2, 'X-delete')
+      const xEvents = [mkEvent(X.id), mkEvent(X.id)]
+      await apiA2.insertEvents(xEvents.map(eventToRow))
       const eng = engine(apiA)
       eng.setUser(user())
       await eng.whenIdle()
-      expect(eng.status.phase).toBe('needs_choice')
-      await eng.resolveClaim('later')
-      expect(eng.status.phase).toBe('unbound')
-      await repo.addEvents([mkEvent(L.id)])
-      eng.requestSync('write')
-      await new Promise((r) => setTimeout(r, 20))
-      await eng.whenIdle()
-      expect(eng.status.phase).toBe('unbound')
-      expect(await apiA.fetchStore(L.id)).toBeNull()
+      expect(await repo.storeExists(X.id)).toBe(true)
+
+      await repo.deleteStore(X.id)
       await eng.syncNow()
-      expect(eng.status.phase).toBe('needs_choice')
+      expect(eng.status.phase).toBe('idle')
+      expect((await apiA.fetchStore(X.id))?.archived_at).toBeTruthy()
+      expect((await rawEvents(cA, X.id)).map((r) => r.id).sort()).toEqual(xEvents.map((e) => e.id).sort()) // archived, not deleted
+      expect((await apiA.listMyStores()).map((s) => s.id)).toEqual([L.id])
+      expect(await repo.storeExists(X.id)).toBe(false)
+      expect(await repo.deletedStoreIds()).toEqual([])
+      eng.dispose()
+    })
+
+    it('a store archived by another client (deleted there) is neither un-archived nor re-uploaded; the phone keeps its copy', async () => {
+      const L = await localStore('L-gone')
+      await repo.addEvents([mkEvent(L.id)])
+      const eng = engine(apiA)
+      eng.setUser(user())
+      await eng.whenIdle()
+      expect(eng.status.phase).toBe('idle')
+
+      await apiA2.archiveStore(L.id)
+      await repo.addEvents([mkEvent(L.id)])
+      await eng.syncNow()
+      expect(eng.status.phase).toBe('error')
+      expect(eng.status.error?.code).toBe('store_gone')
+      expect((await apiA.fetchStore(L.id))?.archived_at).toBeTruthy()
+      expect((await rawEvents(cA, L.id)).length).toBe(1) // the later entry was not pushed
+      expect((await repo.loadSnapshot(L.id))!.events.length).toBe(2)
       eng.dispose()
     })
   })
