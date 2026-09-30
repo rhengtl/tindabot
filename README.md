@@ -72,7 +72,8 @@ manually on the desktop localhost preview build with the `local_only` demo store
 cloud rows were created. Claiming and uploading a store under a Google identity was verified on
 2026-09-29 on the same kind of preview. First deployed to Vercel (with the existing Supabase project) on
 2026-09-29. Hosted load, offline start, updates, Google sign-in and two-device sync are verified.
-Standalone launch of the installed app on the test phone is not yet verified:
+The installed app on the test phone was verified on 2026-09-30: standalone launch from the icon,
+persistence across close/reopen, back, and Google sign-in/out from inside it. See
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Known device limitation: on the validation
 phone (realme C55 / Brave 1.95) the browser refuses *file* shares (`NotAllowedError`), so the export
 falls back to a download; that download works — a real export file was produced and read back on the

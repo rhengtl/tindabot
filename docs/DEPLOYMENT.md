@@ -31,7 +31,8 @@ the service worker is installed, it serves `index.html` for navigations itself
 
 Caching: `sw.js` and `index.html` must not be cached long by the CDN, or updates would stall.
 Vercel's default for static files is to revalidate on every request, so the defaults are right.
-This is Vercel's documented default and has not yet been checked on a real deployment (§6).
+Checked on the real deployment (2026-09-29): `/`, `index.html`, `sw.js`, `manifest.webmanifest` and
+`registerSW.js` are served with `Cache-Control: public, max-age=0, must-revalidate` (§6 results).
 
 Checked locally on 2026-09-29, simulating Vercel: only the git-tracked `frontend/` files were
 used, installed with `npm ci`, with no `.env` file. The variables came from the process
@@ -99,6 +100,23 @@ Manual configuration, all in the dashboard, by the owner:
 2. **Site URL** — the fallback return address, also used in auth emails. Whether to change it to
    the production origin is an owner decision. If it changes, localhost sign-ins still work as
    long as the localhost entries stay in the Redirect URLs list.
+   - **Not required by the verified flow.** The app always sends an explicit `redirectTo` (the
+     page's own origin and path). `https://tindabot.vercel.app/` is accepted: the Google sign-ins
+     on 2026-09-29 and 30 returned there. The Site URL is used only when a requested return
+     address is *not* allow-listed, and in auth email links, which the app never triggers.
+   - If it is changed, the value is `https://tindabot.vercel.app`.
+   - **Actual value, checked 2026-09-30: `http://localhost:4173/`.** The method was read-only: an
+     email-verification request with a deliberately invalid token verifies nothing and redirects
+     to the Site URL. With no return address, or an unlisted one, it went to `http://localhost:4173/`.
+     `https://tindabot.vercel.app/` and `http://localhost:5173/` were honoured as requested, so
+     both are in the Redirect URLs list. Whether `http://localhost:4173/**` is also in that list
+     cannot be told this way, because it is the Site URL.
+   - The owner approved setting it to the production URL. **It is not changed yet:** that is a
+     dashboard action (Authentication → URL Configuration → Site URL). There is no dashboard
+     access here, and `supabase config push` would overwrite the whole remote auth config with the
+     local-development `config.toml`.
+   - Before saving, make sure `http://localhost:4173/**` is in the Redirect URLs list, so local
+     preview sign-ins keep working.
 3. **Sign-up policy (owner decision).** Currently the email and Google providers are enabled and
    new sign-ups are allowed (checked 2026-09-29).
    - Anyone holding the public key can create an email/password account through the API. Email
@@ -107,6 +125,28 @@ Manual configuration, all in the dashboard, by the owner:
      Google identity and the two test users — keep working. Nobody new can join.
 4. **Advisors** — review Database → Security Advisor and Performance Advisor. They could not be
    read from here (no dashboard access, and no privileged credential is used).
+   - **Static pre-check of the migration** (2026-09-30), against the rules those advisors apply.
+     These are *expected* items, not the advisors' actual output:
+     - Security: 7 functions without a fixed `search_path`. All are invoker-rights: the five
+       triggers, plus `sync_watermark` and `server_time`.
+     - Security: 4 `security definer` functions executable by `authenticated`: `is_member`,
+       `is_owner`, `archive_store`, `unarchive_store`. Each has a fixed `search_path` and its own
+       membership/owner check, by design.
+     - Auth: leaked-password protection is probably off. It is relevant only to email/password
+       users.
+     - Performance: `members_select` and `stores_insert` call `auth.uid()` per row instead of
+       `(select auth.uid())`.
+     - Performance: `stores.created_by` is a foreign key without an index.
+   - All five are hardening or scale advisories, not vulnerabilities: RLS is enabled on every
+     table, anonymous requests get no grants, and clients cannot run DDL.
+   - **Owner decisions, 2026-09-30:**
+     - Sign-ups stay open. Checked the same day: `disable_signup` is false, and the Google and
+       email providers are enabled.
+     - The Google consent screen stays in *Testing*. It cannot be read from here; nothing touched
+       it.
+     - No advisor-driven hardening migrations.
+     - The free-plan limits are accepted.
+   - Fixing any of them is a new migration, so it needs owner approval. None blocks release.
 5. **Plan limits** — a free-plan project pauses after about a week without activity. The app
    handles that state (P3A-SETUP §5b), but backups stop while it is paused. Backup coverage
    depends on the plan; check it before relying on the cloud copy as the only backup.
@@ -192,7 +232,7 @@ None of these can be verified locally. The checklist is kept as written; results
    - `navigator.storage.persisted()` for the installed app;
    - back button in standalone mode;
    - **Google sign-in started from the installed app** — whether the OAuth return lands back in
-     the app or in a browser tab is unverified.
+     the app or in a browser tab (verified 2026-09-30: it lands in the app; see the results below).
 4. Update path: redeploy a changed build, and an open app picks it up on its next reload.
 5. Cloud Card on the deployed build is not "not available" (catches the env pitfall in §2).
 
@@ -241,7 +281,19 @@ validation data was not touched):
 | `persisted()` in a tab | `false` (recorded; unchanged from before) |
 | Back button (tab): the first back dismisses the keyboard, the next closes the sheet, the app stays, and the entry is handed back; root back leaves the page | PASS |
 | Install | Brave's *Install and create shortcut → Install* → the launcher's *Add to Home screen* → *Add*. Android lists the shortcut as **pinned**: Brave web-app mode, display standalone, scope = the hosted origin. No WebAPK package. |
-| Icon on the home screen | **Not found** by the owner on the realme launcher |
-| Standalone launch | **BLOCKED / not verified.** Replaying the shortcut's own launch intent opened a normal Brave tab (`display-mode: standalone` false). Whether a real icon tap opens standalone is unknown. |
-| `persisted()` / back / sign-in in the installed app | **BLOCKED** (depends on the above) |
+| Icon on the home screen | First attempt: **not found** by the owner, although the realme launcher (15.4.30) listed the shortcut as pinned and Brave holds `INSTALL_SHORTCUT`. Resolved 2026-09-30: in the launcher's *Add to Home screen* dialog, **touch and hold the icon and drag it onto the home screen** instead of tapping *Add*. Then it is visible. |
+| Icon artwork | **Defect found and fixed** (commit `a2875b7`): `icon-192.png` and `icon-512.png` had been plain orange squares (2 colours) without the 🏪 of `icon.svg`, so the launcher showed a plain tile. They were re-rendered from `icon.svg` (same design and names; no manifest or code change) and redeployed, and the shortcut was removed and re-added. The owner confirmed the icon now looks right. |
+
+**Installed app, launched by tapping the real icon** (2026-09-30, after the icon fix) — all observed:
+
+| Check | Result |
+|---|---|
+| Launch | PASS: Android's foreground activity is Brave's `WebappActivity` (web-app task), not a tab |
+| Standalone | PASS: `display-mode: standalone` true; no address bar or Brave toolbar in the window; the status bar takes the theme colour; origin `https://tindabot.vercel.app`, current bundle |
+| Service worker | PASS: controls the page |
+| `persisted()` | `false` on the first launch; **`true`** after a full close (swiped from Recents) and reopen from the icon. The app requests persistence at every start, and Brave granted it for the installed app. |
+| Close / reopen | PASS: new web-app task, freshly loaded; store, product/customer/event counts and event ids, language and onboarding identical to the baseline; no storage-error or local-only fallback |
+| Back | PASS: the first back dismisses the keyboard; the next closes the sheet and the app stays; this holds on a repeat; closing a sheet with its own control hands its entry back. **Root back:** from a fresh start it closes the app to the home screen. Immediately after the sheet test (one forward history entry left from the sheet), the first root back instead reloaded the app at its start screen, and the next one closed it. That reload is Brave web-app behaviour; its cause was not established. No data was involved. |
+| Google sign-in started in the app | PASS (owner's Google account, demo store): the owner saw the return land **in the TindaBot app itself**. Afterwards: standalone page, no `code`/error/fragment, provider `google`, demo not bound, no sync error, cloud still only the archived *Google claim check*, no Google/Supabase pages left open. The session also survived Brave being stopped by Android and the app being reopened from the icon. |
+| Sign-out in the app | PASS: session removed; data identical (event ids included), also after a reload |
 | Real Google sign-in in a Brave tab | PASS: returned to the hosted origin with a clean address and a Google session; demo not uploaded; account still only the archived store; sign-out kept local data, also after a reload |
