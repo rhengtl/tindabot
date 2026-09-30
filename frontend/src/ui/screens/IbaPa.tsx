@@ -7,6 +7,7 @@ import { importFailureKind } from '../write'
 import { exportCurrentStore } from '../exportFile'
 import { useLang, useStrings } from '../i18n'
 import { CloudCard } from './Cloud'
+import { DemoExit } from './DemoExit'
 import { UlatCard } from './Ulat'
 
 export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
@@ -83,6 +84,8 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
   return (
     <>
       <h2>{S.ibaPa.title}</h2>
+
+      <DemoExit hint />
 
       {backupOld && <div className="card flag">{S.ibaPa.backupNudge}</div>}
 

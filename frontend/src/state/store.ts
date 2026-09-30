@@ -59,6 +59,10 @@ interface AppState {
   loaded: boolean
   onboarded: boolean
   store: Store | null
+  /** The current store is the demo (local_only). */
+  demo: boolean
+  /** While in the demo: the real store on this device to go back to, if there is one. */
+  demoExit: { id: string; name: string } | null
   products: Product[]
   customers: Customer[]
   events: DomainEvent[]
@@ -112,6 +116,11 @@ interface AppState {
   meta(key: string): Promise<string | null>
   setMeta(key: string, value: string): Promise<void>
   setLang(lang: Lang): Promise<void>
+  /**
+   * Leaves the demo without deleting it: back to the real store on this device if there is one
+   * (`demoExit`), otherwise to onboarding so the person can set up their own store.
+   */
+  leaveDemo(): Promise<void>
   // P3a cloud backup
   signInGoogle(): Promise<void>
   signOutCloud(): Promise<void>
@@ -175,13 +184,15 @@ export const useApp = create<AppState>((set, get) => {
   async function reload(nowMs = Date.now()) {
     const store = await repo.currentStore()
     if (!store) {
-      set({ loaded: true, store: null, products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
+      set({ loaded: true, store: null, demo: false, demoExit: null, products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
       return
     }
     const snap = await repo.loadSnapshot(store.id)
     if (!snap) return
+    const demo = await repo.isLocalOnly(store.id)
+    const exit = demo ? await repo.latestRealStore(store.id) : null
     const d = derive(snap.store, snap.products, snap.events, nowMs, get().lang)
-    set({ loaded: true, store: snap.store, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
+    set({ loaded: true, store: snap.store, demo, demoExit: exit && { id: exit.id, name: exit.name }, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
   }
 
   /** After a local write: recompute, then let the engine push (debounced). Pulls call reload() only. */
@@ -220,6 +231,8 @@ export const useApp = create<AppState>((set, get) => {
     loaded: false,
     onboarded: false,
     store: null,
+    demo: false,
+    demoExit: null,
     products: [],
     customers: [],
     events: [],
@@ -280,6 +293,21 @@ export const useApp = create<AppState>((set, get) => {
     async createStore(name, restockDays) {
       await repo.createStore(name, restockDays)
       await commit()
+    },
+
+    async leaveDemo() {
+      const s = get()
+      if (!s.store || !s.demo) return
+      if (s.demoExit) {
+        await repo.setCurrentStore(s.demoExit.id)
+        await commit()
+        return
+      }
+      await repo.leaveForOnboarding()
+      // Drop the store first: onboarding opens at the add-products step whenever a store exists, so
+      // it must never see "not onboarded" while the demo is still loaded.
+      await commit()
+      set({ onboarded: false })
     },
 
     async updateStore(patch) {

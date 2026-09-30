@@ -3,6 +3,7 @@ import { type ListLine, type Product, addDays, applyBudget, budgetPrefill, isPay
 import { useApp } from '../../state/store'
 import { Dot, useToast, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
+import { DemoExit } from './DemoExit'
 import type { Strings } from '../strings'
 
 interface Props {
@@ -107,21 +108,25 @@ export function Bahay({ onBakit, onBilang, onAdd }: Props) {
 
   if (active.length === 0) {
     return (
-      <div className="empty">
-        <div className="ico">🏪</div>
-        <div className="bold">{S.bahay.empty}</div>
-        <p className="muted" style={{ margin: '6px 0 16px' }}>
-          {S.bahay.emptyHint}
-        </p>
-        <button type="button" className="btn primary" onClick={onAdd}>
-          {S.bahay.emptyAdd}
-        </button>
-      </div>
+      <>
+        <DemoExit />
+        <div className="empty">
+          <div className="ico">🏪</div>
+          <div className="bold">{S.bahay.empty}</div>
+          <p className="muted" style={{ margin: '6px 0 16px' }}>
+            {S.bahay.emptyHint}
+          </p>
+          <button type="button" className="btn primary" onClick={onAdd}>
+            {S.bahay.emptyAdd}
+          </button>
+        </div>
+      </>
     )
   }
 
   return (
     <>
+      <DemoExit />
       <div className="tripbar">
         <div className="row between">
           <div>

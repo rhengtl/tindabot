@@ -43,6 +43,14 @@ export const TL = {
     retry: 'Subukan muli',
   },
 
+  /** While the demo is the current store: the way out, to the person's own store. */
+  demoExit: {
+    note: 'Demo ito.',
+    start: 'Simulan ang sariling tindahan →',
+    back: (name: string) => `Bumalik sa ${name} →`,
+    hint: 'Mananatili ang demo sa phone na ito, pero hindi na ito ang gagamitin.',
+  },
+
   onboarding: {
     welcome: 'Maligayang pagdating!',
     intro: 'Sasabihin ni TindaBot kung ano ang bibilhin mo, ilan, kailan, at magkano ang dadalhin — base sa bili at bilang mo.',
@@ -385,6 +393,13 @@ export const EN: Strings = {
     body: "TindaBot cannot open the browser's local storage where your listahan is kept.",
     check: 'Allow site data and cookies for this site, and do not use private or incognito browsing.',
     retry: 'Try again',
+  },
+
+  demoExit: {
+    note: 'This is a demo.',
+    start: 'Start my own store →',
+    back: (name: string) => `Back to ${name} →`,
+    hint: 'The demo stays on this phone, but the app stops using it.',
   },
 
   onboarding: {

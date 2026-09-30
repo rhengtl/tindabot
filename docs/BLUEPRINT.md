@@ -149,6 +149,16 @@ P2 adds **Utang · Bayad · Gastos · Pera** (decided 2026-09-14, see §E6).
   the demo store's sample content are data, not UI. Deferred as minor polish (no decision taken,
   nothing blocked): whether English should say "credit" instead of *utang*, a bilingual manifest
   description, and an English variant of the demo content.
+- **Leaving the demo (decided 2026-09-30):** while the demo is the current store, Bahay (at the
+  top) and Iba pa show *Demo ito.* with one button.
+  - If there is a real (non-demo) store on this phone, the button is *Bumalik sa ‹name› →*. It
+    switches back to the most recently updated real store, with no onboarding.
+  - Otherwise it is *Simulan ang sariling tindahan →*, which opens onboarding at the store-name
+    step.
+  - Nothing is deleted: the demo stays on the phone, local-only as before, and every other store
+    is untouched.
+  - Previously, trying the demo from onboarding left no way to start a real store. Loading the
+    demo from Iba pa hid the real store with no way back.
 
 ## E. Core logic (all in `domain/`, pure, tested)
 

@@ -78,6 +78,26 @@ export async function setCurrentStore(id: string): Promise<void> {
   await setMeta('current_store', id)
 }
 
+/** The most recently updated real (non-demo) store on this device other than `exceptId`, if any. */
+export async function latestRealStore(exceptId: string | null): Promise<Store | null> {
+  const rows = (await db.stores.toArray()).filter((r) => r.local_only !== true && r.id !== exceptId)
+  rows.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at) || (a.id < b.id ? 1 : -1))
+  const latest = rows[0]
+  return latest ? stripStore(latest) : null
+}
+
+/**
+ * Leaves the current store for a fresh onboarding without deleting anything: no store is current
+ * and onboarding is not done, so the app starts at the store-name step. The store that was current
+ * (the demo) stays in the database as it was.
+ */
+export async function leaveForOnboarding(): Promise<void> {
+  await db.transaction('rw', db.meta, async () => {
+    await db.meta.delete('current_store')
+    await db.meta.put({ key: 'onboarded', value: '0' })
+  })
+}
+
 export async function createStore(name: string, restockDays: Store['restock_days']): Promise<Store> {
   const store: Store = {
     id: ulid(),
