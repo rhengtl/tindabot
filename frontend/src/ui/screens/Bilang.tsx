@@ -14,12 +14,14 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
   const toast = useToast()
   const write = useWrite()
 
+  // The order is fixed when the sheet opens. Re-sorting after every saved count (a counted product
+  // becomes the freshest and moves to the end) shifted the queue under `idx`, so "Susunod" skipped
+  // the next product and showed another one twice (found on the phone, 2026-10-01).
+  const [order, setOrder] = useState<string[]>([])
   const queue = useMemo(() => {
-    const list = (only ? products.filter((p) => only.includes(p.id)) : products).slice()
-    const stale = (p: Product) => states.get(p.id)?.days_since_count ?? Number.POSITIVE_INFINITY
-    list.sort((a, b) => stale(b) - stale(a))
-    return list
-  }, [products, states, only])
+    const byId = new Map(products.map((p) => [p.id, p]))
+    return order.map((id) => byId.get(id)).filter((p): p is Product => !!p)
+  }, [order, products])
 
   const [idx, setIdx] = useState(0)
   const [packs, setPacks] = useState('')
@@ -30,6 +32,7 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
 
   useEffect(() => {
     if (open) {
+      setOrder(countOrder(products, states, only ?? null))
       setIdx(0)
       setPacks('')
       setLoose('')
@@ -114,4 +117,12 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
       )}
     </Sheet>
   )
+}
+
+/** Stalest first (never counted = stalest); the list `only` limits it to some products. */
+export function countOrder(products: Product[], states: Map<string, { days_since_count: number | null }>, only: string[] | null): string[] {
+  const list = (only ? products.filter((p) => only.includes(p.id)) : products).slice()
+  const stale = (p: Product) => states.get(p.id)?.days_since_count ?? Number.POSITIVE_INFINITY
+  list.sort((a, b) => stale(b) - stale(a))
+  return list.map((p) => p.id)
 }

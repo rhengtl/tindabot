@@ -3,7 +3,7 @@
 // No network and no key: the real Gemini round trip is checked by hand on the preview/hosted app.
 
 import { describe, expect, it } from 'vitest'
-import { handle, readChatParts, stickyModel, validDrafts } from '../../../api/ai'
+import { handle, readChatParts, validDrafts } from '../../../api/ai'
 import { type ActiveEvent, type Customer, type CustomerState, type Product, type StoreState, activeEvents, buildList, deriveProduct, stockEventsByProduct, toMs } from '../../domain'
 import { DEVICE_ID, STORE_ID, makeStore } from '../../domain/__tests__/helpers'
 import { AiError, callAi } from '../client'
@@ -137,14 +137,12 @@ describe('AI proxy (api/ai.ts)', () => {
     expect(out.calls[0].model).toBe('gemini-flash-lite-latest')
     expect(urls.map((u) => u.split('/models/')[1]!.split(':')[0])).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
 
-    // a later round of the same question stays on the model that made its signatures (no fallback)
+    // a later round of the same question can fall back too (rounds carry no model-specific state)
     urls.length = 0
-    seq.push(503, 503, 503)
+    seq.push(503, 503, 503, 200)
     const round1 = { ...chat, round: 1, history: [chat.history[0], { role: 'model', calls: out.calls }, { role: 'tool', results: [{ name: 'get_shopping_list', id: 'r1', result: {} }] }] }
-    expect(stickyModel(round1.history as never)).toBe('gemini-flash-lite-latest')
-    expect(await (await handle(req(round1), ENV, flaky, noSleep)).json()).toEqual({ error: 'busy', upstream: 503 })
-    expect(urls.every((u) => u.includes('gemini-flash-lite-latest'))).toBe(true)
-    expect(urls.length).toBe(3)
+    expect((await handle(req(round1), ENV, flaky, noSleep)).status).toBe(200)
+    expect(urls.map((u) => u.split('/models/')[1]!.split(':')[0])).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
 
     // an unknown main model id (e.g. a retired alias) goes straight to the fallback
     urls.length = 0
@@ -158,7 +156,7 @@ describe('AI proxy (api/ai.ts)', () => {
     expect(urls.length).toBe(3)
   })
 
-  it('chat: round 3 forces `answer`; tool calls carry their thought signatures back; unknown tools are rejected', async () => {
+  it('chat: round 3 forces `answer`; earlier lookups go back as plain text (no model-specific signatures); unknown tools are rejected', async () => {
     const answer = { candidates: [{ content: { parts: [{ functionCall: { name: 'answer', args: { text: 'Mga 8 bote pa.', figures: [{ label: 'natira', value: 8, source: 'r1.on_hand_est' }] } } }] } }] }
     const { f, seen } = fakeFetch({ gemini: answer })
     const history = [
@@ -170,8 +168,11 @@ describe('AI proxy (api/ai.ts)', () => {
     expect(await res.json()).toEqual({ kind: 'answer', text: 'Mga 8 bote pa.', figures: [{ label: 'natira', value: 8, source: 'r1.on_hand_est' }] })
     const body = JSON.parse(String(seen[1]!.init.body))
     expect(body.toolConfig.functionCallingConfig).toEqual({ mode: 'ANY', allowedFunctionNames: ['answer'] })
-    expect(body.contents[3].parts[0]).toEqual({ functionCall: { name: 'get_product', args: { name: 'coke' } }, thoughtSignature: 'SIG123' })
-    expect(body.contents[4].parts[0].functionResponse.name).toBe('get_product')
+    expect(body.contents.length).toBe(1)
+    const text = body.contents[0].parts[0].text as string
+    expect(text).toContain('ilan pa ang coke?')
+    expect(text).toContain('r1 = get_product → {"on_hand_est":8}')
+    expect(JSON.stringify(body)).not.toContain('SIG123')
     const bad = [{ role: 'model', calls: [{ name: 'delete_store', args: {} }] }]
     expect((await handle(req({ op: 'chat', history: bad, snapshot: {}, round: 0 }), ENV, f)).status).toBe(400)
     expect((await handle(req({ op: 'chat', history, snapshot: { big: 'x'.repeat(9000) }, round: 0 }), ENV, f)).status).toBe(400)

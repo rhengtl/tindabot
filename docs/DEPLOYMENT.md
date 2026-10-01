@@ -339,10 +339,10 @@ Owner steps, in this order:
 
 Busy handling (added 2026-10-01 after the first live test, where the free tier answered several
 assistant calls with "busy"): each Gemini call is retried twice after a short wait on 429/500/503,
-then handed to the fallback model, whose free-tier quota is separate. Rounds of one assistant
-question stay on the model that started it (Gemini's thought signatures are model-specific). A
-final "busy" reply carries Gemini's status as `upstream` (429 = rate limit/quota, 503 = overloaded)
-for diagnosis.
+then handed to the fallback model, whose free-tier quota is separate. Every assistant round is
+self-contained (the lookups made so far travel as plain text, not as Gemini function-call history
+with model-specific thought signatures), so any round can use either model. A final "busy" reply
+carries Gemini's status as `upstream` (429 = rate limit/quota, 503 = overloaded) for diagnosis.
 
 Checks after the redeploy (no secrets needed): `POST /api/ai` without a token answers 401
 `{"error":"auth"}` (the function is deployed); a signed-in "Tanong kay TindaBot" question gets an

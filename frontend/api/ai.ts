@@ -104,19 +104,19 @@ const modelId = (v: string | undefined) => (v && /^[a-z0-9.-]+$/.test(v) ? v : n
 /**
  * One schema-bound Gemini call. Temporary refusals (429 rate limit, 500/503 overloaded) are retried
  * twice after a short wait; if the main model still refuses, the fallback model gets the same
- * chances (its quota is separate). `stick` pins one model: a chat round must go to the model that
- * produced the earlier rounds' thought signatures, which another model would reject.
+ * chances (its quota is separate). Chat rounds are self-contained (see toContents), so any round may
+ * use either model.
  * The final "busy" carries Gemini's last status as `upstream` (a number; diagnosis only).
  */
 async function gemini(
   env: Env,
   fetchImpl: Fetch,
   body: Record<string, unknown>,
-  opts: { stick?: string | null; sleep?: Sleep } = {},
+  opts: { sleep?: Sleep } = {},
 ): Promise<{ parts: GeminiPart[]; model: string } | Response> {
   const primary = modelId(env.GEMINI_MODEL) ?? DEFAULT_MODEL
   const fallback = env.GEMINI_FALLBACK_MODEL === 'none' ? null : (modelId(env.GEMINI_FALLBACK_MODEL) ?? DEFAULT_FALLBACK_MODEL)
-  const models = opts.stick ? [opts.stick] : [primary, ...(fallback && fallback !== primary ? [fallback] : [])]
+  const models = [primary, ...(fallback && fallback !== primary ? [fallback] : [])]
   const sleep = opts.sleep ?? realSleep
   const deadline = Date.now() + BUDGET_MS
   let last = 0
@@ -336,36 +336,44 @@ function chatSystem(lang: 'tl' | 'en'): string {
   ].join('\n')
 }
 
+/**
+ * Each round is ONE plain user message: the snapshot, the owner's question(s), and every tool result
+ * looked up so far (by id, so the answer can cite `r1.field`). The earlier rounds are deliberately not
+ * replayed as Gemini function-call turns: those would need Gemini's thought signatures, which only the
+ * model that made them accepts, and then a busy model could not hand a later round to the fallback
+ * model (first live test, 2026-10-01: round 1 kept failing with 503 on the busy main model).
+ */
 function toContents(history: Turn[], snapshot: unknown): GeminiContent[] | null {
-  const out: GeminiContent[] = [{ role: 'user', parts: [{ text: `Snapshot of the store (JSON):\n${JSON.stringify(snapshot)}` }] }, { role: 'model', parts: [{ text: 'OK.' }] }]
+  const questions: string[] = []
+  const looked: string[] = []
   for (const t of history) {
     if (!isObj(t)) return null
     if (t.role === 'user') {
       const text = str(t.text, MAX_TEXT)
       if (!text) return null
-      out.push({ role: 'user', parts: [{ text }] })
+      questions.push(text)
     } else if (t.role === 'model') {
       if (!Array.isArray(t.calls) || t.calls.length === 0 || t.calls.length > 5) return null
-      const parts: GeminiPart[] = []
-      for (const c of t.calls) {
-        if (!isObj(c) || !(TOOL_NAMES as readonly string[]).includes(c.name as string) || !isObj(c.args)) return null
-        const part: GeminiPart = { functionCall: { name: c.name as string, args: c.args } }
-        if (typeof c.sig === 'string' && c.sig.length <= 16_384) part.thoughtSignature = c.sig
-        parts.push(part)
-      }
-      out.push({ role: 'model', parts })
+      for (const c of t.calls) if (!isObj(c) || !(TOOL_NAMES as readonly string[]).includes(c.name as string) || !isObj(c.args)) return null
     } else if (t.role === 'tool') {
       if (!Array.isArray(t.results) || t.results.length === 0 || t.results.length > 5) return null
-      const parts: GeminiPart[] = []
       for (const r of t.results) {
-        if (!isObj(r) || !(TOOL_NAMES as readonly string[]).includes(r.name as string) || !str(r.id, 8)) return null
-        if (JSON.stringify(r.result ?? null).length > MAX_TOOL_RESULT) return null
-        parts.push({ functionResponse: { name: r.name as string, response: { id: r.id, result: r.result ?? null } } })
+        if (!isObj(r) || !(TOOL_NAMES as readonly string[]).includes(r.name as string) || !str(r.id, 8) || !/^r\d+$/.test(r.id as string)) return null
+        const json = JSON.stringify(r.result ?? null)
+        if (json.length > MAX_TOOL_RESULT) return null
+        looked.push(`${r.id} = ${r.name} → ${json}`)
       }
-      out.push({ role: 'user', parts })
     } else return null
   }
-  return out
+  if (questions.length === 0) return null
+  const text = [
+    `Snapshot of the store (JSON):\n${JSON.stringify(snapshot)}`,
+    `Owner's question:\n${questions.join('\n')}`,
+    looked.length
+      ? `Results already looked up on the owner's phone (cite them as "<id>.<field>"; do not ask for them again):\n${looked.join('\n')}`
+      : 'Nothing has been looked up yet.',
+  ].join('\n\n')
+  return [{ role: 'user', parts: [{ text }] }]
 }
 
 export type ChatOut =
@@ -397,12 +405,6 @@ export function readChatParts(parts: GeminiPart[], round: number, model?: string
   return text ? { kind: 'answer', text: text.slice(0, 2000), figures: [] } : null
 }
 
-/** The model that answered this question's earlier rounds (it alone accepts their thought signatures). */
-export function stickyModel(history: Turn[]): string | null {
-  for (const t of history) if (t.role === 'model') for (const c of t.calls) if (typeof c.model === 'string' && modelId(c.model)) return c.model
-  return null
-}
-
 async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch, sleep?: Sleep): Promise<Response> {
   const round = body.round
   if (!Number.isInteger(round) || (round as number) < 0 || (round as number) > MAX_ROUND) return fail(400, 'bad_request')
@@ -418,7 +420,7 @@ async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch,
     tools: [{ functionDeclarations: TOOLS }],
     toolConfig: { functionCallingConfig: last ? { mode: 'ANY', allowedFunctionNames: ['answer'] } : { mode: 'ANY' } },
     generationConfig: { temperature: 0.2 },
-  }, { stick: stickyModel(body.history as Turn[]), sleep })
+  }, { sleep })
   if (out instanceof Response) return out
   const r = readChatParts(out.parts, round as number, out.model)
   return r ? json(200, r) : fail(502, 'unreadable')
