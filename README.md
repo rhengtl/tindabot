@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 375 offline tests: domain vs reference oracles, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, several stores (switch/add/delete), sync engine (in-memory cloud incl. multi-store), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
+npm test           # 424 offline tests: domain vs reference oracles (incl. the sales tally), supplier prices, product CSV, briefing, AI proxy + drafts + phone-side assistant tools, household sync, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, several stores (switch/add/delete), sync engine (in-memory cloud incl. multi-store), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (375 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (424 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 
@@ -49,11 +49,13 @@ tools/                     reference oracle + scenario generator
 frontend/src/domain/       pure TS: events, total order, Tier A/B, list, rounding, export
 frontend/src/db/           Dexie persistence (write-once events, storage-only sync markers)
 frontend/src/sync/         P3a cloud backup: env (fails closed), codec, claim rules, engine, supabase-js wrapper
+frontend/src/ai/           P3b/P4 phone side: proxy client, parse drafts, assistant tools + chat loop
+frontend/api/ai.ts         the AI proxy (Vercel function): caller check, rate limit, schema-bound Gemini calls
 frontend/src/state/        Zustand store, demo seed
 frontend/src/catalog/      bundled PH sari-sari catalog
 frontend/src/ui/           screens (Bahay, Paninda, Bumili, Bilang, Bakit, Listahan, Pera, Iba pa, Onboarding);
                            strings.ts = Taglish (default) + English, switched at runtime via i18n.ts / Iba pa
-supabase/migrations/       P3a schema, triggers, RLS (apply with `npm run db:push` or the SQL editor)
+supabase/migrations/       0001 P3a schema, triggers, RLS; 0002 (P4/P5, additions only) AI rate limit + household invites
 supabase/scripts/          manual cleanup of automated-test data (run in the SQL editor only)
 ```
 
@@ -82,5 +84,19 @@ phone (realme C55 / Brave 1.95) the browser refuses *file* shares (`NotAllowedEr
 falls back to a download; that download works — a real export file was produced and read back on the
 phone on 2026-09-28 — but Brave asks where to save it, and a web page cannot see how that prompt
 ends. `last_backup_at` therefore means "the export was handed over", never "the file is provably on
-disk", and the app says so in words. P3b (receipt camera + `/ai/parse`),
-P4 (assistant) and P5 (household) follow the blueprint roadmap.
+disk", and the app says so in words.
+
+## Katulong and Abot (P3b / P4 / P5, built 2026-10-01)
+
+- **Receipt camera and "Isulat"** — a receipt photo, or a typed/dictated note, becomes editable
+  drafts (purchases and counts); nothing is saved until *I-save*. The photo is never stored.
+- **Tanong kay TindaBot** — questions answered by Gemini from tools that run on the phone; each
+  number is checked against the tool result it came from, and anything unchecked is labelled
+  *hindi verified*. An offline, deterministic briefing sits on top.
+- **Household** — the owner shares a store with a one-time invite code; both phones record into the
+  same store. Settings and deleting stay with the owner.
+- **Sales tally, supplier price memory, product CSV import** — local, offline.
+
+The AI needs a signed-in account, the owner's `GEMINI_API_KEY` in Vercel, and migration 0002
+applied (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §7). Without them everything else works and
+the app says the AI is not set up. Push notifications were left out by decision (BLUEPRINT §G).

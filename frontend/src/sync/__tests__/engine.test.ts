@@ -921,3 +921,126 @@ describe('convergence: golden scenarios split across two devices', () => {
     })
   }
 })
+
+describe('household: a second person shares a store by invite code (decided 2026-10-01)', () => {
+  /** Owner A's store in the cloud (as A's phone uploaded it) and this phone signed in as B with a store of its own. */
+  async function setup() {
+    const owner = new FakeCloud(USER_A.id)
+    const S = cloudStore('S0000000000000000000000001', 'Tindahan ni A')
+    const p = product(S.id)
+    await seedCloud(owner, S, [p], [], [event(S.id), event(S.id)])
+    const cloud = owner.as(USER_B.id)
+    const mine = await seedLocal('B store')
+    const h = harness(cloud)
+    h.engine.setUser(USER_B)
+    await h.engine.whenIdle()
+    expect(h.engine.status.phase).toBe('idle')
+    const { code } = await owner.createInvite(S.id)
+    cloud.calls.length = 0
+    return { owner, cloud, h, S, p, mine, code }
+  }
+
+  it('joining pulls the shared store in without switching; once switched, both see each other\'s entries and the role is member', async () => {
+    const { owner, cloud, h, S, mine, code } = await setup()
+    expect(await h.engine.join(code.toLowerCase())).toEqual({ storeId: S.id })
+    expect(await repo.storeExists(S.id)).toBe(true)
+    expect((await repo.loadSnapshot(S.id))!.events.length).toBe(2)
+    expect(await repo.getMeta('current_store')).toBe(mine.store.id) // not switched by the engine
+
+    await repo.setCurrentStore(S.id)
+    await repo.addEvents([event(S.id)]) // B records a sale of the day
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect(h.engine.status.role).toBe('member')
+    expect(await repo.getMeta(META.member(S.id))).toBe('1')
+    expect(cloud.eventsOf(S.id).length).toBe(3)
+
+    await owner.insertEvents([eventToRow(event(S.id))]) // A records on their phone
+    await h.engine.syncNow()
+    expect((await repo.loadSnapshot(S.id))!.events.length).toBe(4)
+    expect((await owner.listMembers(S.id)).map((m) => [m.user_id, m.role])).toEqual([[USER_A.id, 'owner'], [USER_B.id, 'member']])
+    // B's own store is still B's own
+    await repo.setCurrentStore(mine.store.id)
+    await h.engine.syncNow()
+    expect(h.engine.status.role).toBe('owner')
+    expect(await repo.getMeta(META.member(mine.store.id))).toBeNull()
+  })
+
+  it('a wrong, used or own code changes nothing; ten wrong codes stop further attempts', async () => {
+    const { owner, h, S, code } = await setup()
+    const before = await repo.listStores()
+    expect(await h.engine.join('NOPE1234')).toEqual({ error: 'invalid' })
+    expect(await owner.joinStore(code)).toEqual({ error: 'own' })
+    expect(await h.engine.join(code)).toEqual({ storeId: S.id })
+    expect(await h.engine.join(code)).toEqual({ error: 'invalid' }) // one-time
+    expect((await repo.listStores()).length).toBe(before.length + 1)
+    for (let i = 0; i < 8; i++) await h.engine.join(`BAD${i}`)
+    const { code: fresh } = await owner.createInvite(S.id)
+    expect(await h.engine.join(fresh)).toEqual({ error: 'too_many' })
+  })
+
+  it("a member's change to the store row stays on the phone (owner-only), is not left pending, and the owner's change still arrives", async () => {
+    const { owner, cloud, h, S, code } = await setup()
+    await h.engine.join(code)
+    await repo.setCurrentStore(S.id)
+    const local = (await repo.loadSnapshot(S.id))!.store
+    await repo.saveStore({ ...local, next_trip_override: '2026-09-16' })
+    await h.engine.syncNow()
+    expect(h.engine.status.phase).toBe('idle')
+    expect(h.engine.status.pendingRecords).toBe(0)
+    expect(cloud.calls).not.toContain('upsertStore')
+    expect((cloud.stores.get(S.id)!.body as Store).next_trip_override).toBeNull()
+
+    await owner.upsertStore(storeToRow({ ...S, name: 'Tindahan ni A (bago)', updated_at: '2099-01-01T00:00:00.000Z' }))
+    await h.engine.syncNow()
+    expect((await repo.loadSnapshot(S.id))!.store.name).toBe('Tindahan ni A (bago)')
+  })
+
+  it("deleting the shared store on the member's phone leaves it: the owner's store and every entry stay", async () => {
+    const { owner, cloud, h, S, code } = await setup()
+    await h.engine.join(code)
+    await repo.setCurrentStore(S.id)
+    await repo.addEvents([event(S.id)])
+    await h.engine.syncNow()
+    await repo.deleteStore(S.id)
+    await repo.setCurrentStore((await repo.latestRealStore(null))!.id)
+    await h.engine.syncNow()
+    expect(owner.members.get(S.id)!.has(USER_B.id)).toBe(false)
+    expect(cloud.stores.get(S.id)!.archived_at).toBeNull()
+    expect(owner.eventsOf(S.id).length).toBe(3)
+    expect(await repo.deletedStoreIds()).toEqual([])
+    expect(await repo.storeExists(S.id)).toBe(false) // and it is not pulled back
+  })
+
+  it('a member the owner removed keeps the copy on the phone, is told the store is no longer shared, and never re-uploads it', async () => {
+    const { owner, cloud, h, S, code } = await setup()
+    await h.engine.join(code)
+    await repo.setCurrentStore(S.id)
+    await h.engine.syncNow()
+    await owner.removeMember(S.id, USER_B.id)
+    await repo.addEvents([event(S.id)])
+    await h.engine.syncNow()
+    if (h.engine.status.phase !== 'error') await h.engine.whenIdle() // the unbind schedules one follow-up run
+    expect(h.engine.status.error?.code).toBe('store_gone')
+    expect(await repo.getMeta(META.gone(S.id))).toBeTruthy()
+    expect(owner.eventsOf(S.id).length).toBe(2) // nothing new reached the owner's store
+    expect(cloud.stores.get(S.id)!.created_by).toBe(USER_A.id)
+    expect((await repo.loadSnapshot(S.id))!.events.length).toBe(3)
+    const calls = cloud.calls.length
+    await h.engine.syncNow()
+    expect(cloud.calls.slice(calls)).toEqual([])
+  })
+
+  it('a store the owner deleted stops syncing on the member phone too, without un-archiving it', async () => {
+    const { owner, cloud, h, S, code } = await setup()
+    await h.engine.join(code)
+    await repo.setCurrentStore(S.id)
+    await h.engine.syncNow()
+    await owner.archiveStore(S.id)
+    await h.engine.syncNow()
+    if (h.engine.status.phase !== 'error') await h.engine.whenIdle()
+    expect(h.engine.status.error?.code).toBe('store_gone')
+    expect(cloud.stores.get(S.id)!.archived_at).toBeTruthy()
+    await expect(cloud.archiveStore(S.id)).rejects.toThrow() // and a member never could
+  })
+})

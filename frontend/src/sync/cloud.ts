@@ -153,6 +153,30 @@ export function createCloudApi(client: SupabaseClient): CloudApi {
     async unarchiveStore(id) {
       check(await client.rpc('unarchive_store', { sid: id }), 'unarchive_store')
     },
+    async createInvite(storeId) {
+      const data = check(await client.rpc('create_invite', { sid: storeId }), 'create_invite') as Array<{ code?: unknown; expires_at?: unknown }> | null
+      const row = Array.isArray(data) ? data[0] : null
+      if (!row || typeof row.code !== 'string' || typeof row.expires_at !== 'string') throw new CloudError('create_invite: no code', 'server')
+      return { code: row.code, expires_at: row.expires_at }
+    },
+    async joinStore(code) {
+      const data = check(await client.rpc('join_store', { invite: code }), 'join_store') as { store_id?: unknown; error?: unknown } | null
+      if (data && typeof data.store_id === 'string') return { storeId: data.store_id }
+      if (data && (data.error === 'invalid' || data.error === 'too_many' || data.error === 'own')) return { error: data.error }
+      throw new CloudError('join_store: unexpected reply', 'server')
+    },
+    async listMembers(storeId) {
+      const data = check(await client.rpc('list_members', { sid: storeId }), 'list_members') as Array<Record<string, unknown>> | null
+      return (data ?? [])
+        .filter((m) => typeof m.user_id === 'string' && (m.role === 'owner' || m.role === 'member'))
+        .map((m) => ({ user_id: m.user_id as string, email: typeof m.email === 'string' ? m.email : null, role: m.role as 'owner' | 'member', joined_at: String(m.joined_at ?? '') }))
+    },
+    async removeMember(storeId, userId) {
+      check(await client.rpc('remove_member', { sid: storeId, member_id: userId }), 'remove_member')
+    },
+    async leaveStore(storeId) {
+      check(await client.rpc('leave_store', { sid: storeId }), 'leave_store')
+    },
   }
 }
 
@@ -186,6 +210,11 @@ export function createAuthApi(client: SupabaseClient): AuthApi {
     async signOut() {
       const { error } = await client.auth.signOut({ scope: 'local' })
       if (error) throw toCloudError(error, 'sign-out')
+    },
+    async accessToken() {
+      // getSession() refreshes an expired token first (autoRefreshToken), so this is usable as-is.
+      const { data } = await client.auth.getSession()
+      return data.session?.access_token ?? null
     },
     onChange(cb) {
       const { data } = client.auth.onAuthStateChange((event, session) => {

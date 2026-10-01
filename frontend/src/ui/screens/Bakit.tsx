@@ -28,6 +28,14 @@ export function BakitSheet({ product, state, line, onClose }: { product: Product
               <span>{state.on_hand_est === null ? S.paninda.unknown : `${Math.round(state.on_hand_est)} ${product.unit_label}`}</span>
               <span className="k">{S.bakit.lastCount}</span>
               <span>{state.days_since_count === null ? '—' : S.bakit.lastCountAgo(Math.floor(state.days_since_count), String(state.anchor?.qty ?? '?'), product.unit_label)}</span>
+              {state.sold_since_anchor > 0 && (
+                <>
+                  <span className="k">{S.bakit.tallied}</span>
+                  <span title={S.bakit.talliedNote}>
+                    {state.sold_since_anchor} {product.unit_label}
+                  </span>
+                </>
+              )}
               {rate !== null && (
                 <>
                   <span className="k">{S.bakit.rate}</span>

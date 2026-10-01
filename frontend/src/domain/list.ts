@@ -106,7 +106,7 @@ interface TierBCalc {
 /** E4 core, parameterised by rate so the range can be recomputed at 0.7× / 1.3×. */
 export function tierBCalc(s: ProductState, rate: number, c: Ctx): TierBCalc {
   const days_since = s.days_since_count ?? 0
-  const on_hand = Math.max(0, (s.anchor?.qty ?? 0) + s.net_since_anchor - rate * days_since)
+  const on_hand = Math.max(0, (s.anchor?.qty ?? 0) + s.net_since_anchor - Math.max(s.sold_since_anchor, rate * days_since))
   const days_left = on_hand / rate
   const need = demand(rate, c.next_trip, c.following, c.m)
   const buffer = Math.max(rate, 0.2 * need)

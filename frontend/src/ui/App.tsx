@@ -3,6 +3,9 @@ import type { ListLine } from '../domain'
 import { useApp } from '../state/store'
 import { ToastProvider, useToast } from './components'
 import { AddProductSheet } from './screens/AddProduct'
+import { AskSheet } from './screens/Ask'
+import { type ScanMode, ScanSheet } from './screens/Scan'
+import { TallySheet } from './screens/Tally'
 import { Bahay } from './screens/Bahay'
 import { BakitSheet } from './screens/Bakit'
 import { BilangSheet } from './screens/Bilang'
@@ -82,6 +85,9 @@ function Shell() {
   const [adding, setAdding] = useState(false)
   const [bakit, setBakit] = useState<{ productId: string; line: ListLine | null } | null>(null)
   const [pera, setPera] = useState<{ open: boolean; kind: PeraKind; customerId: string | null }>({ open: false, kind: 'utang', customerId: null })
+  const [tally, setTally] = useState(false)
+  const [scan, setScan] = useState<{ open: boolean; mode: ScanMode }>({ open: false, mode: 'photo' })
+  const [asking, setAsking] = useState(false)
 
   useEffect(() => {
     init()
@@ -146,7 +152,7 @@ function Shell() {
         {tab === 'bahay' && <Bahay onBakit={openBakit} onBilang={openBilang} onAdd={() => setAdding(true)} />}
         {tab === 'paninda' && <Paninda onAdd={() => setAdding(true)} onBakit={(id) => openBakit(id)} onBumili={(id) => openBumili(id)} onBilang={openBilang} />}
         {tab === 'listahan' && <Listahan onUtang={(id) => openPera('utang', id)} onBayad={(id) => openPera('bayad', id)} />}
-        {tab === 'ibapa' && <IbaPa onGastos={() => openPera('gastos')} onPera={() => openPera('pera')} />}
+        {tab === 'ibapa' && <IbaPa onGastos={() => openPera('gastos')} onPera={() => openPera('pera')} onAsk={() => setAsking(true)} onScan={(mode) => setScan({ open: true, mode })} />}
       </main>
 
       <button type="button" className="fab" aria-label={S.fab.open} data-testid="fab" onClick={() => setFab(true)}>
@@ -193,6 +199,26 @@ function Shell() {
                   {ico} {label}
                 </button>
               ))}
+              {(
+                [
+                  ['benta', '🧮', S.fab.benta, () => setTally(true)],
+                  ['resibo', '📷', S.fab.resibo, () => setScan({ open: true, mode: 'photo' })],
+                  ['isulat', '✍️', S.fab.isulat, () => setScan({ open: true, mode: 'text' })],
+                  ['tanong', '💬', S.fab.tanong, () => setAsking(true)],
+                ] as Array<[string, string, string, () => void]>
+              ).map(([k, ico, label, go]) => (
+                <button
+                  key={k}
+                  type="button"
+                  data-testid={`fab-${k}`}
+                  onClick={() => {
+                    setFab(false)
+                    go()
+                  }}
+                >
+                  {ico} {label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -217,6 +243,9 @@ function Shell() {
       <BumiliSheet open={bumili.open} initialProductId={bumili.productId} onClose={() => setBumili({ open: false, productId: null })} />
       <BilangSheet open={bilang.open} only={bilang.only} onClose={() => setBilang({ open: false, only: null })} />
       <AddProductSheet open={adding} onClose={() => setAdding(false)} />
+      <TallySheet open={tally} onClose={() => setTally(false)} />
+      <ScanSheet open={scan.open} mode={scan.mode} onClose={() => setScan((x) => ({ ...x, open: false }))} />
+      <AskSheet open={asking} onClose={() => setAsking(false)} />
       <PeraSheet open={pera.open} kind={pera.kind} initialCustomerId={pera.customerId} onClose={() => setPera((p) => ({ ...p, open: false }))} />
       {bakit && <BakitSheet product={bakitProduct} state={bakitState} line={bakitLine} onClose={() => setBakit(null)} />}
     </div>

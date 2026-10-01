@@ -66,7 +66,7 @@ describe('sync codec — byte-exact round trips', () => {
     expect(rowToEvent({ ...ok, type: 'COUNT' })).toBeNull()
     expect(rowToEvent({ ...ok, ts: '2026-09-14T02:00:00Z' })).toBeNull() // same instant, different string
     expect(rowToEvent({ ...ok, body: { ...ok.body, v: 2 } as never })).toBeNull()
-    expect(rowToEvent({ ...ok, body: { ...ok.body, type: 'SALE' } as never, type: 'SALE' })).toBeNull()
+    expect(rowToEvent({ ...ok, body: { ...ok.body, type: 'REFUND' } as never, type: 'REFUND' })).toBeNull()
     expect(rowToEvent({ ...ok, body: null as never })).toBeNull()
     expect(rowToEvent({ ...ok, body: [] as never })).toBeNull()
     const pr = recordToRow(product)

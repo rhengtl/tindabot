@@ -2418,6 +2418,480 @@
      "id": "T3_mismatch-009"
     }
    ]
+  },
+  {
+   "id": "SALE_over",
+   "kind": "tierB",
+   "note": "tally 55 since the count beats rate\u00d7days \u2192 lower on-hand, more to buy",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_on_hand": 10,
+     "id": "S1-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-001"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_on_hand": 22,
+     "id": "S1-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-003"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_on_hand": 19,
+     "id": "S1-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_on_hand": 30,
+     "id": "S1-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-007"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_on_hand": 15,
+     "id": "S1-008"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-009"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-28T15:00:00+08:00",
+     "qty_units": 30,
+     "id": "SALE_over-010"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-28T18:00:00+08:00",
+     "qty_units": 25,
+     "id": "SALE_over-011"
+    }
+   ]
+  },
+  {
+   "id": "SALE_under",
+   "kind": "tierB",
+   "note": "partial tally below rate\u00d7days \u2192 same as S1 (estimate wins)",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_on_hand": 10,
+     "id": "S1-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-001"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_on_hand": 22,
+     "id": "S1-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-003"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_on_hand": 19,
+     "id": "S1-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_on_hand": 30,
+     "id": "S1-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-007"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_on_hand": 15,
+     "id": "S1-008"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-009"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-28T15:00:00+08:00",
+     "qty_units": 3,
+     "id": "SALE_under-010"
+    }
+   ]
+  },
+  {
+   "id": "SALE_before_anchor",
+   "kind": "tierB",
+   "note": "sales before the count are already reflected in it",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-04-20T21:00:00+08:00",
+     "qty_on_hand": 44,
+     "id": "S4_stale-000"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-04-26T21:00:00+08:00",
+     "qty_on_hand": 26,
+     "id": "S4_stale-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-04-28T12:00:00+08:00",
+     "qty_units": 36,
+     "total_cost": 2340,
+     "id": "S4_stale-002"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-10T21:00:00+08:00",
+     "qty_on_hand": 20,
+     "id": "S4_stale-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "S4_stale-004"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-20T15:00:00+08:00",
+     "qty_units": 30,
+     "id": "SALE_before_anchor-005"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-28T15:00:00+08:00",
+     "qty_units": 30,
+     "id": "SALE_before_anchor-006"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-29T09:00:00+08:00",
+     "qty_on_hand": 9,
+     "id": "SALE_before_anchor-007"
+    }
+   ]
+  },
+  {
+   "id": "SALE_hybrid",
+   "kind": "tierB",
+   "note": "hybrid: tally 14 > throughput\u00d7days",
+   "now": "2026-06-01T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 75,
+    "unit_label": "bote",
+    "pack_label": "case"
+   },
+   "events": [
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-06T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-10T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-001"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-14T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-18T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-003"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-22T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-26T12:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_on_hand": 4,
+     "id": "T1_hybrid-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-30T10:00:00+08:00",
+     "qty_units": 12,
+     "total_cost": 780,
+     "id": "T1_hybrid-007"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-31T15:00:00+08:00",
+     "qty_units": 14,
+     "id": "SALE_hybrid-008"
+    }
+   ]
+  },
+  {
+   "id": "SALE_count_only",
+   "kind": "tierB",
+   "note": "anchor without a rate: on-hand = count \u2212 tally, unlisted",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 12,
+    "sell_price": 97,
+    "unit_label": "piraso",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-27T21:00:00+08:00",
+     "qty_on_hand": 20,
+     "id": "SALE_count_only-000"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-28T15:00:00+08:00",
+     "qty_units": 5,
+     "id": "SALE_count_only-001"
+    }
+   ]
+  },
+  {
+   "id": "SALE_voided",
+   "kind": "tierB",
+   "note": "a voided tally is ignored",
+   "now": "2026-05-29T10:00:00+08:00",
+   "store": {
+    "restock_days": [
+     3,
+     6
+    ],
+    "next_trip_override": null
+   },
+   "product": {
+    "pack_size": 24,
+    "sell_price": 16,
+    "unit_label": "pack",
+    "pack_label": "box"
+   },
+   "events": [
+    {
+     "type": "COUNT",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_on_hand": 10,
+     "id": "S1-000"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-13T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-001"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_on_hand": 22,
+     "id": "S1-002"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-16T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-003"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_on_hand": 19,
+     "id": "S1-004"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-20T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-005"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_on_hand": 30,
+     "id": "S1-006"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-23T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-007"
+    },
+    {
+     "type": "COUNT",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_on_hand": 15,
+     "id": "S1-008"
+    },
+    {
+     "type": "PURCHASE",
+     "ts": "2026-05-27T10:00:00+08:00",
+     "qty_units": 48,
+     "total_cost": 660,
+     "id": "S1-009"
+    },
+    {
+     "type": "SALE",
+     "ts": "2026-05-28T15:00:00+08:00",
+     "qty_units": 40,
+     "id": "SALE_voided-x"
+    },
+    {
+     "type": "VOID",
+     "ts": "2026-05-28T19:00:00+08:00",
+     "target": "SALE_voided-x",
+     "id": "SALE_voided-011"
+    }
+   ]
   }
  ]
 }

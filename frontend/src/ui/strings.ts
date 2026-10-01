@@ -8,13 +8,15 @@
 // takes the language explicitly.
 
 import type { Lang } from '../domain'
+import type { AiErrorCode } from '../ai/client'
+import type { CsvRowError } from '../domain'
 import type { CloudErrorCode, SignInErrorKind } from '../sync/api'
 
 export const TL = {
   appName: 'TindaBot',
   tagline: 'Smart listahan para sa tindahan mo',
   tabs: { bahay: 'Bahay', paninda: 'Paninda', listahan: 'Listahan', ibaPa: 'Iba pa' },
-  fab: { bumili: 'Bumili', bilang: 'Bilang', utang: 'Utang', bayad: 'Bayad', gastos: 'Gastos', pera: 'Pera', open: 'Ilista' },
+  fab: { bumili: 'Bumili', bilang: 'Bilang', utang: 'Utang', bayad: 'Bayad', gastos: 'Gastos', pera: 'Pera', open: 'Ilista', benta: 'Benta', resibo: 'Resibo', isulat: 'Isulat', tanong: 'Tanong' },
 
   common: {
     close: 'isara',
@@ -62,6 +64,9 @@ export const TL = {
       `Burahin ang "${name}"? Mabubura sa phone na ito ang lahat ng paninda, suki, utang at listahan nito, at hindi na ito lalabas sa cloud backup mo. Hindi na ito maibabalik — mag-export muna kung gusto mo ng kopya.`,
     deleted: (name: string) => `Nabura ang "${name}".`,
     back: (name: string) => `← Bumalik sa ${name}`,
+    shared: 'kasama',
+    leaveQ: (name: string) =>
+      `Umalis sa "${name}"? Mabubura ito sa phone na ito at hindi ka na makakapasok hangga't hindi ka iniimbita ulit. Mananatili sa may-ari ang tindahan at lahat ng naitala.`,
   },
 
   onboarding: {
@@ -157,6 +162,9 @@ export const TL = {
     histCount: (qty: number, unit: string) => `Bilang: ${qty} ${unit}`,
     all: 'Lahat',
     inList: 'nasa listahan',
+    histSale: (qty: number, unit: string) => `Benta (tally): ${qty} ${unit}`,
+    supplierPrices: 'Presyo sa supplier (huling bili)',
+    perUnit: (cost: string, unit: string) => `${cost} bawat ${unit}`,
   },
 
   bumili: {
@@ -179,6 +187,9 @@ export const TL = {
     highCost: (cost: string) => `${cost} bawat isa? Mukhang mataas. Tama ba ang presyo?`,
     saveAdd: 'I-save at isa pa',
     save: 'I-save',
+    supplier: 'Saan binili? (supplier)',
+    supplierHint: 'Opsyonal. Naaalala ang presyo bawat supplier.',
+    lastAt: (supplier: string, cost: string) => `Huling presyo sa ${supplier}: ${cost} bawat isa`,
   },
 
   bilang: {
@@ -211,6 +222,8 @@ export const TL = {
     flagInconsistent: 'Hindi tugma ang huling bilang sa dalas ng bili — tama ba? Baka naisama ang bagong bili sa bilang.',
     flagMissingPurchase: 'Mukhang may hindi na-record na bili. Idagdag ito sa Bumili at piliin ang tamang araw.',
     flagLugi: 'Mas mataas ang puhunan kaysa presyo ng benta. Tama ba ang presyo?',
+    tallied: 'Naitalang benta mula sa huling bilang',
+    talliedNote: 'Kapag mas marami ang naitalang benta kaysa sa tantiya, ito ang ginagamit.',
   },
 
   ibaPa: {
@@ -237,6 +250,9 @@ export const TL = {
     aboutText: 'Nasa phone mo ang listahan at gumagana kahit walang internet. Opsyonal ang cloud backup — kopya lang ito; nananatili sa phone ang lahat.',
     backupNudge: 'Matagal nang walang backup — i-export ang listahan mo.',
     persisted: (ok: boolean) => (ok ? 'Naka-secure ang storage ng phone para sa app.' : 'Hindi pa garantisado ang storage ng phone — mag-export buwan-buwan.'),
+    katulong: 'Katulong (AI)',
+    katulongHint: 'Kailangan ng internet at sign-in. Draft lang ang gawa ng AI — ikaw pa rin ang magse-save.',
+    memberNote: 'Kasama ka sa tindahan na ito. Ang may-ari lang ang makakapagpalit ng pangalan at araw ng pamimili.',
   },
 
   // ---------- P2 ----------
@@ -346,6 +362,121 @@ export const TL = {
     skew: (min: number) => `Mali yata ang oras ng phone mo (≈ ${min} min ang layo sa server). Ayusin sa Settings ng phone para tama ang pagkakasunod ng mga entry.`,
   },
 
+
+  // ---------- P4/P5 (decided 2026-10-01) ----------
+  /** Tally: tap per sale; additive help for the estimate, never required. */
+  tally: {
+    title: 'Benta (tally)',
+    hint: 'I-tap ang paninda sa bawat benta. Hindi kailangang isama lahat — dagdag-tulong lang ito sa tantiya.',
+    count: (n: number) => (n === 1 ? '1 benta' : `${n} benta`),
+    minus: 'bawasan',
+    save: 'I-save',
+    saved: (n: number) => `Naitala ang ${n} benta.`,
+    unsavedQ: 'May hindi pa na-save na benta. Isara pa rin?',
+  },
+
+  ai: {
+    signInFirst: 'Mag-sign in muna sa Iba pa → Cloud backup para magamit ang AI. Gumagana pa rin ang lahat ng iba.',
+    errors: {
+      signed_out: 'Mag-sign in muna sa Iba pa → Cloud backup.',
+      offline: 'Walang internet — kailangan ng internet ang AI. Gumagana pa rin ang lahat ng iba.',
+      auth: 'Mag-sign in ulit sa Iba pa → Cloud backup.',
+      rate_limited: 'Masyadong marami na ang tanong ngayon — subukan ulit mamaya.',
+      busy: 'Abala ang AI ngayon — subukan ulit maya-maya.',
+      not_configured: 'Hindi pa naka-setup ang AI sa app na ito.',
+      too_large: 'Masyadong malaki ang litrato — subukan ang mas malapit na kuha.',
+      failed: 'Hindi nakuha ang sagot — subukan ulit.',
+    } satisfies Record<AiErrorCode, string>,
+  },
+
+  /** Receipt photo / typed or dictated note → drafts → I-save (/ai/parse). */
+  scan: {
+    title: 'I-scan ang resibo',
+    textTitle: 'Isulat ang naitala',
+    take: '📷 Kunan ang resibo',
+    choose: '🖼️ Pumili ng litrato',
+    imageNote: 'Hindi sine-save ang litrato — binabasa lang, tapos itinatapon.',
+    textHint: 'Hal.: "bumili ako ng 2 case Coke 1560 sa Puregold, natira 5 Kopiko". Pwede ring gamitin ang mic ng keyboard.',
+    textPlaceholder: 'Isulat dito…',
+    mic: '🎤 Magsalita',
+    listening: 'Nakikinig…',
+    read: 'Basahin',
+    reading: 'Binabasa…',
+    review: 'Suriin bago i-save',
+    none: 'Walang nabasang item.',
+    unreadable: 'Hindi mabasa:',
+    pick: 'Piliin ang paninda…',
+    notInStore: (name: string) => `"${name}" — wala sa paninda mo`,
+    kindPurchase: 'Bili',
+    kindCount: 'Natira',
+    qty: 'Ilan',
+    total: '₱ lahat',
+    supplier: 'Supplier',
+    when: 'Kailan?',
+    save: (n: number) => `I-save (${n})`,
+    saved: (n: number) => `Naitala ang ${n} entry.`,
+    again: 'Ulitin',
+  },
+
+  /** "Tanong kay TindaBot" (/ai/chat) with the offline briefing on top. */
+  ask: {
+    title: 'Tanong kay TindaBot',
+    briefing: 'Ngayong araw',
+    placeholder: 'Hal.: Ilan pa ang Coke? Magkano ang dadalhin ko?',
+    send: 'Itanong',
+    thinking: 'Tinitingnan…',
+    unverified: 'hindi verified',
+    unverifiedText: 'May numero sa sagot na hindi ko ma-verify — tingnan muna sa app.',
+    looked: (what: string) => `Tiningnan: ${what}`,
+    tools: { get_product: 'paninda', list_events: 'mga naitala', get_shopping_list: 'listahan', get_week_summary: 'Ulat', get_customer: 'suki' } as Record<string, string>,
+    examples: ['Ano ang uunahin kong bilhin?', 'Ilan pa ang natira sa pinakamabenta ko?', 'Magkano ang gastos ko ngayong linggo?'],
+    note: 'Sumasagot lang mula sa naitala mo. Hindi ito nagse-save o nagbabago ng kahit ano.',
+  },
+
+  /** Products from a spreadsheet (CSV). */
+  csv: {
+    title: 'I-import ang paninda (CSV)',
+    hint: 'Mula sa spreadsheet. Mga column: name, category, unit_label, pack_size, pack_label, sell_price, natira. Hindi gagalawin ang mga dati nang paninda.',
+    choose: 'Pumili ng CSV file',
+    template: 'I-download ang halimbawa',
+    noHeader: 'Walang "name" na column sa file — tingnan ang halimbawa.',
+    ready: (n: number) => (n === 1 ? '1 bagong paninda' : `${n} bagong paninda`),
+    skipped: 'Hindi isasama:',
+    exists: 'nasa paninda na',
+    line: (n: number) => `Linya ${n}`,
+    errors: { no_name: 'walang pangalan', bad_pack_size: 'mali ang pack_size', bad_price: 'mali ang presyo', bad_natira: 'mali ang natira', duplicate: 'ulit sa file' } satisfies Record<CsvRowError['reason'], string>,
+    add: (n: number) => `Idagdag (${n})`,
+    added: (n: number) => `Naidagdag ang ${n} paninda.`,
+    failed: 'Hindi mabasa ang file.',
+  },
+
+  /** Household (P5): share a store with another person's account. */
+  household: {
+    title: 'Kasama sa tindahan',
+    hint: 'Ibahagi ang tindahan sa kasama sa bahay. May sarili silang Google account at phone; pareho kayong makakapagtala.',
+    signInFirst: 'Mag-sign in muna para makapag-share o makasali.',
+    demo: 'Hindi pwedeng i-share ang demo.',
+    invite: 'Gumawa ng invite code',
+    code: 'Invite code',
+    codeHint: (until: string) => `Ibigay ang code. Isang beses lang magagamit, hanggang ${until}.`,
+    copy: 'Kopyahin',
+    copied: 'Na-copy ang code.',
+    join: 'Sumali sa ibang tindahan',
+    joinPlaceholder: 'Invite code',
+    joinBtn: 'Sumali',
+    joined: (name: string) => `Kasama ka na sa ${name}.`,
+    joinErrors: { invalid: 'Mali, nagamit na, o expired ang code.', too_many: 'Masyadong maraming maling code — subukan ulit mamaya.', own: 'Code ito ng sarili mong tindahan.' },
+    members: 'May access',
+    owner: 'may-ari',
+    member: 'kasama',
+    you: 'ikaw',
+    remove: 'Alisin',
+    removeQ: (who: string) => `Alisin si ${who}? Hindi na sila makakapasok; mananatili sa tindahan ang lahat ng naitala nila.`,
+    removed: 'Naalis.',
+    failed: 'Hindi natuloy — subukan ulit.',
+    notReady: 'Kailangan munang i-sync ang tindahan sa cloud.',
+  },
+
   days: ['Lin', 'Lun', 'Mar', 'Miy', 'Huw', 'Biy', 'Sab'],
   daysLong: ['Linggo', 'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado'],
 }
@@ -366,7 +497,7 @@ export const EN: Strings = {
   appName: 'TindaBot',
   tagline: 'The smart listahan for your store',
   tabs: { bahay: 'Home', paninda: 'Products', listahan: 'Utang list', ibaPa: 'More' },
-  fab: { bumili: 'Bought', bilang: 'Count', utang: 'Utang', bayad: 'Payment', gastos: 'Expense', pera: 'Cash', open: 'Record' },
+  fab: { bumili: 'Bought', bilang: 'Count', utang: 'Utang', bayad: 'Payment', gastos: 'Expense', pera: 'Cash', open: 'Record', benta: 'Sales', resibo: 'Receipt', isulat: 'Write', tanong: 'Ask' },
 
   common: {
     close: 'close',
@@ -411,6 +542,9 @@ export const EN: Strings = {
       `Delete "${name}"? All its products, customers, utang and entries are removed from this phone, and it no longer appears in your cloud backup. This cannot be undone — export it first if you want a copy.`,
     deleted: (name: string) => `"${name}" deleted.`,
     back: (name: string) => `← Back to ${name}`,
+    shared: 'shared',
+    leaveQ: (name: string) =>
+      `Leave "${name}"? It is removed from this phone and you lose access until you are invited again. The owner keeps the store and everything recorded.`,
   },
 
   onboarding: {
@@ -506,6 +640,9 @@ export const EN: Strings = {
     histCount: (qty: number, unit: string) => `Count: ${qty} ${unit}`,
     all: 'All',
     inList: 'on the list',
+    histSale: (qty: number, unit: string) => `Sales (tally): ${qty} ${unit}`,
+    supplierPrices: 'Supplier prices (last purchase)',
+    perUnit: (cost: string, unit: string) => `${cost} per ${unit}`,
   },
 
   bumili: {
@@ -528,6 +665,9 @@ export const EN: Strings = {
     highCost: (cost: string) => `${cost} each? Looks high. Is the price right?`,
     saveAdd: 'Save and add another',
     save: 'Save',
+    supplier: 'Where did you buy? (supplier)',
+    supplierHint: 'Optional. Remembers the price per supplier.',
+    lastAt: (supplier: string, cost: string) => `Last price at ${supplier}: ${cost} each`,
   },
 
   bilang: {
@@ -560,6 +700,8 @@ export const EN: Strings = {
     flagInconsistent: 'The last count does not match how often you buy — is it right? The new stock may have been included in the count.',
     flagMissingPurchase: 'Looks like a purchase was not recorded. Add it under Bought and pick the right day.',
     flagLugi: 'Cost is higher than the selling price. Is the price right?',
+    tallied: 'Sales tallied since the last count',
+    talliedNote: 'When more sales were tallied than estimated, the tally is used.',
   },
 
   ibaPa: {
@@ -586,6 +728,9 @@ export const EN: Strings = {
     aboutText: 'Your list lives on your phone and works without internet. Cloud backup is optional — it is only a copy; everything stays on the phone.',
     backupNudge: 'No backup for a while — export your list.',
     persisted: (ok: boolean) => (ok ? 'The phone has secured storage for the app.' : 'The phone does not guarantee storage yet — export monthly.'),
+    katulong: 'Helper (AI)',
+    katulongHint: 'Needs the internet and sign-in. The AI only drafts — you still do the saving.',
+    memberNote: 'You share this store. Only the owner can change its name and supplier days.',
   },
 
   // ---------- P2 ----------
@@ -691,6 +836,116 @@ export const EN: Strings = {
     },
     ago: { justNow: 'just now', minutes: (n: number) => `${n} min ago`, hours: (n: number) => `${n} ${n === 1 ? 'hour' : 'hours'} ago`, days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'} ago` },
     skew: (min: number) => `Your phone’s clock looks wrong (≈ ${min} min off from the server). Fix it in the phone’s Settings so entries stay in the right order.`,
+  },
+
+
+  // ---------- P4/P5 (decided 2026-10-01) ----------
+  tally: {
+    title: 'Sales (tally)',
+    hint: 'Tap a product for each sale. You do not have to tally every sale — it only helps the estimate.',
+    count: (n: number) => (n === 1 ? '1 sale' : `${n} sales`),
+    minus: 'remove one',
+    save: 'Save',
+    saved: (n: number) => `Recorded ${n} sales.`,
+    unsavedQ: 'Some sales are not saved yet. Close anyway?',
+  },
+
+  ai: {
+    signInFirst: 'Sign in first under More → Cloud backup to use the AI. Everything else still works.',
+    errors: {
+      signed_out: 'Sign in first under More → Cloud backup.',
+      offline: 'No internet — the AI needs the internet. Everything else still works.',
+      auth: 'Sign in again under More → Cloud backup.',
+      rate_limited: 'Too many questions for now — try again later.',
+      busy: 'The AI is busy right now — try again in a moment.',
+      not_configured: 'The AI is not set up in this app yet.',
+      too_large: 'The photo is too large — try a closer shot.',
+      failed: 'Could not get an answer — try again.',
+    },
+  },
+
+  scan: {
+    title: 'Scan a receipt',
+    textTitle: 'Write what happened',
+    take: '📷 Take a photo',
+    choose: '🖼️ Choose a photo',
+    imageNote: 'The photo is not saved — it is only read, then discarded.',
+    textHint: 'E.g. "bought 2 cases Coke 1560 at Puregold, 5 Kopiko left". You can also use the keyboard mic.',
+    textPlaceholder: 'Write here…',
+    mic: '🎤 Speak',
+    listening: 'Listening…',
+    read: 'Read',
+    reading: 'Reading…',
+    review: 'Check before saving',
+    none: 'No items found.',
+    unreadable: 'Could not read:',
+    pick: 'Choose the product…',
+    notInStore: (name: string) => `"${name}" — not in your products`,
+    kindPurchase: 'Bought',
+    kindCount: 'Left',
+    qty: 'Qty',
+    total: '₱ total',
+    supplier: 'Supplier',
+    when: 'When?',
+    save: (n: number) => `Save (${n})`,
+    saved: (n: number) => `Recorded ${n} entries.`,
+    again: 'Start over',
+  },
+
+  ask: {
+    title: 'Ask TindaBot',
+    briefing: 'Today',
+    placeholder: 'E.g. How many Coke are left? How much should I bring?',
+    send: 'Ask',
+    thinking: 'Looking…',
+    unverified: 'not verified',
+    unverifiedText: 'The answer has a number I could not verify — check it in the app.',
+    looked: (what: string) => `Looked at: ${what}`,
+    tools: { get_product: 'product', list_events: 'records', get_shopping_list: 'list', get_week_summary: 'report', get_customer: 'customer' },
+    examples: ['What should I buy first?', 'How many are left of my best seller?', 'How much did I spend this week?'],
+    note: 'Answers only from what you recorded. It never saves or changes anything.',
+  },
+
+  csv: {
+    title: 'Import products (CSV)',
+    hint: 'From a spreadsheet. Columns: name, category, unit_label, pack_size, pack_label, sell_price, natira. Existing products are not touched.',
+    choose: 'Choose a CSV file',
+    template: 'Download an example',
+    noHeader: 'The file has no "name" column — see the example.',
+    ready: (n: number) => (n === 1 ? '1 new product' : `${n} new products`),
+    skipped: 'Left out:',
+    exists: 'already a product',
+    line: (n: number) => `Line ${n}`,
+    errors: { no_name: 'no name', bad_pack_size: 'bad pack_size', bad_price: 'bad price', bad_natira: 'bad natira', duplicate: 'repeated in the file' },
+    add: (n: number) => `Add (${n})`,
+    added: (n: number) => `Added ${n} products.`,
+    failed: 'Could not read the file.',
+  },
+
+  household: {
+    title: 'Shared with',
+    hint: 'Share the store with someone in your household. They use their own Google account and phone; both of you can record.',
+    signInFirst: 'Sign in first to share or join.',
+    demo: 'The demo cannot be shared.',
+    invite: 'Make an invite code',
+    code: 'Invite code',
+    codeHint: (until: string) => `Give them the code. It works once, until ${until}.`,
+    copy: 'Copy',
+    copied: 'Code copied.',
+    join: 'Join another store',
+    joinPlaceholder: 'Invite code',
+    joinBtn: 'Join',
+    joined: (name: string) => `You now share ${name}.`,
+    joinErrors: { invalid: 'Wrong, used or expired code.', too_many: 'Too many wrong codes — try again later.', own: 'That code is for your own store.' },
+    members: 'Who has access',
+    owner: 'owner',
+    member: 'member',
+    you: 'you',
+    remove: 'Remove',
+    removeQ: (who: string) => `Remove ${who}? They lose access; everything they recorded stays in the store.`,
+    removed: 'Removed.',
+    failed: 'That did not work — try again.',
+    notReady: 'Sync the store to the cloud first.',
   },
 
   days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],

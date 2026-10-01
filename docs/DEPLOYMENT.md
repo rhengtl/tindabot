@@ -14,6 +14,12 @@ Setup of the project itself (schema, providers, test users) is in [P3A-SETUP.md]
 A static site: the Vite production build of `frontend/`. There is no server code, no serverless
 function, no backend.
 
+> **Superseded 2026-10-01 (P3b/P4):** the deployment now also contains one serverless function,
+> `frontend/api/ai.ts` (`POST /api/ai`), which holds the Gemini key for receipt reading and the
+> assistant, and a `frontend/vercel.json` that only raises that function's time limit. The app
+> itself is still the same static build, and everything except the AI works without the
+> function. See §7.
+
 | Vercel setting | Value |
 |---|---|
 | Root Directory | `frontend` |
@@ -47,6 +53,8 @@ environment, as Vercel supplies them. Results:
 |---|---|---|
 | `VITE_SUPABASE_URL` | the existing project's URL, `https://<project-ref>.supabase.co`, **no trailing slash, no path** | Production (Preview only if previews should have cloud) |
 | `VITE_SUPABASE_ANON_KEY` | the existing project's **publishable** key (`sb_publishable_…`) | same |
+| `GEMINI_API_KEY` (since 2026-10-01) | a Gemini API key from Google AI Studio — **secret**, server-only; never `VITE_`-prefixed, so it never reaches the bundle | Production |
+| `GEMINI_MODEL` (optional) | a Gemini model id; default `gemini-flash-latest` | Production |
 
 Both values are public by nature: Vite inlines them into the JavaScript bundle, and RLS is the
 security boundary. Nothing else goes to Vercel:
@@ -299,3 +307,39 @@ validation data was not touched):
 | Google sign-in started in the app | PASS (owner's Google account, demo store): the owner saw the return land **in the TindaBot app itself**. Afterwards: standalone page, no `code`/error/fragment, provider `google`, demo not bound, no sync error, cloud still only the archived *Google claim check*, no Google/Supabase pages left open. The session also survived Brave being stopped by Android and the app being reopened from the icon. |
 | Sign-out in the app | PASS: session removed; data identical (event ids included), also after a reload |
 | Real Google sign-in in a Brave tab | PASS: returned to the hosted origin with a clean address and a Google session; demo not uploaded; account still only the archived store; sign-out kept local data, also after a reload |
+
+## 7. AI function and migration 0002 (P3b / P4 / P5 — added 2026-10-01)
+
+What was added (owner decisions of 2026-10-01: AI proxy as a Vercel function, additive database
+changes allowed, household by invite code, sales tally yes, push notifications no):
+
+- `frontend/api/ai.ts` — `POST /api/ai`. Checks the caller with their own sign-in token and takes
+  one slot of the rate limit (30/min, 300/day per user) through `ai_quota_hit()`; then calls
+  Gemini with the server-only key. It stores nothing and logs no request content. Without
+  `GEMINI_API_KEY`, or before migration 0002, it answers "not configured" and the app says the AI
+  is not set up; nothing else is affected.
+- `supabase/migrations/0002_p4p5.sql` — **additions only**: tables `ai_calls`, `store_invites`,
+  `invite_attempts` (RLS on, no client access) and functions `ai_quota_hit`, `create_invite`,
+  `join_store`, `list_members`, `remove_member`, `leave_store`. No existing table, policy, function
+  or row is changed.
+
+Owner steps, in this order:
+
+1. **Supabase → SQL Editor:** paste the whole of `supabase/migrations/0002_p4p5.sql` and run it
+   once (re-running is harmless). Nothing else in Supabase changes.
+2. **Google AI Studio:** create a Gemini API key (the free tier is enough for one store). Keep it
+   out of the repository and out of chat.
+3. **Vercel → Settings → Environment Variables:** add `GEMINI_API_KEY` (Production). Optionally
+   `GEMINI_MODEL`.
+4. **Redeploy** (push, or "Redeploy" on the latest deployment), so the function gets the key.
+5. For local development only: put `GEMINI_API_KEY=…` in `frontend/.env.local` (git-ignored). The
+   dev server (`npm run dev`) then serves `/api/ai` from the same file; `vite preview` has no
+   function and the app says the AI is not set up.
+
+Checks after the redeploy (no secrets needed): `POST /api/ai` without a token answers 401
+`{"error":"auth"}` (the function is deployed); a signed-in "Tanong kay TindaBot" question gets an
+answer; a receipt photo turns into drafts that are saved only on *I-save*.
+
+`cleanup_test_data.sql` was extended the same day: it removes the test stores' invite rows first
+(when the 0002 table exists), so the cleanup keeps working after the migration.
+

@@ -30,6 +30,27 @@ export interface CloudApi {
   /** Owner-only RPCs; non-destructive flags on the store row. */
   archiveStore(id: string): Promise<void>
   unarchiveStore(id: string): Promise<void>
+
+  // ---- Household (P5, migration 0002 — decided 2026-10-01). Membership only; no business data. ----
+  /** Owner only: a one-time code (valid 24 h) that replaces any unused code of the store. */
+  createInvite(storeId: string): Promise<{ code: string; expires_at: string }>
+  /** Any signed-in user: becomes a `member` of the code's store. */
+  joinStore(code: string): Promise<JoinResult>
+  /** Members of a store (owner first), for any member of it. */
+  listMembers(storeId: string): Promise<Member[]>
+  /** Owner only: the member loses access; every entry they recorded stays. */
+  removeMember(storeId: string, userId: string): Promise<void>
+  /** Member only: leaves the store (the owner deletes/archives instead). */
+  leaveStore(storeId: string): Promise<void>
+}
+
+export type JoinResult = { storeId: string } | { error: 'invalid' | 'too_many' | 'own' }
+
+export interface Member {
+  user_id: string
+  email: string | null
+  role: 'owner' | 'member'
+  joined_at: string
 }
 
 export interface CloudUser {
@@ -49,6 +70,8 @@ export interface AuthApi {
    */
   signInRedirectError(): Promise<SignInError | null>
   signOut(): Promise<void>
+  /** The signed-in user's current access token (for the AI proxy), or null when signed out. */
+  accessToken(): Promise<string | null>
   /** Fires with the user on sign-in/restore and null on sign-out. Returns an unsubscribe. */
   onChange(cb: (user: CloudUser | null) => void): () => void
 }

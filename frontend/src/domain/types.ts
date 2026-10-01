@@ -83,6 +83,15 @@ export interface AdjustEvent extends EventBase {
   delta: number
   reason: AdjustReason
 }
+/**
+ * P5 tally (decided 2026-10-01): units sold, counted by tapping. Additive: a tally is a confirmed
+ * minimum of what left the shelf, never the whole of it — see BLUEPRINT §E1 *Tally*.
+ */
+export interface SaleEvent extends EventBase {
+  type: 'SALE'
+  product_id: ULID
+  qty_units: number
+}
 export interface VoidEvent extends EventBase {
   type: 'VOID'
   /** Must reference a non-VOID event. */
@@ -112,7 +121,7 @@ export interface CashCountEvent extends EventBase {
   amount: number
 }
 
-export type StockEvent = PurchaseEvent | CountEvent | AdjustEvent
+export type StockEvent = PurchaseEvent | CountEvent | AdjustEvent | SaleEvent
 export type FinanceEvent = UtangEvent | BayadEvent | ExpenseEvent | CashCountEvent
 /** Every non-VOID event. */
 export type ActiveEvent = StockEvent | FinanceEvent
@@ -167,6 +176,8 @@ export interface ProductState {
   anchor_ms: number | null
   /** Σ PURCHASE.qty + Σ ADJUST.delta strictly after the anchor (0 when no anchor). */
   net_since_anchor: number
+  /** Σ SALE.qty strictly after the anchor (0 when no anchor) — a lower bound on what was used. */
+  sold_since_anchor: number
   on_hand_est: number | null
   days_since_count: number | null
   daily_rate: number | null

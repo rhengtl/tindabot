@@ -33,6 +33,9 @@ const SAME_OK = new Set([
   'listahan.cellphone',
   'cloud.title',
   'days[2]', // Mar
+  'scan.supplier',
+  'household.code',
+  'household.joinPlaceholder',
 ])
 
 describe('strings: both languages, same shape', () => {

@@ -18,7 +18,7 @@
 
 import type { Customer, Product, Store } from '../domain'
 import * as repo from '../db/repo'
-import { type AuthApi, type CloudApi, type CloudErrorCode, type CloudUser, CloudError } from './api'
+import { type AuthApi, type CloudApi, type CloudErrorCode, type CloudUser, CloudError, type JoinResult } from './api'
 import { type ClaimDecision, decideClaim } from './claim'
 import {
   EVENT_PUSH_BATCH,
@@ -71,6 +71,8 @@ export interface SyncStatus {
   /** device − server, ms; warning when |skew| > SKEW_WARN_MS */
   skewMs: number | null
   skewWarning: boolean
+  /** The signed-in user's role in the bound store (household, P5); null until known. */
+  role: 'owner' | 'member' | null
 }
 
 export type SyncReason = 'init' | 'signin' | 'write' | 'foreground' | 'online' | 'manual' | 'retry'
@@ -109,6 +111,8 @@ export const META = {
   adoptPending: (id: string) => `adopt_pending:${id}`,
   /** this store was archived in the cloud (deleted on another device): not uploaded again */
   gone: (id: string) => `cloud_gone:${id}`,
+  /** household: this phone's account is a member (not the owner) of the store */
+  member: (id: string) => `member_of:${id}`,
 } as const
 
 const INITIAL: SyncStatus = {
@@ -121,6 +125,7 @@ const INITIAL: SyncStatus = {
   error: null,
   skewMs: null,
   skewWarning: false,
+  role: null,
 }
 
 function describe(err: unknown): string {
@@ -168,7 +173,7 @@ export class SyncEngine {
     this.patch({ user })
     if (!user) {
       this.clearTimers()
-      this.patch({ phase: 'signed_out', boundStoreId: null, error: null })
+      this.patch({ phase: 'signed_out', boundStoreId: null, error: null, role: null })
       return
     }
     if (changed) this.requestSync('signin')
@@ -199,6 +204,28 @@ export class SyncEngine {
     this.clearTimers()
     await this.start('manual')
     await this.whenIdle()
+  }
+
+  /**
+   * Household: redeem an invite code, then pull the joined store onto this phone (without
+   * switching — the caller decides). The code is checked by the server; nothing local changes when
+   * it is refused.
+   */
+  async join(code: string): Promise<JoinResult> {
+    if (this.disposed || !this.status.user) throw new CloudError('not signed in', 'auth')
+    const r = await this.api.joinStore(code)
+    if ('storeId' in r) {
+      await this.whenIdle()
+      await this.startExclusive('manual', async () => {
+        try {
+          await this.adoptMissing()
+        } catch (err) {
+          await this.fail(err)
+          throw err
+        }
+      })
+    }
+    return r
   }
 
   /** Delay of the retry currently scheduled after a failure (null when none is pending). */
@@ -310,8 +337,14 @@ export class SyncEngine {
       try {
         await this.api.archiveStore(id)
       } catch (err) {
-        // Not the account's store, or never uploaded: nothing in the cloud to hide.
+        // Not the account's own store: a household member leaves it instead (the owner's store and
+        // every entry stay). Never uploaded: nothing in the cloud to hide.
         if (!(err instanceof CloudError && (err.code === 'denied' || err.code === 'store_gone'))) throw err
+        try {
+          await this.api.leaveStore(id)
+        } catch (leaveErr) {
+          if (!(leaveErr instanceof CloudError && (leaveErr.code === 'denied' || leaveErr.code === 'store_gone' || leaveErr.code === 'server'))) throw leaveErr
+        }
       }
       await repo.forgetDeletedStore(id)
     }
@@ -439,7 +472,17 @@ export class SyncEngine {
     if (!local) throw new CloudError('store not found', 'unknown')
     const remote = await this.api.fetchStore(storeId)
     if (!remote) {
-      await this.api.upsertStore(storeToRow(local.store))
+      try {
+        await this.api.upsertStore(storeToRow(local.store))
+      } catch (err) {
+        // The id exists in the cloud but this account cannot see it: a household member who was
+        // removed (or left on another phone). The copy stays here; it is not uploaded again.
+        if (err instanceof CloudError && err.code === 'denied') {
+          await repo.setMeta(META.gone(storeId), new Date(this.now()).toISOString())
+          throw new CloudError('store no longer shared with this account', 'store_gone')
+        }
+        throw err
+      }
       await repo.markRecordSynced('stores', storeId, local.store.updated_at)
       await repo.setMeta(META.cursorEvents(storeId), '0')
       await repo.setMeta(META.cursorProducts(storeId), '0')
@@ -500,7 +543,12 @@ export class SyncEngine {
       return
     }
 
-    let changed = await this.pushRecords(storeId)
+    const member = !!remote.created_by && remote.created_by !== this.status.user?.id
+    if (member) await repo.setMeta(META.member(storeId), '1')
+    else await repo.deleteMeta(META.member(storeId))
+    this.patch({ role: member ? 'member' : 'owner' })
+
+    let changed = await this.pushRecords(storeId, member)
     await this.pushEvents(storeId)
 
     // One high-water mark for the whole run: taken AFTER the push so this device's own writes are
@@ -525,10 +573,14 @@ export class SyncEngine {
    * locally by the newer cloud row instead of silently diverging. Returns true when a local row
    * changed.
    */
-  private async pushRecords(storeId: string): Promise<boolean> {
+  private async pushRecords(storeId: string, member = false): Promise<boolean> {
     const dirty = await repo.dirtyRecords(storeId)
     let changed = false
-    if (dirty.store) {
+    if (dirty.store && member) {
+      // Only the owner may change the shared store row (RLS). A member's change to it — the
+      // "pupunta ako ngayon" trip override — stays on this phone and is not queued forever.
+      await repo.markRecordSynced('stores', storeId, dirty.store.updated_at)
+    } else if (dirty.store) {
       await this.api.upsertStore(storeToRow(dirty.store))
       await repo.markRecordSynced('stores', storeId, dirty.store.updated_at)
       const after = await this.api.fetchStore(storeId)

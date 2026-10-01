@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CATALOG } from '../../catalog/catalog'
-import { type Product, templates, toLocalDate, ulid } from '../../domain'
+import { type Product, type PurchaseEvent, activeEvents, lastCostAt, recentSuppliers, templates, toLocalDate, ulid } from '../../domain'
 import { useApp, type DateChoice } from '../../state/store'
 import { Segment, Sheet, useToast, useWrite } from '../components'
 import { useStrings } from '../i18n'
@@ -28,6 +28,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
   const [date, setDate] = useState(toLocalDate(Date.now()))
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const [supplier, setSupplier] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -40,6 +41,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
       setNatira('')
       setWhenKind('ngayon')
       setSearch('')
+      setSupplier('')
     }
   }, [open, initialProductId])
 
@@ -59,15 +61,21 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
     return out
   }, [events, products])
 
+  const active = useMemo(() => activeEvents(events), [events])
+  const suppliers = useMemo(() => recentSuppliers(active), [active])
+  const purchasesOf = useMemo(() => (product ? active.filter((e): e is PurchaseEvent => e.type === 'PURCHASE' && e.product_id === product.id) : []), [active, product])
+  // P5 supplier price memory: the chosen supplier's own last price, when there is one
+  const supplierCost = supplier.trim() ? lastCostAt(purchasesOf, supplier) : null
+
   const qtyUnits = product ? Math.max(0, Math.round(Number(qty) || 0)) * (mode === 'pack' ? product.pack_size : 1) : 0
 
   // Prefill cost from the last known unit cost.
   useEffect(() => {
     if (!product || costTouched) return
-    const uc = state?.unit_cost ?? null
+    const uc = supplierCost ?? state?.unit_cost ?? null
     if (uc !== null && qtyUnits > 0) setCost(String(Math.round(uc * qtyUnits)))
     else setCost('')
-  }, [product, qtyUnits, state, costTouched])
+  }, [product, qtyUnits, state, costTouched, supplierCost])
 
   const totalCost = cost.trim() === '' ? null : Number(cost)
   const unitCost = totalCost !== null && qtyUnits > 0 ? totalCost / qtyUnits : null
@@ -85,7 +93,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
     setSaving(true)
     try {
       const when: DateChoice = whenKind === 'date' ? { kind: 'date', date } : { kind: whenKind }
-      if (!(await write(() => recordPurchase({ id: ids.id, countId: ids.countId, product_id: product.id, qty_units: qtyUnits, total_cost: totalCost, natira: natiraN, when })))) return
+      if (!(await write(() => recordPurchase({ id: ids.id, countId: ids.countId, product_id: product.id, qty_units: qtyUnits, total_cost: totalCost, natira: natiraN, when, supplier })))) return
       toast(S.common.recordedToast(`${product.name} — ${qtyUnits} ${product.unit_label}`))
       // new ids for the next submit (write-once)
       setIds({ id: ulid(), countId: ulid() })
@@ -154,6 +162,21 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
                 = {qtyUnits} {product.unit_label}
               </div>
             )}
+          </div>
+
+          <div className="field">
+            <label>{S.bumili.supplier}</label>
+            <input aria-label={S.bumili.supplier} data-testid="supplier" maxLength={60} value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder={S.bumili.supplierHint} />
+            {suppliers.length > 0 && (
+              <div className="chips" style={{ marginTop: 6 }}>
+                {suppliers.map((x) => (
+                  <button key={x} type="button" className={`chip ${x.toLowerCase() === supplier.trim().toLowerCase() ? 'on' : ''}`} onClick={() => setSupplier(x)}>
+                    {x}
+                  </button>
+                ))}
+              </div>
+            )}
+            {supplierCost !== null && <div className="muted small" style={{ marginTop: 4 }}>{S.bumili.lastAt(supplier.trim(), templates.pesoExact(Math.round(supplierCost * 100) / 100))}</div>}
           </div>
 
           <div className="field">

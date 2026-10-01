@@ -11,7 +11,7 @@
 //
 // Failure injection: `offline` (network errors), `failNext` and `failOn` (one server error).
 
-import { type CloudApi, CloudError, type CloudErrorCode, type RecordTable } from '../api'
+import { type CloudApi, CloudError, type CloudErrorCode, type JoinResult, type Member, type RecordTable } from '../api'
 import type { EventRow, PullWindow, RecordRow, StoreRow } from '../codec'
 
 interface Versioned {
@@ -29,7 +29,11 @@ type FakeEventRow = EventRow & Versioned & { server_seq: number }
 /** Shared server state so several `FakeCloud` views (one per account) see the same rows. */
 export class FakeServer {
   stores = new Map<string, FakeStoreRow>()
-  members = new Map<string, Set<string>>() // store_id → user ids (all owners in P3a)
+  members = new Map<string, Set<string>>() // store_id → user ids; the owner is the store's created_by
+  /** household invites (migration 0002) */
+  invites = new Map<string, { store_id: string; created_by: string; expires_ms: number; used_by: string | null }>()
+  inviteAttempts = new Map<string, number>() // user → failed attempts (the fake never ages them)
+  inviteSeq = 0
   products = new Map<string, FakeRecordRow>()
   customers = new Map<string, FakeRecordRow>()
   events = new Map<string, FakeEventRow>()
@@ -238,6 +242,7 @@ export class FakeCloud implements CloudApi {
         return
       }
       if (!this.isMember(row.id)) throw new CloudError('permission denied', 'denied')
+      if (cur.created_by !== this.user) return // stores_update policy is owner-only: 0 rows, no error
       if (Date.parse(row.updated_at) <= Date.parse(cur.updated_at)) return // lww_guard: RETURN NULL
       const prev = { ...cur }
       Object.assign(cur, { body: row.body, updated_at: row.updated_at, server_rev: ++this.server.rev, xid: t.xid, committed: false })
@@ -309,14 +314,66 @@ export class FakeCloud implements CloudApi {
   async archiveStore(id: string): Promise<void> {
     this.guard('archiveStore')
     const s = this.stores.get(id)
-    if (!s || !this.isMember(id)) throw new CloudError('not owner', 'denied')
+    if (!s || !this.isMember(id) || s.created_by !== this.user) throw new CloudError('not owner', 'denied')
     s.archived_at = s.archived_at ?? new Date().toISOString()
   }
 
   async unarchiveStore(id: string): Promise<void> {
     this.guard('unarchiveStore')
     const s = this.stores.get(id)
-    if (!s || !this.isMember(id)) throw new CloudError('not owner', 'denied')
+    if (!s || !this.isMember(id) || s.created_by !== this.user) throw new CloudError('not owner', 'denied')
     s.archived_at = null
+  }
+
+  private isOwner(storeId: string): boolean {
+    return this.isMember(storeId) && this.stores.get(storeId)?.created_by === this.user
+  }
+
+  async createInvite(storeId: string): Promise<{ code: string; expires_at: string }> {
+    this.guard('createInvite')
+    const s = this.stores.get(storeId)
+    if (!s || !this.isOwner(storeId) || s.archived_at) throw new CloudError('not owner', 'denied')
+    for (const inv of this.server.invites.values()) if (inv.store_id === storeId && !inv.used_by) inv.expires_ms = 0
+    const code = `CODE${String(++this.server.inviteSeq).padStart(4, '0')}`
+    const expires_ms = Date.now() + 24 * 3600_000
+    this.server.invites.set(code, { store_id: storeId, created_by: this.user, expires_ms, used_by: null })
+    return { code, expires_at: new Date(expires_ms).toISOString() }
+  }
+
+  async joinStore(code: string): Promise<JoinResult> {
+    this.guard('joinStore')
+    const fails = this.server.inviteAttempts.get(this.user) ?? 0
+    if (fails >= 10) return { error: 'too_many' }
+    const norm = code.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+    const inv = this.server.invites.get(norm)
+    if (!inv || inv.used_by || inv.expires_ms <= Date.now() || this.stores.get(inv.store_id)?.archived_at) {
+      this.server.inviteAttempts.set(this.user, fails + 1)
+      return { error: 'invalid' }
+    }
+    if (inv.created_by === this.user) return { error: 'own' }
+    this.members.get(inv.store_id)!.add(this.user)
+    inv.used_by = this.user
+    return { storeId: inv.store_id }
+  }
+
+  async listMembers(storeId: string): Promise<Member[]> {
+    this.guard('listMembers')
+    if (!this.isMember(storeId)) throw new CloudError('not member', 'denied')
+    const owner = this.stores.get(storeId)!.created_by
+    return [...this.members.get(storeId)!]
+      .map((u) => ({ user_id: u, email: null, role: u === owner ? ('owner' as const) : ('member' as const), joined_at: '' }))
+      .sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : 0))
+  }
+
+  async removeMember(storeId: string, userId: string): Promise<void> {
+    this.guard('removeMember')
+    if (!this.isOwner(storeId)) throw new CloudError('not owner', 'denied')
+    if (userId !== this.user) this.members.get(storeId)!.delete(userId)
+  }
+
+  async leaveStore(storeId: string): Promise<void> {
+    this.guard('leaveStore')
+    if (this.isOwner(storeId)) throw new CloudError('owner cannot leave', 'denied')
+    this.members.get(storeId)?.delete(this.user)
   }
 }

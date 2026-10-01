@@ -79,7 +79,7 @@ export interface EventRow {
   xid?: number
 }
 
-const EVENT_TYPES = new Set(['PURCHASE', 'COUNT', 'ADJUST', 'UTANG', 'BAYAD', 'EXPENSE', 'CASH_COUNT', 'VOID'])
+const EVENT_TYPES = new Set(['PURCHASE', 'COUNT', 'ADJUST', 'UTANG', 'BAYAD', 'EXPENSE', 'CASH_COUNT', 'SALE', 'VOID'])
 
 export function storeToRow(s: Store): StoreRow {
   return { id: s.id, body: s, updated_at: s.updated_at }

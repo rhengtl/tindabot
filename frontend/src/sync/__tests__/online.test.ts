@@ -771,5 +771,115 @@ describe.skipIf(!cfg)('online Supabase — dedicated test users only', () => {
       expect((await repo.loadSnapshot(L.id))!.events.length).toBe(2)
       eng.dispose()
     })
+
+  // ============================================================================================
+  // P4/P5 (migration 0002, decided 2026-10-01): household invites and the AI rate limit. These
+  // skip themselves until 0002 is applied to the project.
+  // ============================================================================================
+
+  describe('migration 0002 — household membership and AI quota', () => {
+    let has0002 = false
+    beforeAll(async () => {
+      const probe = await cA.rpc('join_store', { invite: 'PROBE000' })
+      has0002 = probe.error?.code !== 'PGRST202'
+    })
+
+    it('invite → join → shared entries → owner-only rules → remove; codes are one-time, own codes refused', async (ctx) => {
+      if (!has0002) ctx.skip()
+      const S = await seedStore(apiA, 'household')
+      const { code, expires_at } = await apiA.createInvite(S.id)
+      expect(code).toMatch(/^[A-HJ-NP-Z2-9]{8}$/)
+      expect(Date.parse(expires_at) - Date.now()).toBeGreaterThan(23 * 3600_000)
+      expect(await apiA.joinStore(code)).toEqual({ error: 'own' })
+      // a member cannot make codes; B is not a member yet
+      expect(((await errorOf(apiB.createInvite(S.id))) as CloudError | null)?.code).toBe('denied')
+
+      expect(await apiB.joinStore(code.toLowerCase().replace(/(.{4})/, '$1-'))).toEqual({ storeId: S.id }) // dashes/case tolerated
+      expect(await apiB.joinStore(code)).toEqual({ error: 'invalid' }) // one-time
+      expect((await apiB.listMyStores()).map((s) => s.id)).toContain(S.id)
+      expect((await apiB.fetchStore(S.id))?.created_by).toBe(uidA)
+
+      // both record; both see each other's entries
+      const eb = mkEvent(S.id)
+      await apiB.insertEvents([eventToRow(eb)])
+      await apiA.insertEvents([eventToRow(mkEvent(S.id))])
+      expect((await rawEvents(cA, S.id)).map((r) => r.id)).toContain(eb.id)
+      expect((await rawEvents(cB, S.id)).length).toBe(2)
+
+      // owner-only: the store row and archiving
+      await apiB.upsertStore(storeToRow({ ...S, name: storeName('renamed-by-member'), updated_at: nowIso() })) // silently not applied
+      expect(((await apiA.fetchStore(S.id))?.body as Store).name).toBe(S.name)
+      expect(((await errorOf(apiB.archiveStore(S.id))) as CloudError | null)?.code).toBe('denied')
+
+      const members = await apiA.listMembers(S.id)
+      expect(members.map((m) => [m.user_id, m.role])).toEqual([[uidA, 'owner'], [uidB, 'member']])
+      expect(members.every((m) => typeof m.email === 'string' && m.email.startsWith('tindabot-test-'))).toBe(true)
+      expect((await apiB.listMembers(S.id)).length).toBe(2)
+
+      // the owner cannot be removed or leave; removing the member leaves every entry
+      await apiA.removeMember(S.id, uidA)
+      expect((await apiA.listMembers(S.id)).length).toBe(2)
+      expect(((await errorOf(apiA.leaveStore(S.id))) as CloudError | null)?.code).toBe('denied')
+      await apiA.removeMember(S.id, uidB)
+      expect((await apiB.listMyStores()).map((s) => s.id)).not.toContain(S.id)
+      expect(await apiB.fetchStore(S.id)).toBeNull()
+      expect((await rawEvents(cA, S.id)).map((r) => r.id)).toContain(eb.id) // B's entry stays
+
+      // a new code; B joins and then leaves on their own
+      const again = await apiA.createInvite(S.id)
+      expect(await apiB.joinStore(again.code)).toEqual({ storeId: S.id })
+      await apiB.leaveStore(S.id)
+      expect((await apiB.listMyStores()).map((s) => s.id)).not.toContain(S.id)
+      // making a new code retires the unused old one
+      const c1 = await apiA.createInvite(S.id)
+      const c2 = await apiA.createInvite(S.id)
+      expect(await apiB.joinStore(c1.code)).toEqual({ error: 'invalid' })
+      expect(await apiB.joinStore(c2.code)).toEqual({ storeId: S.id })
+      await apiB.leaveStore(S.id)
+    })
+
+    it('the engine on a member phone: joins, syncs the shared store as a member, and leaves it when deleted there', async (ctx) => {
+      if (!has0002) ctx.skip()
+      const S = await seedStore(apiA, 'household-engine')
+      await apiA.insertEvents([eventToRow(mkEvent(S.id))])
+      const mine = await localStore('B-own')
+      await repo.addEvents([mkEvent(mine.id)])
+      const eng = engine(apiB)
+      eng.setUser({ id: uidB, email: null })
+      await eng.whenIdle()
+      expect(eng.status.phase).toBe('idle')
+      const { code } = await apiA.createInvite(S.id)
+      expect(await eng.join(code)).toEqual({ storeId: S.id })
+      expect((await repo.loadSnapshot(S.id))!.events.length).toBe(1)
+      await repo.setCurrentStore(S.id)
+      await repo.addEvents([mkEvent(S.id)])
+      await eng.syncNow()
+      expect(eng.status.phase).toBe('idle')
+      expect(eng.status.role).toBe('member')
+      expect((await rawEvents(cA, S.id)).length).toBe(2)
+      await repo.deleteStore(S.id)
+      await repo.setCurrentStore(mine.id)
+      await eng.syncNow()
+      expect((await apiB.listMyStores()).map((s) => s.id)).not.toContain(S.id) // left
+      expect((await apiA.fetchStore(S.id))?.archived_at).toBeNull() // the owner's store stays
+      expect((await rawEvents(cA, S.id)).length).toBe(2)
+      eng.dispose()
+      // the test helper engine above was built for account A's tests; B's own store is archived here
+      await apiB.archiveStore(mine.id).catch(() => {})
+    })
+
+    it('ai_quota_hit: a signed-in caller gets a slot; a caller without a session is refused', async (ctx) => {
+      if (!has0002) ctx.skip()
+      const r = await cA.rpc('ai_quota_hit')
+      expect(r.error).toBeNull()
+      expect(r.data).toBe(true)
+      const anon = client(cfg!.url, cfg!.anonKey)
+      const denied = await anon.rpc('ai_quota_hit')
+      expect(denied.error).not.toBeNull()
+      // nobody can read the call log or the invites directly
+      expect((await cA.from('ai_calls').select('*')).error?.code).toBe('42501')
+      expect((await cA.from('store_invites').select('*')).error?.code).toBe('42501')
+    })
+  })
   })
 })

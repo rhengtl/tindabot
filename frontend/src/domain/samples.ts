@@ -16,6 +16,8 @@ export interface TierB {
   inconsistentLatest: boolean
   /** Σ PURCHASE.qty + Σ ADJUST.delta strictly after the anchor in total order. */
   netSinceAnchor: number
+  /** Σ SALE.qty strictly after the anchor. SALE never enters a sample: a count already reflects it. */
+  soldSinceAnchor: number
   rate: number | null
   confidence: Confidence
   /** Days from the earliest kept sample's start to now (null when no samples). */
@@ -37,6 +39,7 @@ export function median(xs: number[]): number {
 export function deriveTierB(events: StockEvent[], nowMs: number): TierB {
   let anchor: TierB['anchor'] = null
   let net = 0 // purchases + adjusts since the current anchor
+  let sold = 0 // tallied sales since the current anchor
   let inconsistentLatest = false
   const raw: Sample[] = []
 
@@ -45,6 +48,8 @@ export function deriveTierB(events: StockEvent[], nowMs: number): TierB {
       net += e.qty_units
     } else if (e.type === 'ADJUST') {
       net += e.delta
+    } else if (e.type === 'SALE') {
+      sold += e.qty_units
     } else {
       const ms = toMs(e.ts)
       if (anchor) {
@@ -65,6 +70,7 @@ export function deriveTierB(events: StockEvent[], nowMs: number): TierB {
       }
       anchor = { ts: e.ts, ms, qty: e.qty_on_hand }
       net = 0
+      sold = 0
     }
   }
 
@@ -96,7 +102,7 @@ export function deriveTierB(events: StockEvent[], nowMs: number): TierB {
 
   const confidence = tierBConfidence(kept, historyDays, inconsistentLatest, nowMs)
 
-  return { anchor, samples: kept, inconsistentLatest, netSinceAnchor: net, rate, confidence, historyDays }
+  return { anchor, samples: kept, inconsistentLatest, netSinceAnchor: net, soldSinceAnchor: sold, rate, confidence, historyDays }
 }
 
 const LEVELS: Confidence[] = ['none', 'low', 'mid', 'high']

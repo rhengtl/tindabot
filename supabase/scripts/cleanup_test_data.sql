@@ -38,6 +38,14 @@ begin
   end if;
 end $$;
 
+-- migration 0002 (household invites) references stores: its rows go first, when the table exists
+do $$
+begin
+  if to_regclass('public.store_invites') is not null then
+    delete from public.store_invites where store_id in (select id from _test_stores);
+  end if;
+end $$;
+
 delete from public.events        where store_id in (select id from _test_stores);
 delete from public.products      where store_id in (select id from _test_stores);
 delete from public.customers     where store_id in (select id from _test_stores);

@@ -17,8 +17,9 @@ export function StoresCard() {
   const openDemo = useApp((s) => s.openDemo)
   const hasDemo = stores.some((st) => st.demo)
 
-  const remove = async (id: string, name: string) => {
-    if (!window.confirm(S.stores.deleteQ(name))) return
+  const remove = async (id: string, name: string, member: boolean) => {
+    // A shared store is left, not deleted: the owner keeps it (see the sync engine's archiveDeleted).
+    if (!window.confirm(member ? S.stores.leaveQ(name) : S.stores.deleteQ(name))) return
     if (await write(() => deleteStore(id))) toast(S.stores.deleted(name))
   }
 
@@ -29,7 +30,7 @@ export function StoresCard() {
         {stores.map((st) => (
           <div key={st.id} className="line" data-testid="store-row" style={{ alignItems: 'center' }}>
             <span className="name grow">
-              {st.name} {st.id === current && <span className="badge green">{S.stores.current}</span>}
+              {st.name} {st.member && <span className="badge grey">{S.stores.shared}</span>} {st.id === current && <span className="badge green">{S.stores.current}</span>}
             </span>
             <div className="row">
               {st.id !== current && (
@@ -37,7 +38,7 @@ export function StoresCard() {
                   {S.stores.use}
                 </button>
               )}
-              <button type="button" className="btn danger sm" data-testid="store-delete" onClick={() => remove(st.id, st.name)}>
+              <button type="button" className="btn danger sm" data-testid="store-delete" onClick={() => remove(st.id, st.name, st.member)}>
                 {S.stores.delete}
               </button>
             </div>

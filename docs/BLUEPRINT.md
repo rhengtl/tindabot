@@ -41,6 +41,12 @@ Phone (PWA): React + TypeScript + Vite + vite-plugin-pwa
 | UI | Screens, derived state in memory | Math |
 | Supabase | Identity, durable storage, RLS isolation, sync | Derivation, AI |
 | FastAPI | Gemini key, JWT check, rate limit, schema-bound Gemini calls | Data storage, business rules |
+
+*Decided 2026-10-01:* the AI proxy is a **Vercel function** (`frontend/api/ai.ts`, `POST /api/ai`)
+in the same project as the static app, not a FastAPI service. Its row above applies unchanged: it
+holds the Gemini key (server-only setting), checks the caller (the caller's own Supabase token
+through `ai_quota_hit()`, which also enforces the rate limit), makes schema-bound Gemini calls, and
+stores nothing.
 | Gemini | Photo/text → drafts; answers from snapshot + client tools | Arithmetic, saving, deciding |
 
 Derivation **always recomputes a product/customer from its full active event list** — never
@@ -69,6 +75,7 @@ UTANG      { customer_id, amount, note?: string }                               
 BAYAD      { customer_id, amount }                                                  // P2
 EXPENSE    { amount, category: 'kuryente'|'tubig'|'pamasahe'|'load'|'renta'|'iba', note?: string } // P2
 CASH_COUNT { amount }                                                               // P2
+SALE       { product_id, qty_units }   // P5 tally (decided 2026-10-01), see §E1 Tally
 VOID       { target: EventId }   // target must be a non-VOID event
 ```
 
@@ -111,7 +118,9 @@ StoreState   { cash_last: {ts, amount}|null, utang_outstanding, weeks: WeekSumma
 ## D. UX (P1 scope marked)
 
 Navigation: bottom tabs **Bahay · Paninda · Listahan(P2) · Iba pa** + FAB. P1 FAB: **Bumili · Bilang**;
-P2 adds **Utang · Bayad · Gastos · Pera** (decided 2026-09-14, see §E6).
+P2 adds **Utang · Bayad · Gastos · Pera** (decided 2026-09-14, see §E6). P3b–P5 add **Benta**
+(tally) · **Resibo** (photo) · **Isulat** (text/voice) · **Tanong** (decided 2026-10-01); Iba pa
+gains *Katulong (AI)*, *Kasama sa tindahan* (household) and the product CSV import.
 
 - **Onboarding (P1):** store name → restock days (or *kapag kailangan*) → add paninda from catalog.
 - **Bahay = the list (P1).** Sticky bar: next trip (or *Pupunta ako ngayon*), ~total, Share.
@@ -193,6 +202,23 @@ days_left : on_hand / rate   (no multipliers; informational only)
 needs_count : days_since_count > 14, or (urgency ∈ {red, orange} and days_since_count > 7)
 slow    : rate < 0.25/day and days_left > 30      dead : rate ≈ 0 over ≥ 30 d and on_hand > 0
 ```
+
+**Tally (P5, decided 2026-10-01 — additive).** `SALE` records units the owner tapped as sold. A
+tally is a confirmed *minimum* of what left the shelf, never the whole of it (not every sale is
+tapped), so it can only lower the stock estimate, never raise it, and a partial tally changes
+nothing:
+
+```
+sold_since_anchor = Σ SALE.qty strictly after the anchor (reset by every COUNT, which already
+                    reflects the sales before it)
+on_hand           = max(0, anchor.qty + Σ PURCHASE.qty + Σ ADJUST.delta (after anchor)
+                           − max(sold_since_anchor, rate · days_since))      (rate null → 0)
+```
+
+The same `max` is used in the E4 list calculation, including the 0.7×/1.3× range. SALE never
+enters a sample, the rate, the confidence, Tier A cadence or any money figure; without an anchor it
+changes nothing. *bakit* shows "Naitalang benta mula sa huling bilang". Goldens: `SALE_*` scenarios
+(reference oracle updated).
 
 ### E2. Tier A — purchase throughput (cadence)
 
@@ -277,6 +303,13 @@ Ulat  Naitala  = gastos, nabili, utang given/received/outstanding, cash count (e
       Tantiya  = benta Σ rate·7·sell_price, tubo Σ rate·7·tubo — rounded to ₱10 with "~"
 Budget         : prefill last CASH_COUNT ≤ 2 d old; greedy by section then priority; shrink packs
                  to ≥ 1; leftovers "kulang ₱Y". Utang never enters the budget.
+Supplier price (P5, decided 2026-10-01) — memory only, no new rule: per product, the latest
+                 PURCHASE with a cost at each supplier (`PURCHASE.supplier`, case-insensitive),
+                 cheapest first, shown on the product; choosing a supplier in Bumili prefills its
+                 last price. `unit_cost` above is unchanged (the latest purchase, any supplier).
+CSV import (P5)  products only (name, category, unit_label, pack_size, pack_label, sell_price,
+                 natira → a COUNT now); names the store already has are skipped; bad rows are listed
+                 by line and nothing is written until the owner confirms. History stays JSON-only.
 ```
 
 ### E6. Pera at Utang (P2 — decided 2026-09-14, additions only)
@@ -412,6 +445,16 @@ Delete         removes the store's row, products, customers, events and per-stor
 Demo           local_only: never pushed, never claimed; signing in with the demo current switches
                to the account's cloud store if one exists.
 Membership     owner-only in P3a; store_members has `role` for households later (P5).
+Household      (P5, decided 2026-10-01; migration 0002, additions only.) The owner makes a one-time
+               invite code (8 letters, 24 h; a new code retires the unused old one); another
+               signed-in person redeems it and becomes `member`. Members read and write products,
+               customers and events exactly like the owner (0001 policies); the store row
+               (name, days, multipliers) and archiving stay owner-only — on a member's phone those
+               settings are locked, and a member's trip override stays on that phone. The owner can
+               remove a member, a member can leave; nobody's entries are removed. Deleting a shared
+               store on a member's phone LEAVES it (the owner's store and every row stay). A member
+               who was removed keeps their copy, which stops syncing (`cloud_gone`) and is never
+               re-uploaded. Wrong codes are limited to 10 per hour per account.
 Sign-out       stops sync; local data untouched; signing in again resumes on the same binding.
 Never          sync never deletes anything locally; the destructive local paths are importFile
                ('replace') and deleting a store, both only on the person's explicit confirmation;
@@ -431,6 +474,16 @@ Never          sync never deletes anything locally; the destructive local paths 
   number for `none`; *"wala sa listahan ko"* when nothing found. Rate limit 30/min, 300/day.
 - Briefing: templated, deterministic, offline (`domain/briefing.ts`).
 - Gemini never computes, saves, sees the raw event log, sees names unasked, or runs offline.
+- *Implemented 2026-10-01:* `/ai/parse` and `/ai/chat` are the two operations of `POST /api/ai`
+  (`op: 'parse' | 'chat'`). Parse drafts are `purchase` (receipt lines, or "bumili…") or `count`
+  ("natira…"); an unmatched item gets `product_index -1` and stays unticked until the owner picks a
+  product; quantities become selling units with the product's current pack size, like Bumili. The
+  photo is resized on the phone (≤ 1600 px JPEG) and discarded after the request. The chat answer is
+  itself a forced function call (`answer{text, figures[{label, value, source}]}`, `source` =
+  `r<n>.<field>` of a tool result or `snapshot.<field>`); at round 3 only `answer` is allowed.
+  Tool calls carry Gemini's thought signatures back to the proxy unchanged (stateless proxy).
+  Ilista by voice uses the browser's speech recognition when present and otherwise the keyboard's
+  own mic. The briefing card sits at the top of *Tanong kay TindaBot* and works offline.
 
 ## G. Roadmap
 
@@ -451,6 +504,14 @@ Never          sync never deletes anything locally; the destructive local paths 
   memory, CSV import, tally (`SALE`, additive), English toggle, multi-store. (Multi-store on one
   account was brought forward and done on 2026-09-30, see §E7 *Stores*/*Delete*; the English toggle
   was done in P3a, see *Language*.)
+
+**Status 2026-10-01 (owner decisions of that day):** P3b, P4 and P5 are built — receipt camera and
+`/ai/parse` (§F), Ilista by text/voice, `/ai/chat` with phone-side tools, the briefing card,
+household by invite code (§E7), supplier price memory and CSV import (§E5), the tally (§E1).
+**Push notifications are out of scope by decision:** they need extra server keys and a scheduled
+job, and the validation phone's home-screen app is a Brave shortcut that may not receive web push;
+the app keeps earning opens at the moment of buying (§A) instead. The AI parts need the owner's
+Gemini key in Vercel and migration 0002 applied (docs/DEPLOYMENT.md §7).
 
 ## H. Migration / reuse
 

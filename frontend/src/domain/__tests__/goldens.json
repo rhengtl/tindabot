@@ -1667,5 +1667,344 @@
   "at_trip": 27.875,
   "urgency": "green",
   "units": 0.0
+ },
+ "SALE_over": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 13.626678332557896,
+  "on_hand": 8.0,
+  "days_since_count": 2.0,
+  "days_left": 0.5870836461212848,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [
+   {
+    "rate": 12.0,
+    "days": 3.0,
+    "capped": 12.0
+   },
+   {
+    "rate": 12.75,
+    "days": 4.0,
+    "capped": 12.75
+   },
+   {
+    "rate": 12.333333333333334,
+    "days": 3.0,
+    "capped": 12.333333333333334
+   },
+   {
+    "rate": 15.75,
+    "days": 4.0,
+    "capped": 15.75
+   }
+  ],
+  "weights": [
+   1.5761349579798292,
+   2.561773379528545,
+   2.2289914337054224,
+   3.622894657055627
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 14.0,
+   "typical": 48,
+   "n": 5,
+   "cycles": [
+    16.0,
+    12.0,
+    16.0,
+    12.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-31"
+   ],
+   "dormant": false
+  },
+  "need": 66.7707238295337,
+  "buffer": 13.626678332557896,
+  "at_trip": -7.67068008244158,
+  "urgency": "red",
+  "units": 80.3974021620916,
+  "packs": 4,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin_na",
+  "priority": 167.49315880194436,
+  "before_trip": true,
+  "cost": 1320.0
+ },
+ "SALE_under": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 13.626678332557896,
+  "on_hand": 35.74664333488421,
+  "days_since_count": 2.0,
+  "days_left": 2.6232837132051188,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [
+   {
+    "rate": 12.0,
+    "days": 3.0,
+    "capped": 12.0
+   },
+   {
+    "rate": 12.75,
+    "days": 4.0,
+    "capped": 12.75
+   },
+   {
+    "rate": 12.333333333333334,
+    "days": 3.0,
+    "capped": 12.333333333333334
+   },
+   {
+    "rate": 15.75,
+    "days": 4.0,
+    "capped": 15.75
+   }
+  ],
+  "weights": [
+   1.5761349579798292,
+   2.561773379528545,
+   2.2289914337054224,
+   3.622894657055627
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 14.0,
+   "typical": 48,
+   "n": 5,
+   "cycles": [
+    16.0,
+    12.0,
+    16.0,
+    12.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-31"
+   ],
+   "dormant": false
+  },
+  "need": 66.7707238295337,
+  "buffer": 13.626678332557896,
+  "at_trip": 20.075963252442634,
+  "urgency": "orange",
+  "units": 60.32143890964896,
+  "packs": 3,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin",
+  "priority": 105.06321129845489,
+  "before_trip": false,
+  "cost": 990.0
+ },
+ "SALE_before_anchor": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 1.7155345746537982,
+  "on_hand": 8.928519392722759,
+  "days_since_count": 0.041666666666666664,
+  "days_left": 5.2045114826814665,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "n<3",
+  "samples": [
+   {
+    "rate": 3.0,
+    "days": 6.0,
+    "capped": 3.0
+   },
+   {
+    "rate": 3.0,
+    "days": 14.0,
+    "capped": 3.0
+   },
+   {
+    "rate": 1.2432432432432432,
+    "days": 18.5,
+    "capped": 1.2432432432432432
+   }
+  ],
+  "weights": [
+   1.1979417335007847,
+   5.590394756336995,
+   18.461874984601437
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "need": 8.40611941580361,
+  "buffer": 1.7155345746537982,
+  "at_trip": 6.955654631870891,
+  "urgency": "orange",
+  "units": 3.165999358586518,
+  "packs": 1,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin",
+  "priority": 14.504647839327198,
+  "before_trip": false,
+  "cost": 780.0
+ },
+ "SALE_hybrid": {
+  "tier": "counts",
+  "confidence": "low",
+  "rate": 3.0,
+  "on_hand": 2.0,
+  "days_since_count": 2.0,
+  "days_left": 0.6666666666666666,
+  "unit_cost": 65.0,
+  "tubo": 10.0,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-06-03",
+  "following": "2026-06-06",
+  "listed": true,
+  "cadence": {
+   "throughput": 3.0,
+   "typical": 12,
+   "n": 7,
+   "cycles": [
+    3.0,
+    3.0,
+    3.0,
+    3.0,
+    3.0638297872340425
+   ],
+   "rebuy": [
+    "2026-06-03",
+    "2026-06-03",
+    "2026-06-03"
+   ],
+   "dormant": false
+  },
+  "need": 9.45,
+  "buffer": 3.0,
+  "at_trip": -4.9,
+  "urgency": "red",
+  "units": 12.45,
+  "packs": 1,
+  "deferred": false,
+  "needs_count": false,
+  "range": [
+   1,
+   2
+  ],
+  "section": "bilhin_na",
+  "priority": 143.5,
+  "before_trip": true,
+  "cost": 780.0
+ },
+ "SALE_count_only": {
+  "tier": "counts",
+  "confidence": "none",
+  "rate": null,
+  "on_hand": 15.0,
+  "days_since_count": 1.5416666666666667,
+  "days_left": null,
+  "unit_cost": null,
+  "tubo": null,
+  "flags": [
+   "no_cost"
+  ],
+  "cadence_status": "n<3",
+  "samples": [],
+  "weights": [],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": false
+ },
+ "SALE_voided": {
+  "tier": "counts",
+  "confidence": "mid",
+  "rate": 13.626678332557896,
+  "on_hand": 35.74664333488421,
+  "days_since_count": 2.0,
+  "days_left": 2.6232837132051188,
+  "unit_cost": 13.75,
+  "tubo": 2.25,
+  "flags": [],
+  "cadence_status": "ok",
+  "samples": [
+   {
+    "rate": 12.0,
+    "days": 3.0,
+    "capped": 12.0
+   },
+   {
+    "rate": 12.75,
+    "days": 4.0,
+    "capped": 12.75
+   },
+   {
+    "rate": 12.333333333333334,
+    "days": 3.0,
+    "capped": 12.333333333333334
+   },
+   {
+    "rate": 15.75,
+    "days": 4.0,
+    "capped": 15.75
+   }
+  ],
+  "weights": [
+   1.5761349579798292,
+   2.561773379528545,
+   2.2289914337054224,
+   3.622894657055627
+  ],
+  "next_trip": "2026-05-30",
+  "following": "2026-06-03",
+  "listed": true,
+  "cadence": {
+   "throughput": 14.0,
+   "typical": 48,
+   "n": 5,
+   "cycles": [
+    16.0,
+    12.0,
+    16.0,
+    12.0
+   ],
+   "rebuy": [
+    "2026-05-30",
+    "2026-05-30",
+    "2026-05-31"
+   ],
+   "dormant": false
+  },
+  "need": 66.7707238295337,
+  "buffer": 13.626678332557896,
+  "at_trip": 20.075963252442634,
+  "urgency": "orange",
+  "units": 60.32143890964896,
+  "packs": 3,
+  "deferred": false,
+  "needs_count": false,
+  "range": null,
+  "section": "bilhin",
+  "priority": 105.06321129845489,
+  "before_trip": false,
+  "cost": 990.0
  }
 }

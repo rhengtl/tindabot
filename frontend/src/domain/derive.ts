@@ -82,7 +82,9 @@ export function deriveProduct(product: Product, events: StockEvent[], nowMs: num
   let days_left: number | null = null
   if (b.anchor) {
     days_since = daysBetweenMs(b.anchor.ms, nowMs)
-    const depletion = rate !== null ? rate * days_since : 0
+    // Tally (§E1): tallied sales are a confirmed minimum of what was used since the count; the
+    // rate estimate may be larger because not every sale is tallied. The larger of the two wins.
+    const depletion = Math.max(b.soldSinceAnchor, rate !== null ? rate * days_since : 0)
     on_hand = Math.max(0, b.anchor.qty + b.netSinceAnchor - depletion)
     if (rate !== null && rate > 0) days_left = on_hand / rate
     if (days_since > NEEDS_COUNT_STALE_DAYS) flags.add('needs_count')
@@ -99,6 +101,7 @@ export function deriveProduct(product: Product, events: StockEvent[], nowMs: num
     anchor: b.anchor ? { ts: b.anchor.ts, qty: b.anchor.qty } : null,
     anchor_ms: b.anchor?.ms ?? null,
     net_since_anchor: b.netSinceAnchor,
+    sold_since_anchor: b.soldSinceAnchor,
     on_hand_est: on_hand,
     days_since_count: days_since,
     daily_rate: rate,

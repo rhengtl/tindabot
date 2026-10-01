@@ -6,12 +6,17 @@ import { importFailureKind } from '../write'
 import { exportCurrentStore } from '../exportFile'
 import { useLang, useStrings } from '../i18n'
 import { CloudCard } from './Cloud'
+import { CsvImportCard } from './CsvImport'
+import { HouseholdCard } from './Household'
+import type { ScanMode } from './Scan'
 import { DemoExit } from './DemoExit'
 import { StoresCard } from './Stores'
 import { UlatCard } from './Ulat'
 
-export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () => void }) {
+export function IbaPa({ onGastos, onPera, onAsk, onScan }: { onGastos: () => void; onPera: () => void; onAsk: () => void; onScan: (mode: ScanMode) => void }) {
   const store = useApp((s) => s.store)
+  // Household member: the store row (name, days, multipliers) is the owner's (BLUEPRINT §E7).
+  const member = useApp((s) => s.member)
   const persisted = useApp((s) => s.persisted)
   const updateStore = useApp((s) => s.updateStore)
   const importJson = useApp((s) => s.importJson)
@@ -90,6 +95,24 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
 
       {backupOld && <div className="card flag">{S.ibaPa.backupNudge}</div>}
 
+      <h3>{S.ibaPa.katulong}</h3>
+      <div className="card" data-testid="katulong">
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <button type="button" className="btn secondary sm" data-testid="open-ask" onClick={onAsk}>
+            💬 {S.ask.title}
+          </button>
+          <button type="button" className="btn secondary sm" onClick={() => onScan('photo')}>
+            📷 {S.scan.title}
+          </button>
+          <button type="button" className="btn secondary sm" onClick={() => onScan('text')}>
+            ✍️ {S.scan.textTitle}
+          </button>
+        </div>
+        <p className="muted small" style={{ marginTop: 8 }}>
+          {S.ibaPa.katulongHint}
+        </p>
+      </div>
+
       <h3>{S.ibaPa.settings}</h3>
       <div className="card">
         <div className="field">
@@ -102,19 +125,20 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
             ))}
           </div>
         </div>
+        {member && <p className="muted small" data-testid="member-note">{S.ibaPa.memberNote}</p>}
         <div className="field">
           <label>{S.ibaPa.storeName}</label>
-          <input aria-label={S.ibaPa.storeName} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name !== store.name) void write(() => updateStore({ name: name.trim() })) }} />
+          <input aria-label={S.ibaPa.storeName} disabled={member} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name !== store.name) void write(() => updateStore({ name: name.trim() })) }} />
         </div>
         <div className="field">
           <label>{S.ibaPa.restockDays}</label>
           <div className="chips">
             {S.days.map((d, i) => (
-              <button key={d} type="button" className={`chip ${store.restock_days.includes(i as Weekday) ? 'on' : ''}`} onClick={() => toggleDay(i as Weekday)}>
+              <button key={d} type="button" disabled={member} className={`chip ${store.restock_days.includes(i as Weekday) ? 'on' : ''}`} onClick={() => toggleDay(i as Weekday)}>
                 {d}
               </button>
             ))}
-            <button type="button" className={`chip ${store.restock_days.length === 0 ? 'on' : ''}`} onClick={() => write(() => updateStore({ restock_days: [] }))}>
+            <button type="button" disabled={member} className={`chip ${store.restock_days.length === 0 ? 'on' : ''}`} onClick={() => write(() => updateStore({ restock_days: [] }))}>
               {S.onboarding.whenNeeded}
             </button>
           </div>
@@ -124,6 +148,8 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
       <UlatCard onGastos={onGastos} onPera={onPera} />
 
       <CloudCard />
+
+      <HouseholdCard />
 
       <h3>{S.ibaPa.backup}</h3>
       <div className="card">
@@ -144,6 +170,7 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
           {S.ibaPa.persisted(persisted)}
         </p>
       </div>
+      <CsvImportCard />
 
       <h3>{S.ibaPa.advanced}</h3>
       <div className="card">
@@ -163,11 +190,11 @@ export function IbaPa({ onGastos, onPera }: { onGastos: () => void; onPera: () =
           <div id="advanced-settings">
             <div className="field">
               <label style={{ marginTop: 6 }}>{S.ibaPa.payday} (×)</label>
-              <input aria-label={`${S.ibaPa.payday} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } }))} />
+              <input aria-label={`${S.ibaPa.payday} (×)`} disabled={member} type="number" step="0.05" min={1} max={2} value={store.multipliers.payday} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, payday: Number(e.target.value) || 1 } }))} />
             </div>
             <div className="field">
               <label>{S.ibaPa.friSat} (×)</label>
-              <input aria-label={`${S.ibaPa.friSat} (×)`} type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } }))} />
+              <input aria-label={`${S.ibaPa.friSat} (×)`} disabled={member} type="number" step="0.05" min={1} max={2} value={store.multipliers.fri_sat} onChange={(e) => write(() => updateStore({ multipliers: { ...store.multipliers, fri_sat: Number(e.target.value) || 1 } }))} />
             </div>
           </div>
         )}

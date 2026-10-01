@@ -91,13 +91,16 @@ export interface StoreSummary {
   name: string
   demo: boolean
   updated_at: string
+  /** household: this phone's account shares the store as a member, not its owner */
+  member: boolean
 }
 
 /** Every store on this device: real stores by name, the demo last. */
 export async function listStores(): Promise<StoreSummary[]> {
   const rows = await db.stores.toArray()
+  const member = new Set((await db.meta.where('key').startsWith(MEMBER_PREFIX).primaryKeys()).map((k) => String(k).slice(MEMBER_PREFIX.length)))
   return rows
-    .map((r) => ({ id: r.id, name: r.name, demo: r.local_only === true, updated_at: r.updated_at }))
+    .map((r) => ({ id: r.id, name: r.name, demo: r.local_only === true, updated_at: r.updated_at, member: member.has(r.id) }))
     .sort((a, b) => Number(a.demo) - Number(b.demo) || a.name.localeCompare(b.name) || (a.id < b.id ? -1 : 1))
 }
 
@@ -107,6 +110,8 @@ export async function demoStoreId(): Promise<string | null> {
 }
 
 const DELETED_PREFIX = 'store_deleted:'
+/** set by the sync engine (META.member) when the signed-in account is a member of the store */
+const MEMBER_PREFIX = 'member_of:'
 
 /** Stores deleted on this device whose cloud copy still has to be archived (the sync engine does it). */
 export async function deletedStoreIds(): Promise<string[]> {

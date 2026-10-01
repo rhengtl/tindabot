@@ -123,6 +123,18 @@ add("T2_one_sample", "tierB", COKE, t2, now="2026-06-03T11:00:00+08:00", note="s
 t3 = a1 + linked(5, 30, 4, 12, 780) + linked(6, 3, 16, 12, 780)
 add("T3_mismatch", "tierB", COKE, t3, now="2026-06-03T11:00:00+08:00", note="Jun 3 count included the new case → sample 0/day → >3x off throughput → count_mismatch, keep throughput")
 
+# ---------------- Tally (SALE, additive — decided 2026-10-01) ----------------
+def sale(m, d, q, h=15):
+    return {"type": "SALE", "ts": ts(m, d, h), "qty_units": q}
+
+
+add("SALE_over", "tierB", LUCKY, s1 + [sale(5, 28, 30), sale(5, 28, 25, h=18)], note="tally 55 since the count beats rate×days → lower on-hand, more to buy")
+add("SALE_under", "tierB", LUCKY, s1 + [sale(5, 28, 3)], note="partial tally below rate×days → same as S1 (estimate wins)")
+add("SALE_before_anchor", "tierB", COKE, sprite + [sale(5, 20, 30), sale(5, 28, 30)] + [count(5, 29, 9, h=9)], note="sales before the count are already reflected in it")
+add("SALE_hybrid", "tierB", COKE, t1 + [sale(5, 31, 14)], now="2026-06-01T10:00:00+08:00", note="hybrid: tally 14 > throughput×days")
+add("SALE_count_only", "tierB", EDEN, [count(5, 27, 20), sale(5, 28, 5)], note="anchor without a rate: on-hand = count − tally, unlisted")
+add("SALE_voided", "tierB", LUCKY, s1 + [dict(sale(5, 28, 40), id="SALE_voided-x"), {"type": "VOID", "ts": ts(5, 28, 19), "target": "SALE_voided-x"}], note="a voided tally is ignored")
+
 # assign ids & fill common fields
 for s in S:
     for i, e in enumerate(s["events"]):

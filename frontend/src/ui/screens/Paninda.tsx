@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { type DomainEvent, type Lang, type Product, type ProductState, compareEvents, templates, toLocalDate, ulid } from '../../domain'
+import { type DomainEvent, type Lang, type Product, type ProductState, type PurchaseEvent, activeEvents, compareEvents, supplierPrices, templates, toLocalDate, ulid } from '../../domain'
 import { useApp } from '../../state/store'
 import { Dot, Sheet, fmtNum, useToast, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
@@ -126,12 +126,14 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
   }, [events, productId])
 
   if (!product) return null
+  const prices = supplierPrices(activeEvents(events).filter((e): e is PurchaseEvent => e.type === 'PURCHASE' && e.product_id === productId))
 
   function describe(e: DomainEvent): string {
     const u = product!.unit_label
-    if (e.type === 'PURCHASE') return `${S.paninda.histPurchase(e.qty_units, u)}${e.total_cost !== null ? ` · ${templates.peso(e.total_cost)}` : ''}`
+    if (e.type === 'PURCHASE') return `${S.paninda.histPurchase(e.qty_units, u)}${e.total_cost !== null ? ` · ${templates.peso(e.total_cost)}` : ''}${e.supplier ? ` · ${e.supplier}` : ''}`
     if (e.type === 'COUNT') return S.paninda.histCount(e.qty_on_hand, u)
     if (e.type === 'ADJUST') return `${S.paninda.adjustReason[e.reason] ?? S.paninda.adjustReason.iba}: ${e.delta} ${u}`
+    if (e.type === 'SALE') return S.paninda.histSale(e.qty_units, u)
     return e.type
   }
 
@@ -151,6 +153,17 @@ function ProductDetail({ productId, onClose, onBakit, onBumili, onBilang }: { pr
           <span className="k">{S.paninda.price}</span>
           <span>{product.sell_price === null ? '—' : templates.peso(product.sell_price)}</span>
         </div>
+        {prices.length > 0 && (
+          <div style={{ marginTop: 10 }} data-testid="supplier-prices">
+            <div className="muted small bold">{S.paninda.supplierPrices}</div>
+            {prices.map((sp) => (
+              <div key={sp.supplier} className="row between small">
+                <span>{sp.supplier}</span>
+                <span>{S.paninda.perUnit(templates.pesoExact(Math.round(sp.unit_cost * 100) / 100), product.unit_label)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
           <button type="button" className="btn secondary sm" onClick={() => onBakit(product.id)}>
             {S.bahay.bakit}

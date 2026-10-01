@@ -107,13 +107,15 @@ def active(events):
 
 # ---------------- Tier B ----------------
 def tier_b(events, now):
-    anchor, net, inconsistent, raw = None, 0.0, False, []
+    anchor, net, sold, inconsistent, raw = None, 0.0, 0.0, False, []
     for e in events:
         if e["type"] == "PURCHASE":
             net += e["qty_units"]
         elif e["type"] == "ADJUST":
             net += e["delta"]
-        else:
+        elif e["type"] == "SALE":  # tally: never part of a sample (the next count reflects it)
+            sold += e["qty_units"]
+        elif e["type"] == "COUNT":
             t = parse(e["ts"])
             if anchor:
                 days = (t - anchor["t"]).total_seconds() / DAY
@@ -128,6 +130,7 @@ def tier_b(events, now):
                         raw.append({"rate": used / days, "days": days, "start": anchor["t"], "end": t})
             anchor = {"t": t, "qty": e["qty_on_hand"]}
             net = 0.0
+            sold = 0.0
     kept = [s for s in raw if (now - s["end"]).total_seconds() / DAY <= 90]
     for s in kept:
         s["capped"] = s["rate"]
@@ -160,7 +163,7 @@ def tier_b(events, now):
         newest_age = (now - max(s["end"] for s in kept)).total_seconds() / DAY
         if inconsistent or newest_age > 28:
             conf = {"high": "mid", "mid": "low", "low": "low"}[conf]
-    return dict(anchor=anchor, samples=kept, weights=weights, inconsistent=inconsistent, net=net, rate=rate, conf=conf, hist=hist)
+    return dict(anchor=anchor, samples=kept, weights=weights, inconsistent=inconsistent, net=net, sold=sold, rate=rate, conf=conf, hist=hist)
 
 
 # ---------------- Tier A ----------------
@@ -199,6 +202,7 @@ def run(sc):
     today = local_date(now)
     ev = active(sc["events"])
     purchases = [e for e in ev if e["type"] == "PURCHASE"]
+    ev = [e for e in ev if e["type"] in ("PURCHASE", "COUNT", "ADJUST", "SALE")]
     b = tier_b(ev, now)
     status, cad = cadence(purchases, now, today)
     thr = cad["throughput"] if cad else None
@@ -246,7 +250,8 @@ def run(sc):
     on_hand = days_since = days_left = None
     if b["anchor"]:
         days_since = (now - b["anchor"]["t"]).total_seconds() / DAY
-        on_hand = max(0.0, b["anchor"]["qty"] + b["net"] - (rate or 0) * days_since)
+        # tally: the larger of tallied sales and estimated use since the count
+        on_hand = max(0.0, b["anchor"]["qty"] + b["net"] - max(b["sold"], (rate or 0) * days_since))
         if rate:
             days_left = on_hand / rate
         if days_since > 14:
@@ -269,7 +274,7 @@ def run(sc):
                             rebuy=[cad["early"].isoformat(), cad["mid"].isoformat(), cad["late"].isoformat()], dormant=cad["dormant"])
 
     def tb(r):
-        oh = max(0.0, b["anchor"]["qty"] + b["net"] - r * days_since)
+        oh = max(0.0, b["anchor"]["qty"] + b["net"] - max(b["sold"], r * days_since))
         dl = oh / r
         need = demand(r, nt, fo)
         buf = max(r, 0.2 * need)

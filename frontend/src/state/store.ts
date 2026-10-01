@@ -25,6 +25,8 @@ import {
   deriveProduct,
   deriveStoreFinance,
   isExportFile,
+  normalizeSupplier,
+  type ProductCsvRow,
   localTimeMs,
   stockEventsByProduct,
   toISOWithOffset,
@@ -35,7 +37,8 @@ import type { CatalogItem } from '../catalog/catalog'
 import * as repo from '../db/repo'
 import { openDemo } from './demo'
 import { type Cloud, type SignInError, type SyncEngine as SyncEngineT, type SyncReason, type SyncStatus, createCloud } from '../sync'
-import { SyncEngine } from '../sync/engine'
+import { META as SYNC_META, SyncEngine } from '../sync/engine'
+import type { JoinResult, Member } from '../sync/api'
 
 export type DateChoice = { kind: 'ngayon' } | { kind: 'kahapon' } | { kind: 'date'; date: LocalDate }
 
@@ -47,6 +50,18 @@ export interface PurchaseDraft {
   total_cost: number | null
   natira: number | null
   when: DateChoice
+  /** P5 supplier price memory: where it was bought (optional) */
+  supplier?: string | null
+}
+
+/** One saved row of an /ai/parse review (ids generated when the drafts arrived). */
+export interface EntryDraft {
+  id: string
+  kind: 'purchase' | 'count'
+  product_id: string
+  qty_units: number
+  total_cost: number | null
+  supplier: string | null
 }
 
 /** P2 finance drafts — ids generated when the form opens (idempotent submit). */
@@ -66,6 +81,8 @@ interface AppState {
   demoExit: { id: string; name: string } | null
   /** Every store on this device (the store list in Iba pa). */
   stores: repo.StoreSummary[]
+  /** Household: the current store is shared with this account as a member (owner-only settings locked). */
+  member: boolean
   products: Product[]
   customers: Customer[]
   events: DomainEvent[]
@@ -106,6 +123,12 @@ interface AppState {
   recordPurchase(d: PurchaseDraft): Promise<void>
   recordCount(id: string, productId: string, qty: number, when: DateChoice): Promise<void>
   recordAdjust(id: string, productId: string, delta: number, reason: 'sira' | 'expired' | 'personal' | 'iba'): Promise<void>
+  /** P5 tally: one SALE per product (ts now). */
+  recordSales(lines: Array<{ id: string; product_id: string; qty_units: number }>): Promise<void>
+  /** P3b/P4: the rows the owner kept in an /ai/parse review, as ordinary PURCHASE/COUNT events. */
+  recordEntries(entries: EntryDraft[], when: DateChoice): Promise<void>
+  /** P5 CSV: adds rows whose name the store does not have yet (case-insensitive); returns how many. */
+  importProducts(rows: ProductCsvRow[]): Promise<number>
   addCustomer(name: string, phone: string | null): Promise<Customer>
   saveCustomer(c: Customer): Promise<void>
   recordUtang(d: FinanceDraft & { customer_id: string; note: string | null }): Promise<void>
@@ -140,6 +163,14 @@ interface AppState {
   signOutCloud(): Promise<void>
   syncNow(): Promise<void>
   requestSync(reason: SyncReason): void
+  /** The signed-in user's access token for the AI proxy (null when signed out / no cloud). */
+  aiToken(): Promise<string | null>
+  // Household (P5)
+  createInvite(): Promise<{ code: string; expires_at: string }>
+  /** Redeems a code; on success the shared store is on this phone and becomes the current store. */
+  joinStore(code: string): Promise<JoinResult>
+  listMembers(): Promise<Member[]>
+  removeMember(userId: string): Promise<void>
 }
 
 const SYNC_INITIAL: SyncStatus = {
@@ -152,6 +183,7 @@ const SYNC_INITIAL: SyncStatus = {
   error: null,
   skewMs: null,
   skewWarning: false,
+  role: null,
 }
 
 /** Meta key of the language preference. Anything but a known language falls back to Taglish. */
@@ -196,7 +228,7 @@ export const useApp = create<AppState>((set, get) => {
   async function reload(nowMs = Date.now()) {
     const store = await repo.currentStore()
     if (!store) {
-      set({ loaded: true, store: null, demo: false, demoExit: null, stores: await repo.listStores(), products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
+      set({ loaded: true, store: null, demo: false, member: false, demoExit: null, stores: await repo.listStores(), products: [], customers: [], events: [], states: new Map(), customerStates: new Map(), finance: null, list: null, nowMs })
       return
     }
     const snap = await repo.loadSnapshot(store.id)
@@ -205,7 +237,8 @@ export const useApp = create<AppState>((set, get) => {
     const exit = demo ? await repo.latestRealStore(store.id) : null
     const d = derive(snap.store, snap.products, snap.events, nowMs, get().lang)
     const stores = await repo.listStores()
-    set({ loaded: true, store: snap.store, demo, demoExit: exit && { id: exit.id, name: exit.name }, stores, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
+    const member = stores.find((x) => x.id === store.id)?.member ?? false
+    set({ loaded: true, store: snap.store, demo, member, demoExit: exit && { id: exit.id, name: exit.name }, stores, products: snap.products, customers: snap.customers, events: snap.events, ...d, nowMs })
   }
 
   /**
@@ -257,6 +290,7 @@ export const useApp = create<AppState>((set, get) => {
     demo: false,
     demoExit: null,
     stores: [],
+    member: false,
     products: [],
     customers: [],
     events: [],
@@ -401,7 +435,8 @@ export const useApp = create<AppState>((set, get) => {
       const events: DomainEvent[] = []
       // Linked count-at-restock: same ts as the purchase; COUNT sorts first by type rank.
       if (d.natira !== null) events.push({ ...base(), id: d.countId, type: 'COUNT', product_id: d.product_id, qty_on_hand: d.natira, ts })
-      events.push({ ...base(), id: d.id, type: 'PURCHASE', product_id: d.product_id, qty_units: d.qty_units, total_cost: d.total_cost, ts })
+      const supplier = normalizeSupplier(d.supplier)
+      events.push({ ...base(), id: d.id, type: 'PURCHASE', product_id: d.product_id, qty_units: d.qty_units, total_cost: d.total_cost, ...(supplier ? { supplier } : {}), ts })
       await repo.addEvents(events)
       await commit()
     },
@@ -414,6 +449,52 @@ export const useApp = create<AppState>((set, get) => {
     async recordAdjust(id, productId, delta, reason) {
       await repo.addEvents([{ ...base(), id, type: 'ADJUST', product_id: productId, delta, reason, ts: nowIso() }])
       await commit()
+    },
+
+    async recordSales(lines) {
+      const ts = nowIso()
+      const events: DomainEvent[] = lines.filter((l) => l.qty_units > 0).map((l) => ({ ...base(), id: l.id, type: 'SALE', product_id: l.product_id, qty_units: l.qty_units, ts }))
+      if (events.length === 0) return
+      await repo.addEvents(events)
+      await commit()
+    },
+
+    async recordEntries(entries, when) {
+      const events: DomainEvent[] = entries.map((e) => {
+        if (e.kind === 'count') return { ...base(), id: e.id, type: 'COUNT', product_id: e.product_id, qty_on_hand: e.qty_units, ts: resolveTs(when, 'COUNT') }
+        const supplier = normalizeSupplier(e.supplier)
+        return { ...base(), id: e.id, type: 'PURCHASE', product_id: e.product_id, qty_units: e.qty_units, total_cost: e.total_cost, ...(supplier ? { supplier } : {}), ts: resolveTs(when, 'PURCHASE') }
+      })
+      if (events.length === 0) return
+      await repo.addEvents(events)
+      await commit()
+    },
+
+    async importProducts(rows) {
+      const s = get()
+      const have = new Set(s.products.map((p) => p.name.trim().toLowerCase()))
+      let added = 0
+      for (const r of rows) {
+        if (have.has(r.name.toLowerCase())) continue
+        have.add(r.name.toLowerCase())
+        const p: Product = {
+          id: ulid(),
+          store_id: s.store!.id,
+          name: r.name,
+          category: r.category,
+          unit_label: r.unit_label,
+          pack_size: r.pack_size,
+          pack_label: r.pack_label,
+          sell_price: r.sell_price,
+          archived: false,
+          updated_at: nowIso(),
+        }
+        await repo.saveProduct(p)
+        if (r.natira !== null) await repo.addEvents([{ ...base(), id: ulid(), type: 'COUNT', product_id: p.id, qty_on_hand: r.natira, ts: nowIso() }])
+        added++
+      }
+      await commit()
+      return added
     },
 
     async addCustomer(name, phone) {
@@ -500,6 +581,38 @@ export const useApp = create<AppState>((set, get) => {
 
     requestSync(reason) {
       engine?.requestSync(reason)
+    },
+
+    async aiToken() {
+      return cloud ? cloud.auth.accessToken() : null
+    },
+
+    async createInvite() {
+      const id = get().store?.id
+      if (!cloud || !id) throw new Error('no_cloud')
+      return cloud.api.createInvite(id)
+    },
+
+    async joinStore(code) {
+      if (!engine) throw new Error('no_cloud')
+      const r = await engine.join(code)
+      if ('storeId' in r && (await repo.storeExists(r.storeId))) {
+        await repo.setMeta(SYNC_META.member(r.storeId), '1')
+        await get().switchStore(r.storeId)
+      }
+      return r
+    },
+
+    async listMembers() {
+      const id = get().store?.id
+      if (!cloud || !id) return []
+      return cloud.api.listMembers(id)
+    },
+
+    async removeMember(userId) {
+      const id = get().store?.id
+      if (!cloud || !id) return
+      await cloud.api.removeMember(id, userId)
     },
   }
 })

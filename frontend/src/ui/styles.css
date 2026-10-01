@@ -227,3 +227,15 @@ h3:first-child { margin-top: 4px; }
 
 /* Keyboard focus stays visible everywhere (desktop especially); pointer clicks stay clean. */
 :where(button, a, input, select, [tabindex]):focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+/* P3b/P4/P5 (2026-10-01): AI drafts, assistant bubbles, tally */
+textarea, select { font: inherit; color: inherit; }
+textarea, .card select, .row > input:not([type='checkbox']) {
+  min-height: var(--tap); padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 1rem; min-width: 0;
+}
+textarea { width: 100%; resize: vertical; }
+.bubble { padding: 10px 12px; border-radius: 14px; margin: 8px 0; line-height: 1.4; overflow-wrap: anywhere; }
+.bubble.me { background: var(--brand-soft); margin-left: 15%; }
+.bubble.bot { background: var(--card); border: 1px solid var(--line); margin-right: 8%; }
+.flag-text { color: var(--orange); font-weight: 600; }
+.invite-code { font-size: 1.6rem; font-weight: 800; letter-spacing: 0.15em; font-family: ui-monospace, monospace; }

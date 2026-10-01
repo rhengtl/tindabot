@@ -43,7 +43,7 @@ export function activeEvents(events: Iterable<DomainEvent>): ActiveEvent[] {
 }
 
 export function isStockEvent(e: ActiveEvent): e is StockEvent {
-  return e.type === 'PURCHASE' || e.type === 'COUNT' || e.type === 'ADJUST'
+  return e.type === 'PURCHASE' || e.type === 'COUNT' || e.type === 'ADJUST' || e.type === 'SALE'
 }
 
 export function forProduct(events: ActiveEvent[], productId: string): StockEvent[] {
