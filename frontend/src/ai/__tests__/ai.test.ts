@@ -3,7 +3,7 @@
 // No network and no key: the real Gemini round trip is checked by hand on the preview/hosted app.
 
 import { describe, expect, it } from 'vitest'
-import { handle, readChatParts, validDrafts } from '../../../api/ai'
+import { handle, readChatParts, stickyModel, validDrafts } from '../../../api/ai'
 import { type ActiveEvent, type Customer, type CustomerState, type Product, type StoreState, activeEvents, buildList, deriveProduct, stockEventsByProduct, toMs } from '../../domain'
 import { DEVICE_ID, STORE_ID, makeStore } from '../../domain/__tests__/helpers'
 import { AiError, callAi } from '../client'
@@ -32,6 +32,7 @@ function fakeFetch(opts: { quota?: unknown; quotaStatus?: number; gemini?: unkno
 }
 const req = (body: unknown, auth: string | null = 'Bearer abc.def.ghi', method = 'POST') =>
   new Request('https://app.example/api/ai', { method, headers: { 'content-type': 'application/json', ...(auth ? { authorization: auth } : {}) }, ...(method === 'POST' ? { body: JSON.stringify(body) } : {}) })
+const noSleep = async () => {}
 const geminiText = (obj: unknown) => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] })
 const PRODUCTS = [{ name: 'Coke Mismo', pack_label: 'case', pack_size: 12, unit_label: 'bote' }]
 
@@ -109,10 +110,52 @@ describe('AI proxy (api/ai.ts)', () => {
 
   it('Gemini failures map to app codes; a non-JSON reply is "unreadable"', async () => {
     const parse = { op: 'parse', text: 'x', products: PRODUCTS }
-    expect(await (await handle(req(parse), ENV, fakeFetch({ geminiStatus: 429 }).f)).json()).toEqual({ error: 'busy' })
-    expect(await (await handle(req(parse), ENV, fakeFetch({ geminiStatus: 403 }).f)).json()).toEqual({ error: 'not_configured' })
-    expect(await (await handle(req(parse), ENV, fakeFetch({ geminiStatus: 500 }).f)).json()).toEqual({ error: 'upstream' })
+    expect(await (await handle(req(parse), ENV, fakeFetch({ geminiStatus: 429 }).f, noSleep)).json()).toEqual({ error: 'busy', upstream: 429 })
+    expect(await (await handle(req(parse), ENV, fakeFetch({ geminiStatus: 403 }).f, noSleep)).json()).toEqual({ error: 'not_configured', upstream: 403 })
+    expect(await (await handle(req(parse), ENV, fakeFetch({ geminiStatus: 502 }).f, noSleep)).json()).toEqual({ error: 'upstream', upstream: 502 })
     expect(await (await handle(req(parse), ENV, fakeFetch({ gemini: { candidates: [{ content: { parts: [{ text: 'not json' }] } }] } }).f)).json()).toEqual({ error: 'unreadable' })
+  })
+
+  it('a temporary refusal is retried; a model that stays busy hands over to the fallback model; the answer says which model served it', async () => {
+    const seq = [503, 200]
+    const urls: string[] = []
+    const ok = { candidates: [{ content: { parts: [{ functionCall: { name: 'get_shopping_list', args: {} }, thoughtSignature: 'S1' }] } }] }
+    const flaky = (async (url: string) => {
+      if (url.includes('ai_quota_hit')) return new Response('true')
+      urls.push(url)
+      const st = seq.shift() ?? 200
+      return new Response(JSON.stringify(st === 200 ? ok : {}), { status: st })
+    }) as unknown as typeof fetch
+    const chat = { op: 'chat', history: [{ role: 'user', text: 'ano bibilhin?' }], snapshot: {}, round: 0 }
+    expect(await (await handle(req(chat), ENV, flaky, noSleep)).json()).toEqual({ kind: 'tools', calls: [{ name: 'get_shopping_list', args: {}, sig: 'S1', model: 'gemini-flash-latest' }] })
+    expect(urls.map((u) => u.split('/models/')[1])).toEqual(['gemini-flash-latest:generateContent', 'gemini-flash-latest:generateContent'])
+
+    // primary refuses three times → fallback model
+    urls.length = 0
+    seq.push(429, 429, 429, 200)
+    const out = await (await handle(req(chat), ENV, flaky, noSleep)).json()
+    expect(out.calls[0].model).toBe('gemini-flash-lite-latest')
+    expect(urls.map((u) => u.split('/models/')[1]!.split(':')[0])).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
+
+    // a later round of the same question stays on the model that made its signatures (no fallback)
+    urls.length = 0
+    seq.push(503, 503, 503)
+    const round1 = { ...chat, round: 1, history: [chat.history[0], { role: 'model', calls: out.calls }, { role: 'tool', results: [{ name: 'get_shopping_list', id: 'r1', result: {} }] }] }
+    expect(stickyModel(round1.history as never)).toBe('gemini-flash-lite-latest')
+    expect(await (await handle(req(round1), ENV, flaky, noSleep)).json()).toEqual({ error: 'busy', upstream: 503 })
+    expect(urls.every((u) => u.includes('gemini-flash-lite-latest'))).toBe(true)
+    expect(urls.length).toBe(3)
+
+    // an unknown main model id (e.g. a retired alias) goes straight to the fallback
+    urls.length = 0
+    seq.push(404, 200)
+    expect((await handle(req(chat), ENV, flaky, noSleep)).status).toBe(200)
+    expect(urls.length).toBe(2)
+    // GEMINI_FALLBACK_MODEL=none: no fallback
+    urls.length = 0
+    seq.push(429, 429, 429)
+    expect((await handle(req(chat), { ...ENV, GEMINI_FALLBACK_MODEL: 'none' }, flaky, noSleep)).status).toBe(503)
+    expect(urls.length).toBe(3)
   })
 
   it('chat: round 3 forces `answer`; tool calls carry their thought signatures back; unknown tools are rejected', async () => {

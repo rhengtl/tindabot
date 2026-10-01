@@ -55,6 +55,7 @@ environment, as Vercel supplies them. Results:
 | `VITE_SUPABASE_ANON_KEY` | the existing project's **publishable** key (`sb_publishable_…`) | same |
 | `GEMINI_API_KEY` (since 2026-10-01) | a Gemini API key from Google AI Studio — **secret**, server-only; never `VITE_`-prefixed, so it never reaches the bundle | Production |
 | `GEMINI_MODEL` (optional) | a Gemini model id; default `gemini-flash-latest` | Production |
+| `GEMINI_FALLBACK_MODEL` (optional) | used when the main model stays overloaded or rate-limited after a short retry; default `gemini-flash-lite-latest`, `none` turns it off | Production |
 
 Both values are public by nature: Vite inlines them into the JavaScript bundle, and RLS is the
 security boundary. Nothing else goes to Vercel:
@@ -335,6 +336,13 @@ Owner steps, in this order:
 5. For local development only: put `GEMINI_API_KEY=…` in `frontend/.env.local` (git-ignored). The
    dev server (`npm run dev`) then serves `/api/ai` from the same file; `vite preview` has no
    function and the app says the AI is not set up.
+
+Busy handling (added 2026-10-01 after the first live test, where the free tier answered several
+assistant calls with "busy"): each Gemini call is retried twice after a short wait on 429/500/503,
+then handed to the fallback model, whose free-tier quota is separate. Rounds of one assistant
+question stay on the model that started it (Gemini's thought signatures are model-specific). A
+final "busy" reply carries Gemini's status as `upstream` (429 = rate limit/quota, 503 = overloaded)
+for diagnosis.
 
 Checks after the redeploy (no secrets needed): `POST /api/ai` without a token answers 401
 `{"error":"auth"}` (the function is deployed); a signed-in "Tanong kay TindaBot" question gets an

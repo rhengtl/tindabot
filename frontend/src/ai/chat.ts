@@ -10,11 +10,11 @@ export const MAX_ROUND = 3
 
 export type Turn =
   | { role: 'user'; text: string }
-  | { role: 'model'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string }> }
+  | { role: 'model'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string; model?: string }> }
   | { role: 'tool'; results: Array<{ name: string; id: string; result: unknown }> }
 
 export type ChatReply =
-  | { kind: 'tools'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string }> }
+  | { kind: 'tools'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string; model?: string }> }
   | { kind: 'answer'; text: string; figures: Array<{ label: string; value: number; source: string }> }
 
 export interface CheckedFigure {

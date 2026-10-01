@@ -10,6 +10,8 @@
 // Server-only settings, never VITE_-prefixed and never sent to the browser:
 //   GEMINI_API_KEY   required
 //   GEMINI_MODEL     optional, default `gemini-flash-latest`
+//   GEMINI_FALLBACK_MODEL  optional, default `gemini-flash-lite-latest` (`none` = no fallback); used
+//                    when the main model stays overloaded / rate-limited after a short retry
 //   SUPABASE_URL / SUPABASE_ANON_KEY   optional; default to the app's VITE_SUPABASE_* (the public
 //                    project URL and anon key — the caller's own token does the authorizing)
 
@@ -17,6 +19,11 @@ export type Env = Record<string, string | undefined>
 type Fetch = typeof fetch
 
 const DEFAULT_MODEL = 'gemini-flash-latest'
+const DEFAULT_FALLBACK_MODEL = 'gemini-flash-lite-latest'
+/** waits before the 2nd and 3rd attempt on one model when Gemini says 429 / 500 / 503 */
+const RETRY_DELAYS_MS = [1200, 3000]
+/** everything for one request must fit in the function's 60 s (vercel.json), with room to answer */
+const BUDGET_MS = 50_000
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const MAX_BODY = 4_000_000 // bytes; the phone sends one resized JPEG at most (~0.3–1 MB)
 const MAX_TEXT = 2000
@@ -29,6 +36,9 @@ const MAX_HISTORY_BYTES = 48 * 1024
 export const MAX_ROUND = 3
 const UPSTREAM_TIMEOUT_MS = 45_000
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
+export type Sleep = (ms: number) => Promise<void>
+const realSleep: Sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 export type ErrorCode = 'method' | 'bad_request' | 'too_large' | 'not_configured' | 'auth' | 'rate_limited' | 'busy' | 'upstream' | 'unreadable'
 
@@ -89,29 +99,65 @@ interface GeminiContent {
   parts: GeminiPart[]
 }
 
-async function gemini(env: Env, fetchImpl: Fetch, body: Record<string, unknown>): Promise<{ parts: GeminiPart[] } | Response> {
-  const model = env.GEMINI_MODEL && /^[a-z0-9.-]+$/.test(env.GEMINI_MODEL) ? env.GEMINI_MODEL : DEFAULT_MODEL
-  let res: Response
-  try {
-    res = await fetchImpl(`${GEMINI_BASE}/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': env.GEMINI_API_KEY!, 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    })
-  } catch {
-    return fail(502, 'upstream')
+const modelId = (v: string | undefined) => (v && /^[a-z0-9.-]+$/.test(v) ? v : null)
+
+/**
+ * One schema-bound Gemini call. Temporary refusals (429 rate limit, 500/503 overloaded) are retried
+ * twice after a short wait; if the main model still refuses, the fallback model gets the same
+ * chances (its quota is separate). `stick` pins one model: a chat round must go to the model that
+ * produced the earlier rounds' thought signatures, which another model would reject.
+ * The final "busy" carries Gemini's last status as `upstream` (a number; diagnosis only).
+ */
+async function gemini(
+  env: Env,
+  fetchImpl: Fetch,
+  body: Record<string, unknown>,
+  opts: { stick?: string | null; sleep?: Sleep } = {},
+): Promise<{ parts: GeminiPart[]; model: string } | Response> {
+  const primary = modelId(env.GEMINI_MODEL) ?? DEFAULT_MODEL
+  const fallback = env.GEMINI_FALLBACK_MODEL === 'none' ? null : (modelId(env.GEMINI_FALLBACK_MODEL) ?? DEFAULT_FALLBACK_MODEL)
+  const models = opts.stick ? [opts.stick] : [primary, ...(fallback && fallback !== primary ? [fallback] : [])]
+  const sleep = opts.sleep ?? realSleep
+  const deadline = Date.now() + BUDGET_MS
+  let last = 0
+  for (const model of models) {
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      if (attempt > 0) {
+        const wait = RETRY_DELAYS_MS[attempt - 1]!
+        if (Date.now() + wait > deadline - 8_000) break
+        await sleep(wait)
+      }
+      let res: Response
+      try {
+        res = await fetchImpl(`${GEMINI_BASE}/${model}:generateContent`, {
+          method: 'POST',
+          headers: { 'x-goog-api-key': env.GEMINI_API_KEY!, 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(Math.max(1_000, Math.min(UPSTREAM_TIMEOUT_MS, deadline - Date.now()))),
+        })
+      } catch {
+        return fail(502, 'upstream') // no answer in time: a retry would not fit either
+      }
+      if (res.status === 429 || res.status === 500 || res.status === 503) {
+        last = res.status
+        continue
+      }
+      if (res.status === 404 && model !== models[models.length - 1]) {
+        last = 404 // this model id is unknown (e.g. a retired alias): try the next one
+        break
+      }
+      if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
+        // A bad/expired key or an unknown model is a configuration problem, not the caller's.
+        return res.status === 400 ? json(502, { error: 'upstream', upstream: 400 }) : json(503, { error: 'not_configured', upstream: res.status })
+      }
+      if (!res.ok) return json(502, { error: 'upstream', upstream: res.status })
+      const data = (await res.json().catch(() => null)) as { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> } | null
+      const parts = data?.candidates?.[0]?.content?.parts
+      if (!Array.isArray(parts)) return fail(502, 'unreadable')
+      return { parts, model }
+    }
   }
-  if (res.status === 429 || res.status === 503) return fail(503, 'busy')
-  if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
-    // A bad/expired key or an unknown model is a configuration problem, not the caller's.
-    return fail(res.status === 400 ? 502 : 503, res.status === 400 ? 'upstream' : 'not_configured')
-  }
-  if (!res.ok) return fail(502, 'upstream')
-  const data = (await res.json().catch(() => null)) as { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> } | null
-  const parts = data?.candidates?.[0]?.content?.parts
-  if (!Array.isArray(parts)) return fail(502, 'unreadable')
-  return { parts }
+  return json(503, { error: 'busy', upstream: last })
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -199,7 +245,7 @@ export function validDrafts(raw: unknown, nProducts: number): { drafts: Draft[];
   return { drafts, unreadable }
 }
 
-async function opParse(body: Record<string, unknown>, env: Env, fetchImpl: Fetch): Promise<Response> {
+async function opParse(body: Record<string, unknown>, env: Env, fetchImpl: Fetch, sleep?: Sleep): Promise<Response> {
   const products = Array.isArray(body.products) ? body.products : null
   if (!products || products.length > MAX_PRODUCTS) return fail(400, 'bad_request')
   const ps: ParseProduct[] = []
@@ -221,7 +267,7 @@ async function opParse(body: Record<string, unknown>, env: Env, fetchImpl: Fetch
   const out = await gemini(env, fetchImpl, {
     contents: [{ role: 'user', parts }],
     generationConfig: { responseMimeType: 'application/json', responseSchema: PARSE_SCHEMA, temperature: 0 },
-  })
+  }, { sleep })
   if (out instanceof Response) return out
   const text = out.parts.filter((p) => !p.thought && typeof p.text === 'string').map((p) => p.text).join('')
   let raw: unknown
@@ -240,7 +286,7 @@ async function opParse(body: Record<string, unknown>, env: Env, fetchImpl: Fetch
 
 export type Turn =
   | { role: 'user'; text: string }
-  | { role: 'model'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string }> }
+  | { role: 'model'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string; model?: string }> }
   | { role: 'tool'; results: Array<{ name: string; id: string; result: unknown }> }
 
 export const TOOL_NAMES = ['get_product', 'list_events', 'get_shopping_list', 'get_week_summary', 'get_customer'] as const
@@ -323,10 +369,10 @@ function toContents(history: Turn[], snapshot: unknown): GeminiContent[] | null 
 }
 
 export type ChatOut =
-  | { kind: 'tools'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string }> }
+  | { kind: 'tools'; calls: Array<{ name: string; args: Record<string, unknown>; sig?: string; model?: string }> }
   | { kind: 'answer'; text: string; figures: Array<{ label: string; value: number; source: string }> }
 
-export function readChatParts(parts: GeminiPart[], round: number): ChatOut | null {
+export function readChatParts(parts: GeminiPart[], round: number, model?: string): ChatOut | null {
   const calls = parts.filter((p) => p.functionCall && typeof p.functionCall.name === 'string')
   const answer = calls.find((p) => p.functionCall!.name === 'answer')
   if (answer) {
@@ -343,7 +389,7 @@ export function readChatParts(parts: GeminiPart[], round: number): ChatOut | nul
   if (tools.length > 0 && round < MAX_ROUND) {
     return {
       kind: 'tools',
-      calls: tools.map((p) => ({ name: p.functionCall!.name, args: isObj(p.functionCall!.args) ? p.functionCall!.args : {}, ...(p.thoughtSignature ? { sig: p.thoughtSignature } : {}) })),
+      calls: tools.map((p) => ({ name: p.functionCall!.name, args: isObj(p.functionCall!.args) ? p.functionCall!.args : {}, ...(p.thoughtSignature ? { sig: p.thoughtSignature } : {}), ...(model ? { model } : {}) })),
     }
   }
   // A plain-text reply (no call) is still an answer, with no verifiable figures.
@@ -351,7 +397,13 @@ export function readChatParts(parts: GeminiPart[], round: number): ChatOut | nul
   return text ? { kind: 'answer', text: text.slice(0, 2000), figures: [] } : null
 }
 
-async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch): Promise<Response> {
+/** The model that answered this question's earlier rounds (it alone accepts their thought signatures). */
+export function stickyModel(history: Turn[]): string | null {
+  for (const t of history) if (t.role === 'model') for (const c of t.calls) if (typeof c.model === 'string' && modelId(c.model)) return c.model
+  return null
+}
+
+async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch, sleep?: Sleep): Promise<Response> {
   const round = body.round
   if (!Number.isInteger(round) || (round as number) < 0 || (round as number) > MAX_ROUND) return fail(400, 'bad_request')
   const lang = body.lang === 'en' ? 'en' : 'tl'
@@ -366,9 +418,9 @@ async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch)
     tools: [{ functionDeclarations: TOOLS }],
     toolConfig: { functionCallingConfig: last ? { mode: 'ANY', allowedFunctionNames: ['answer'] } : { mode: 'ANY' } },
     generationConfig: { temperature: 0.2 },
-  })
+  }, { stick: stickyModel(body.history as Turn[]), sleep })
   if (out instanceof Response) return out
-  const r = readChatParts(out.parts, round as number)
+  const r = readChatParts(out.parts, round as number, out.model)
   return r ? json(200, r) : fail(502, 'unreadable')
 }
 
@@ -376,7 +428,7 @@ async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch)
 // entry
 // ---------------------------------------------------------------------------------------------
 
-export async function handle(req: Request, env: Env, fetchImpl: Fetch = fetch): Promise<Response> {
+export async function handle(req: Request, env: Env, fetchImpl: Fetch = fetch, sleep: Sleep = realSleep): Promise<Response> {
   if (req.method !== 'POST') return fail(405, 'method')
   if (!env.GEMINI_API_KEY) return fail(503, 'not_configured')
   const len = Number(req.headers.get('content-length') ?? '0')
@@ -397,8 +449,8 @@ export async function handle(req: Request, env: Env, fetchImpl: Fetch = fetch): 
     return fail(400, 'bad_request')
   }
   if (!isObj(body)) return fail(400, 'bad_request')
-  if (body.op === 'parse') return opParse(body, env, fetchImpl)
-  if (body.op === 'chat') return opChat(body, env, fetchImpl)
+  if (body.op === 'parse') return opParse(body, env, fetchImpl, sleep)
+  if (body.op === 'chat') return opChat(body, env, fetchImpl, sleep)
   return fail(400, 'bad_request')
 }
 

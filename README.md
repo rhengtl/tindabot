@@ -13,7 +13,7 @@ The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business r
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 424 offline tests: domain vs reference oracles (incl. the sales tally), supplier prices, product CSV, briefing, AI proxy + drafts + phone-side assistant tools, household sync, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, several stores (switch/add/delete), sync engine (in-memory cloud incl. multi-store), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
+npm test           # 425 offline tests: domain vs reference oracles (incl. the sales tally), supplier prices, product CSV, briefing, AI proxy + drafts + phone-side assistant tools, household sync, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, several stores (switch/add/delete), sync engine (in-memory cloud incl. multi-store), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
 npm run typecheck
 npm run build && npx vite preview   # production build with service worker (offline)
 ```
@@ -24,7 +24,7 @@ machine `npm test` talks to the real Supabase project and signs in as the `tinda
 accounts. To stay offline, or to run the online suite on purpose:
 
 ```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (424 tests)
+npx vitest run --exclude "**/online.test.ts"        # offline only (425 tests)
 npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
 ```
 

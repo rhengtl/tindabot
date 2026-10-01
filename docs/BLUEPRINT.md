@@ -482,6 +482,8 @@ Never          sync never deletes anything locally; the destructive local paths 
   itself a forced function call (`answer{text, figures[{label, value, source}]}`, `source` =
   `r<n>.<field>` of a tool result or `snapshot.<field>`); at round 3 only `answer` is allowed.
   Tool calls carry Gemini's thought signatures back to the proxy unchanged (stateless proxy).
+  Temporary Gemini refusals (429/500/503) are retried, then sent to a fallback model; the rounds
+  of one question stay on one model, because thought signatures are model-specific.
   Ilista by voice uses the browser's speech recognition when present and otherwise the keyboard's
   own mic. The briefing card sits at the top of *Tanong kay TindaBot* and works offline.
 
