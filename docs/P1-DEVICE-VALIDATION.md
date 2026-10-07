@@ -617,8 +617,20 @@ Found on the phone and fixed:
   A read supplier that clearly is a known one is now mapped to it, and the review has an editable
   supplier field. On the phone the first version kept "PUREGOLD PRICE CLUB", because that exact name
   had been saved once by the earlier receipt test; when several known names fit, the one the others
-  contain ("Puregold") now wins.
+  contain ("Puregold") now wins. Checked on the phone with real Gemini: all three receipt rows showed "Puregold".
+- **Assistant numbers:** answers quoted "20.8 sachets" / "5.9 days" (the lookups carried one decimal
+  while the screens show whole numbers). Stock and days left are now rounded in the lookups exactly
+  as Paninda and *bakit* round them.
+- **A store deleted on another device:** after the owner deleted "Testing" from the PC, the phone said
+  "the store is no longer available in the cloud" — as designed (the copy stays, nothing re-uploads) —
+  but still offered "Sync now", which then did nothing. The card now explains the situation and offers
+  "Delete from this phone" instead (checked in a local browser: message shown, no Sync now, deleting
+  the only store opens onboarding).
+- **Cleanup script:** run in the SQL editor it failed with `relation "_test_users" does not exist`
+  (temporary tables across statements). Rewritten as one block with no temporary tables; it now also
+  refuses to run under a restricted role, and removes the test users' 0002 rows.
 
-Not verified here: sign-in and sync on a second device of the owner's (needs the owner's Google
-sign-in on another browser or phone); sync itself was exercised by the household test and by the
-phone's own backups (nothing pending). Push notifications are out of scope (BLUEPRINT §G).
+Two-device sync was then checked by the owner: signed in on the PC browser and deleted "Testing"
+there; the phone picked that up as described above.
+
+Push notifications are out of scope (BLUEPRINT §G).

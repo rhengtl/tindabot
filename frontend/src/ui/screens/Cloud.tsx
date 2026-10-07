@@ -23,6 +23,8 @@ export function CloudCard() {
   const signInGoogle = useApp((s) => s.signInGoogle)
   const signOutCloud = useApp((s) => s.signOutCloud)
   const syncNow = useApp((s) => s.syncNow)
+  const deleteStore = useApp((s) => s.deleteStore)
+  const store = useApp((s) => s.store)
   const S = useStrings()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
@@ -89,6 +91,12 @@ export function CloudCard() {
       if (sync.error?.code === 'unavailable') {
         tone = 'unavailable'
         line = pending ? S.cloud.status.unavailablePending(pending) : S.cloud.status.unavailable
+      } else if (sync.error?.code === 'store_gone') {
+        // Deleted on another device (or the owner removed this account): the copy here stays, but
+        // there is nothing left to sync it with, so "Sync now" would do nothing. Say so, and offer the
+        // one useful action instead.
+        tone = 'gone'
+        line = S.cloud.status.gone
       } else if (sync.error?.code === 'auth') {
         tone = 'auth'
         line = S.cloud.status.authNeeded
@@ -113,10 +121,30 @@ export function CloudCard() {
         </div>
         {sync.phase === 'idle' && pending > 0 && <div className="muted small">{S.cloud.status.pending(pending)}</div>}
         {sync.skewWarning && sync.skewMs !== null && <div className="card flag">{S.cloud.skew(Math.round(Math.abs(sync.skewMs) / 60_000))}</div>}
+        {tone === 'gone' && <p className="muted small" data-testid="gone-hint">{S.cloud.goneHint}</p>}
         <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-          <button type="button" className="btn secondary sm" disabled={sync.phase === 'syncing' || sync.phase === 'local_only'} onClick={() => syncNow()}>
-            {S.cloud.syncNow}
-          </button>
+          {tone === 'gone' && store ? (
+            <button
+              type="button"
+              className="btn danger sm"
+              data-testid="gone-delete"
+              onClick={async () => {
+                if (!window.confirm(S.stores.deleteQ(store.name))) return
+                try {
+                  await deleteStore(store.id)
+                  toast(S.stores.deleted(store.name))
+                } catch {
+                  toast(S.common.notSaved)
+                }
+              }}
+            >
+              {S.cloud.goneDelete}
+            </button>
+          ) : (
+            <button type="button" className="btn secondary sm" disabled={sync.phase === 'syncing' || sync.phase === 'local_only'} onClick={() => syncNow()}>
+              {S.cloud.syncNow}
+            </button>
+          )}
           <button type="button" className="btn ghost sm" onClick={() => signOutCloud()}>
             {S.cloud.signOut}
           </button>

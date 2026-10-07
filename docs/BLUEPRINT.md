@@ -441,7 +441,8 @@ Delete         removes the store's row, products, customers, events and per-stor
                recently updated remaining real store, else onboarding. The demo was never in the
                cloud. A store archived by another device is not un-archived or re-uploaded here: the
                phone keeps its copy, stops syncing it (`cloud_gone:<id>`) and says the store is no
-               longer available in the cloud.
+               longer available in the cloud; the Cloud card then offers *Burahin sa phone na ito*
+               instead of *I-sync ngayon*, which would have nothing to sync (2026-10-07).
 Demo           local_only: never pushed, never claimed; signing in with the demo current switches
                to the account's cloud store if one exists.
 Membership     owner-only in P3a; store_members has `role` for households later (P5).

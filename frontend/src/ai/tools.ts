@@ -41,6 +41,8 @@ export interface AssistantContext {
 }
 
 const r1 = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? null : Math.round(n * 10) / 10)
+/** Whole number, as the Paninda and *bakit* screens show stock and days left. */
+const r0 = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? null : Math.round(n))
 const r2 = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? null : Math.round(n * 100) / 100)
 
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
@@ -77,8 +79,9 @@ function productResult(c: AssistantContext, p: Product): Record<string, unknown>
     pack_size: p.pack_size,
     stopped: p.archived,
     confidence: st?.confidence ?? 'none',
-    on_hand_est: counts ? r1(st?.on_hand_est) : null,
-    days_left: counts ? r1(st?.days_left) : null,
+    // rounded like the screens round them, so an answer quotes the same number the owner sees
+    on_hand_est: counts ? r0(st?.on_hand_est) : null,
+    days_left: counts ? r0(st?.days_left) : null,
     units_per_day: counts ? r2(st?.daily_rate) : null,
     last_count: st?.anchor ? { qty: st.anchor.qty, days_ago: Math.floor(st.days_since_count ?? 0) } : null,
     tallied_since_count: st && st.sold_since_anchor > 0 ? st.sold_since_anchor : null,

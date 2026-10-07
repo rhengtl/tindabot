@@ -331,6 +331,10 @@ describe('assistant tools (run on the phone)', () => {
     expect(kopiko.purchase_pattern).toMatchObject({ note: expect.stringContaining('not sales') })
     expect((kopiko.supplier_prices as Array<{ supplier: string }>).map((s) => s.supplier)).toEqual(['Alfamart', 'Puregold'])
     expect(runTool(c, 'get_product', { name: 'royal' })).toEqual({ found: false })
+    // stock and days left are whole numbers, exactly as the screens show them
+    expect(Number.isInteger(coke.on_hand_est)).toBe(true)
+    expect(coke.on_hand_est).toBe(Math.round(c.states.get('p1')!.on_hand_est!))
+    expect(coke.days_left === null || Number.isInteger(coke.days_left)).toBe(true)
   })
   it('list_events returns totals, never the entries; a product filter drops the money totals', () => {
     expect(runTool(c, 'list_events', { days: 7 })).toEqual({ days: 7, product: null, purchases: 1, units_bought: 10, cost_recorded: 60, counts: 1, units_tallied: 3, units_damaged: 0, utang_given: 0, payments: 0, expenses: 50 })

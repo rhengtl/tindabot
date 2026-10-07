@@ -346,6 +346,7 @@ export const TL = {
       authNeeded: 'Mag-sign in ulit para magpatuloy ang backup. Nasa phone pa rin ang listahan.',
       localOnly: 'Demo — hindi naka-sync sa cloud.',
       unbound: 'Hindi pa naka-connect ang tindahan na ito sa cloud. I-tap ang "I-sync ngayon".',
+      gone: 'Wala na sa cloud ang tindahan na ito — binura ito sa ibang device, o inalis ka ng may-ari.',
       pending: (n: number) => `${n} entry ang hindi pa naka-backup`,
     },
     /** Sync failures by app-level category (never raw server text). Shown inside status.error(). */
@@ -359,6 +360,8 @@ export const TL = {
       unknown: 'may problema — susubukan ulit',
     } satisfies Record<CloudErrorCode, string>,
     ago: { justNow: 'kanina lang', minutes: (n: number) => `${n} min ang nakalipas`, hours: (n: number) => `${n} oras ang nakalipas`, days: (n: number) => `${n} araw ang nakalipas` },
+    goneHint: 'Nasa phone na ito pa rin ang kopya at magagamit mo pa, pero hindi na ito masi-sync. Burahin kung hindi mo na kailangan.',
+    goneDelete: 'Burahin sa phone na ito',
     skew: (min: number) => `Mali yata ang oras ng phone mo (≈ ${min} min ang layo sa server). Ayusin sa Settings ng phone para tama ang pagkakasunod ng mga entry.`,
   },
 
@@ -823,6 +826,7 @@ export const EN: Strings = {
       authNeeded: 'Sign in again to keep backing up. Your list stays on the phone.',
       localOnly: 'Demo — not synced to the cloud.',
       unbound: 'This store is not connected to the cloud yet. Tap "Sync now".',
+      gone: 'This store is no longer in the cloud — it was deleted on another device, or the owner removed you.',
       pending: (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'} not backed up yet`,
     },
     errors: {
@@ -835,6 +839,8 @@ export const EN: Strings = {
       unknown: 'something went wrong — will retry',
     },
     ago: { justNow: 'just now', minutes: (n: number) => `${n} min ago`, hours: (n: number) => `${n} ${n === 1 ? 'hour' : 'hours'} ago`, days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'} ago` },
+    goneHint: 'The copy on this phone stays and still works, but it can no longer sync. Delete it if you no longer need it.',
+    goneDelete: 'Delete from this phone',
     skew: (min: number) => `Your phone’s clock looks wrong (≈ ${min} min off from the server). Fix it in the phone’s Settings so entries stay in the right order.`,
   },
 

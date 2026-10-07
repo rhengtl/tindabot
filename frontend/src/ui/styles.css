@@ -224,6 +224,8 @@ h3:first-child { margin-top: 4px; }
 .sync-status.auth::before { background: var(--orange); }
 .sync-status.error { background: var(--red-soft); color: var(--red); }
 .sync-status.error::before { background: var(--red); }
+.sync-status.gone { background: #f0efec; }
+.sync-status.gone::before { background: #9a9a9a; }
 
 /* Keyboard focus stays visible everywhere (desktop especially); pointer clicks stay clean. */
 :where(button, a, input, select, [tabindex]):focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
