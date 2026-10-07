@@ -10,8 +10,9 @@
 // Server-only settings, never VITE_-prefixed and never sent to the browser:
 //   GEMINI_API_KEY   required
 //   GEMINI_MODEL     optional, default `gemini-flash-latest`
-//   GEMINI_FALLBACK_MODEL  optional, default `gemini-flash-lite-latest` (`none` = no fallback); used
-//                    when the main model stays overloaded / rate-limited after a short retry
+//   GEMINI_FALLBACK_MODEL  optional, default `gemini-flash-lite-latest` (`none` = no fallback). Receipts
+//                    and notes use the main model first and this one when the main model is busy or too
+//                    slow; assistant questions use this one first and the main model as the backup.
 //   SUPABASE_URL / SUPABASE_ANON_KEY   optional; default to the app's VITE_SUPABASE_* (the public
 //                    project URL and anon key — the caller's own token does the authorizing)
 
@@ -23,7 +24,10 @@ const DEFAULT_FALLBACK_MODEL = 'gemini-flash-lite-latest'
 /** waits before the 2nd and 3rd attempt on one model when Gemini says 429 / 500 / 503 */
 const RETRY_DELAYS_MS = [1200, 3000]
 /** everything for one request must fit in the function's 60 s (vercel.json), with room to answer */
-const BUDGET_MS = 50_000
+const BUDGET_MS = 52_000
+/** how long the first model may take before the second one is tried (see gemini()) */
+const CHAT_FIRST_MODEL_MS = 20_000
+const PARSE_FIRST_MODEL_MS = 35_000
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const MAX_BODY = 4_000_000 // bytes; the phone sends one resized JPEG at most (~0.3–1 MB)
 const MAX_TEXT = 2000
@@ -112,11 +116,18 @@ async function gemini(
   env: Env,
   fetchImpl: Fetch,
   body: Record<string, unknown>,
-  opts: { sleep?: Sleep } = {},
+  opts: { sleep?: Sleep; op: 'parse' | 'chat' },
 ): Promise<{ parts: GeminiPart[]; model: string } | Response> {
-  const primary = modelId(env.GEMINI_MODEL) ?? DEFAULT_MODEL
+  const main = modelId(env.GEMINI_MODEL) ?? DEFAULT_MODEL
   const fallback = env.GEMINI_FALLBACK_MODEL === 'none' ? null : (modelId(env.GEMINI_FALLBACK_MODEL) ?? DEFAULT_FALLBACK_MODEL)
-  const models = [primary, ...(fallback && fallback !== primary ? [fallback] : [])]
+  // Receipts and notes: the main model reads best. Questions: the lighter model first — on the first
+  // live tests the main (thinking) model kept the answer round past the time limit, while a short
+  // tool-backed answer is well within the light model's reach; the main model stays the backup.
+  const pair = [main, ...(fallback && fallback !== main ? [fallback] : [])]
+  const models = opts.op === 'chat' ? pair.slice().reverse() : pair
+  // A first model that has not answered by then is abandoned for the second one, which then gets the
+  // rest of the budget; the last model always gets everything that is left.
+  const firstCutMs = opts.op === 'chat' ? CHAT_FIRST_MODEL_MS : PARSE_FIRST_MODEL_MS
   const sleep = opts.sleep ?? realSleep
   const deadline = Date.now() + BUDGET_MS
   let last = 0
@@ -127,16 +138,22 @@ async function gemini(
         if (Date.now() + wait > deadline - 8_000) break
         await sleep(wait)
       }
+      const isLast = model === models[models.length - 1]
+      const limit = Math.min(UPSTREAM_TIMEOUT_MS, deadline - Date.now(), isLast ? Infinity : firstCutMs)
       let res: Response
       try {
         res = await fetchImpl(`${GEMINI_BASE}/${model}:generateContent`, {
           method: 'POST',
           headers: { 'x-goog-api-key': env.GEMINI_API_KEY!, 'content-type': 'application/json' },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(Math.max(1_000, Math.min(UPSTREAM_TIMEOUT_MS, deadline - Date.now()))),
+          signal: AbortSignal.timeout(Math.max(1_000, limit)),
         })
       } catch {
-        return fail(502, 'upstream') // no answer in time: a retry would not fit either
+        if (!isLast && deadline - Date.now() > 10_000) {
+          last = 408 // too slow: hand over to the other model
+          break
+        }
+        return json(502, { error: 'upstream', upstream: 408 }) // no answer in time
       }
       if (res.status === 429 || res.status === 500 || res.status === 503) {
         last = res.status
@@ -267,7 +284,7 @@ async function opParse(body: Record<string, unknown>, env: Env, fetchImpl: Fetch
   const out = await gemini(env, fetchImpl, {
     contents: [{ role: 'user', parts }],
     generationConfig: { responseMimeType: 'application/json', responseSchema: PARSE_SCHEMA, temperature: 0 },
-  }, { sleep })
+  }, { sleep, op: 'parse' })
   if (out instanceof Response) return out
   const text = out.parts.filter((p) => !p.thought && typeof p.text === 'string').map((p) => p.text).join('')
   let raw: unknown
@@ -421,7 +438,7 @@ async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch,
     tools: [{ functionDeclarations: TOOLS }],
     toolConfig: { functionCallingConfig: last ? { mode: 'ANY', allowedFunctionNames: ['answer'] } : { mode: 'ANY' } },
     generationConfig: { temperature: 0.2 },
-  }, { sleep })
+  }, { sleep, op: 'chat' })
   if (out instanceof Response) return out
   const r = readChatParts(out.parts, round as number, out.model)
   return r ? json(200, r) : fail(502, 'unreadable')

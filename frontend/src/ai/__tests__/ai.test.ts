@@ -116,44 +116,65 @@ describe('AI proxy (api/ai.ts)', () => {
     expect(await (await handle(req(parse), ENV, fakeFetch({ gemini: { candidates: [{ content: { parts: [{ text: 'not json' }] } }] } }).f)).json()).toEqual({ error: 'unreadable' })
   })
 
-  it('a temporary refusal is retried; a model that stays busy hands over to the fallback model; the answer says which model served it', async () => {
-    const seq = [503, 200]
+  it('model order: receipts use the main model first, questions the light model first; busy or too slow hands over to the other; the reply says which model served it', async () => {
+    const seq: Array<number | 'hang'> = []
     const urls: string[] = []
     const ok = { candidates: [{ content: { parts: [{ functionCall: { name: 'get_shopping_list', args: {} }, thoughtSignature: 'S1' }] } }] }
     const flaky = (async (url: string) => {
       if (url.includes('ai_quota_hit')) return new Response('true')
       urls.push(url)
       const st = seq.shift() ?? 200
+      if (st === 'hang') throw new DOMException('The operation timed out.', 'TimeoutError') // what AbortSignal.timeout raises
       return new Response(JSON.stringify(st === 200 ? ok : {}), { status: st })
     }) as unknown as typeof fetch
+    const used = () => urls.map((u) => u.split('/models/')[1]!.split(':')[0])
     const chat = { op: 'chat', history: [{ role: 'user', text: 'ano bibilhin?' }], snapshot: {}, round: 0 }
-    expect(await (await handle(req(chat), ENV, flaky, noSleep)).json()).toEqual({ kind: 'tools', calls: [{ name: 'get_shopping_list', args: {}, sig: 'S1', model: 'gemini-flash-latest' }] })
-    expect(urls.map((u) => u.split('/models/')[1])).toEqual(['gemini-flash-latest:generateContent', 'gemini-flash-latest:generateContent'])
 
-    // primary refuses three times → fallback model
+    // a question: light model first; one refusal is retried on the same model
+    seq.push(503, 200)
+    expect(await (await handle(req(chat), ENV, flaky, noSleep)).json()).toEqual({ kind: 'tools', calls: [{ name: 'get_shopping_list', args: {}, sig: 'S1', model: 'gemini-flash-lite-latest' }] })
+    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-lite-latest'])
+
+    // the light model refuses three times → the main model
     urls.length = 0
     seq.push(429, 429, 429, 200)
     const out = await (await handle(req(chat), ENV, flaky, noSleep)).json()
-    expect(out.calls[0].model).toBe('gemini-flash-lite-latest')
-    expect(urls.map((u) => u.split('/models/')[1]!.split(':')[0])).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
+    expect(out.calls[0].model).toBe('gemini-flash-latest')
+    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest'])
 
-    // a later round of the same question can fall back too (rounds carry no model-specific state)
+    // a later round of the same question can switch too (rounds carry no model-specific state)
     urls.length = 0
     seq.push(503, 503, 503, 200)
     const round1 = { ...chat, round: 1, history: [chat.history[0], { role: 'model', calls: out.calls }, { role: 'tool', results: [{ name: 'get_shopping_list', id: 'r1', result: {} }] }] }
     expect((await handle(req(round1), ENV, flaky, noSleep)).status).toBe(200)
-    expect(urls.map((u) => u.split('/models/')[1]!.split(':')[0])).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
+    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest'])
 
-    // an unknown main model id (e.g. a retired alias) goes straight to the fallback
+    // too slow (the first live failure: no answer before the time limit) → the other model, not an error
+    urls.length = 0
+    seq.push('hang', 200)
+    expect((await handle(req(round1), ENV, flaky, noSleep)).status).toBe(200)
+    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-latest'])
+    // ...but the last model timing out is reported, with 408 for diagnosis
+    urls.length = 0
+    seq.push('hang', 'hang')
+    expect(await (await handle(req(round1), ENV, flaky, noSleep)).json()).toEqual({ error: 'upstream', upstream: 408 })
+
+    // a receipt or note: the main model first
+    urls.length = 0
+    seq.push(200)
+    await handle(req({ op: 'parse', text: 'bumili 1 case coke', products: PRODUCTS }), ENV, flaky, noSleep)
+    expect(used()).toEqual(['gemini-flash-latest'])
+
+    // an unknown model id (e.g. a retired alias) goes straight to the other one
     urls.length = 0
     seq.push(404, 200)
     expect((await handle(req(chat), ENV, flaky, noSleep)).status).toBe(200)
     expect(urls.length).toBe(2)
-    // GEMINI_FALLBACK_MODEL=none: no fallback
+    // GEMINI_FALLBACK_MODEL=none: the main model only, for questions too
     urls.length = 0
     seq.push(429, 429, 429)
     expect((await handle(req(chat), { ...ENV, GEMINI_FALLBACK_MODEL: 'none' }, flaky, noSleep)).status).toBe(503)
-    expect(urls.length).toBe(3)
+    expect(used()).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest'])
   })
 
   it('chat: round 3 forces `answer`; earlier lookups go back as plain text (no model-specific signatures); unknown tools are rejected', async () => {

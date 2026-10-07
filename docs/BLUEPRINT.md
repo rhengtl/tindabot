@@ -483,7 +483,9 @@ Never          sync never deletes anything locally; the destructive local paths 
   `r<n>.<field>` of a tool result or `snapshot.<field>`); at round 3 only `answer` is allowed.
   Each round is one self-contained request: the snapshot, the question and the tool results so far
   (as text, by id) — no function-call history, so no model-specific thought signatures. Temporary
-  Gemini refusals (429/500/503) are retried, then sent to a fallback model, in any round.
+  Gemini refusals (429/500/503) are retried, then sent to the other model, in any round; a model
+  that is too slow is abandoned for the other one too. Receipts/notes use the main model first,
+  assistant questions the light model first (decided 2026-10-07 after phone tests).
   Ilista by voice uses the browser's speech recognition when present and otherwise the keyboard's
   own mic. The briefing card sits at the top of *Tanong kay TindaBot* and works offline.
 

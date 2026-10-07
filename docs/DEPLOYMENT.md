@@ -55,7 +55,7 @@ environment, as Vercel supplies them. Results:
 | `VITE_SUPABASE_ANON_KEY` | the existing project's **publishable** key (`sb_publishable_…`) | same |
 | `GEMINI_API_KEY` (since 2026-10-01) | a Gemini API key from Google AI Studio — **secret**, server-only; never `VITE_`-prefixed, so it never reaches the bundle | Production |
 | `GEMINI_MODEL` (optional) | a Gemini model id; default `gemini-flash-latest` | Production |
-| `GEMINI_FALLBACK_MODEL` (optional) | used when the main model stays overloaded or rate-limited after a short retry; default `gemini-flash-lite-latest`, `none` turns it off | Production |
+| `GEMINI_FALLBACK_MODEL` (optional) | the light model, default `gemini-flash-lite-latest`; `none` turns it off. Receipts/notes: main model first, this one when the main is busy or too slow. Assistant questions: this one first, the main model as backup | Production |
 
 Both values are public by nature: Vite inlines them into the JavaScript bundle, and RLS is the
 security boundary. Nothing else goes to Vercel:
@@ -343,6 +343,11 @@ then handed to the fallback model, whose free-tier quota is separate. Every assi
 self-contained (the lookups made so far travel as plain text, not as Gemini function-call history
 with model-specific thought signatures), so any round can use either model. A final "busy" reply
 carries Gemini's status as `upstream` (429 = rate limit/quota, 503 = overloaded) for diagnosis.
+
+Model order and time limits (2026-10-07, after phone tests where the main "thinking" model kept an
+assistant answer round past the time limit): receipts and notes go to the main model first and move
+to the light model if it has not answered within 35 s; assistant questions go to the light model
+first and move to the main model after 20 s. A final timeout is reported as `upstream: 408`.
 
 Checks after the redeploy (no secrets needed): `POST /api/ai` without a token answers 401
 `{"error":"auth"}` (the function is deployed); a signed-in "Tanong kay TindaBot" question gets an
