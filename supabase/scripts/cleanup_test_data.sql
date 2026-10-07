@@ -21,9 +21,10 @@
 
 do $$
 declare
+  -- every variable is v_-prefixed: a bare `stores` collided with the table in `delete from public.stores`
   test_emails constant text[] := array['tindabot-test-a@example.com', 'tindabot-test-b@example.com'];
-  users uuid[];
-  stores text[];
+  v_users uuid[];
+  v_stores text[];
   n_events int := 0;
   n_products int := 0;
   n_customers int := 0;
@@ -37,46 +38,46 @@ begin
     raise exception 'run this as the project owner (the SQL editor''s default postgres role), not as a user / with RLS — nothing deleted';
   end if;
 
-  select array_agg(id) into users from auth.users where email = any (test_emails);
-  if users is null then
+  select array_agg(id) into v_users from auth.users where email = any (test_emails);
+  if v_users is null then
     raise exception 'no test users matched — nothing deleted';
   end if;
-  if exists (select 1 from auth.users u where u.id = any (users) and u.email not like 'tindabot-test-%') then
+  if exists (select 1 from auth.users u where u.id = any (v_users) and u.email not like 'tindabot-test-%') then
     raise exception 'a matched user does not look like a test user — nothing deleted';
   end if;
 
-  select coalesce(array_agg(s.id), '{}') into stores from public.stores s where s.created_by = any (users);
-  if exists (select 1 from public.stores s where s.id = any (stores) and coalesce(s.body->>'name', '') not like 'test-%') then
+  select coalesce(array_agg(s.id), '{}') into v_stores from public.stores s where s.created_by = any (v_users);
+  if exists (select 1 from public.stores s where s.id = any (v_stores) and coalesce(s.body->>'name', '') not like 'test-%') then
     raise exception 'a store owned by a test user is not named test-… — nothing deleted';
   end if;
 
   -- migration 0002 tables, when present (invites reference stores, so they go first)
   if to_regclass('public.store_invites') is not null then
-    delete from public.store_invites where store_id = any (stores) or created_by = any (users);
+    delete from public.store_invites where store_id = any (v_stores) or created_by = any (v_users);
     get diagnostics n_invites = row_count;
   end if;
   if to_regclass('public.ai_calls') is not null then
-    delete from public.ai_calls where user_id = any (users);
+    delete from public.ai_calls where user_id = any (v_users);
     get diagnostics n_ai = row_count;
   end if;
   if to_regclass('public.invite_attempts') is not null then
-    delete from public.invite_attempts where user_id = any (users);
+    delete from public.invite_attempts where user_id = any (v_users);
     get diagnostics n_attempts = row_count;
   end if;
 
-  delete from public.events where store_id = any (stores);
+  delete from public.events where store_id = any (v_stores);
   get diagnostics n_events = row_count;
-  delete from public.products where store_id = any (stores);
+  delete from public.products where store_id = any (v_stores);
   get diagnostics n_products = row_count;
-  delete from public.customers where store_id = any (stores);
+  delete from public.customers where store_id = any (v_stores);
   get diagnostics n_customers = row_count;
-  delete from public.store_members where store_id = any (stores);
+  delete from public.store_members where store_id = any (v_stores);
   get diagnostics n_members = row_count;
-  delete from public.stores where id = any (stores);
+  delete from public.stores where id = any (v_stores);
   get diagnostics n_stores = row_count;
 
   raise notice 'test users: %, stores deleted: %, events: %, products: %, customers: %, memberships: %, invites: %, AI call log rows: %, failed-invite rows: %',
-    array_length(users, 1), n_stores, n_events, n_products, n_customers, n_members, n_invites, n_ai, n_attempts;
+    array_length(v_users, 1), n_stores, n_events, n_products, n_customers, n_members, n_invites, n_ai, n_attempts;
 end $$;
 
 -- what is left of the test users' stores (expect 0)
