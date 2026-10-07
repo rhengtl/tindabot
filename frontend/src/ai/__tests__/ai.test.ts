@@ -286,6 +286,10 @@ describe('supplier names from receipts', () => {
     expect(matchSupplier('SM Hypermarket', known)).toBe('SM Hypermarket')
     expect(matchSupplier('Puregold Alfamart Plaza', known)).toBe('Puregold Alfamart Plaza') // ambiguous: left as read
     expect(matchSupplier(null, known)).toBeNull()
+    // a long printed name saved once does not stick: the plain name it contains wins
+    expect(matchSupplier('PUREGOLD PRICE CLUB', ['PUREGOLD PRICE CLUB', 'Alfamart', 'Puregold'])).toBe('Puregold')
+    expect(matchSupplier('Puregold', ['PUREGOLD PRICE CLUB', 'Puregold'])).toBe('Puregold')
+    expect(matchSupplier('puregold', ['PUREGOLD', 'Puregold'])).toBe('PUREGOLD') // same name twice: the most recent spelling
   })
 })
 

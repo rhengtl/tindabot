@@ -610,10 +610,14 @@ Found on the phone and fixed:
   slow or busy model hands over to the other, and questions use the light model first.
 - **Assistant wording:** internal words ("confidence") reached the owner, a decimal inside a product
   name ("1.5L") raised a false "hindi verified", and replies ignored the app's language. Fixed in the
-  prompt and in the figure check.
+  prompt and in the figure check; on the phone (2026-10-07) English questions — and a Taglish one —
+  were answered in English with the app set to English. A later answer still said "my confidence is
+  low", so the rule now names that phrasing too.
 - **Supplier names from receipts:** "PUREGOLD PRICE CLUB" was saved apart from the owner's "Puregold".
   A read supplier that clearly is a known one is now mapped to it, and the review has an editable
-  supplier field.
+  supplier field. On the phone the first version kept "PUREGOLD PRICE CLUB", because that exact name
+  had been saved once by the earlier receipt test; when several known names fit, the one the others
+  contain ("Puregold") now wins.
 
 Not verified here: sign-in and sync on a second device of the owner's (needs the owner's Google
 sign-in on another browser or phone); sync itself was exercised by the household test and by the

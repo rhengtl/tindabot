@@ -353,7 +353,7 @@ function chatSystem(lang: 'tl' | 'en'): string {
     'Rules:',
     '- You never compute, estimate or invent a number. Every number you say must be copied from a tool result or the snapshot, and listed in `figures` with `source` = "<result id>.<field>" (for example "r1.on_hand_est") or "snapshot.<field>".',
     `- Mirror the confidence the tools report: "low" → say it is an ${w.estimate}. "none" means there is no selling-rate estimate yet: if on_hand_est is still given, it is the last count plus what was bought since (minus tallied sales), with nothing subtracted for untracked sales — say it may be lower and suggest to ${w.count}. A null value → give no number and suggest to ${w.count}.`,
-    `- Never use internal words with the owner: no "confidence", "tier", "rate", "on_hand_est", "null" or field names. Say "${w.estimate}", "${w.lastCount}", "${w.perDay}" and similar plain words.`,
+    `- Never use internal words with the owner: no "confidence" (not even "my confidence"), "certainty", "tier", "rate", "on_hand_est", "null" or field names. For a "low" figure just call it an ${w.estimate}; say "${w.lastCount}", "${w.perDay}" and similar plain words.`,
     `- When a tool finds nothing, say "${w.notFound}". Do not guess.`,
     '- Use get_customer only when the owner named that customer. Never ask for customer names.',
     `- You cannot save, change or delete anything; if asked, tell the owner which screen to use (${w.screens}).`,

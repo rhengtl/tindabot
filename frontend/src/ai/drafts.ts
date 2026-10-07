@@ -100,16 +100,19 @@ export function savable(rows: DraftRow[], products: Map<string, Product>): Array
 /**
  * A supplier as read from a receipt or note, mapped onto a name the owner already uses when it is
  * clearly the same one ("PUREGOLD PRICE CLUB" → "Puregold"): same name ignoring case/spaces, or one
- * contains the other as whole words. Otherwise the name stays as read. Keeps supplier price memory
- * (§E5) from splitting one supplier into several.
+ * contains the other as whole words. When several known names fit, the one the others all contain
+ * wins (the plain name the owner types), so a long printed name saved once does not stick. If the
+ * fits are unrelated ("Puregold" and "Alfamart" in one string), the name stays as read. Keeps supplier
+ * price memory (§E5) from splitting one supplier into several.
  */
 export function matchSupplier(seen: string | null, known: string[]): string | null {
   const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9ñ]+/g, ' ').trim()
   if (!seen || !norm(seen)) return seen
   const s = norm(seen)
-  const exact = known.find((k) => norm(k) === s)
-  if (exact) return exact
-  const words = (x: string) => ` ${x} `
-  const hits = known.filter((k) => norm(k) && (words(s).includes(words(norm(k))) || words(norm(k)).includes(words(s))))
-  return hits.length === 1 ? hits[0]! : seen
+  const within = (inner: string, outer: string) => ` ${outer} `.includes(` ${inner} `)
+  const hits = known.filter((k) => norm(k) && (within(norm(k), s) || within(s, norm(k))))
+  const core = hits.filter((h) => hits.every((o) => within(norm(h), norm(o))))
+  // several spellings of the same core name: the one used most recently (known is newest first)
+  if (core.length > 0) return core[0]!
+  return seen
 }
