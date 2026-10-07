@@ -176,6 +176,18 @@ function aliasesFor(name: string): string[] {
   return out
 }
 
+/**
+ * Search over the store's OWN products (Bumili, Paninda, Benta): the product's name plus the catalog's
+ * words for it, so the word that found "Coca-Cola 1.5L" in the catalog ("coke") finds it again later.
+ */
+export function productMatches(name: string, q: string): boolean {
+  const s = norm(q)
+  if (!s) return true
+  const item = CATALOG.find((c) => c.name === name)
+  const hay = [norm(name), ...aliasesFor(name).map(norm), ...(item?.aliases ?? []).map(norm)].join(' | ')
+  return s.split(' ').every((t) => hay.includes(t))
+}
+
 export function searchCatalog(q: string): CatalogItem[] {
   const s = norm(q)
   if (!s) return CATALOG

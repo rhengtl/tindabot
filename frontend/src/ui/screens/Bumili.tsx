@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CATALOG } from '../../catalog/catalog'
+import { CATALOG, productMatches } from '../../catalog/catalog'
 import { type Product, type PurchaseEvent, activeEvents, lastCostAt, recentSuppliers, templates, toLocalDate, ulid } from '../../domain'
 import { useApp, type DateChoice } from '../../state/store'
 import { Segment, Sheet, useToast, useWrite } from '../components'
@@ -109,7 +109,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
     }
   }
 
-  const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = products.filter((p) => productMatches(p.name, search))
 
   return (
     <Sheet open={open} onClose={onClose}>
@@ -139,6 +139,7 @@ export function BumiliSheet({ open, onClose, initialProductId }: { open: boolean
             </button>
           ))}
           {products.length === 0 && <p className="muted">{S.bahay.emptyHint}</p>}
+          {products.length > 0 && filtered.length === 0 && <p className="muted">{S.common.noMatch}</p>}
         </>
       ) : (
         <>

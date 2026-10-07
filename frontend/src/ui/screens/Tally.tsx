@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { productMatches } from '../../catalog/catalog'
 import { type Product, ulid } from '../../domain'
 import { useApp } from '../../state/store'
 import { Sheet, useToast, useWrite } from '../components'
@@ -67,8 +68,7 @@ export function TallySheet({ open, onClose }: { open: boolean; onClose: () => vo
     }
   }
 
-  const q = search.trim().toLowerCase()
-  const shown = q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products
+  const shown = products.filter((p) => productMatches(p.name, search))
 
   return (
     <Sheet open={open} onClose={close}>
@@ -103,6 +103,7 @@ export function TallySheet({ open, onClose }: { open: boolean; onClose: () => vo
           )
         })}
         {products.length === 0 && <p className="muted">{S.bahay.emptyHint}</p>}
+        {products.length > 0 && shown.length === 0 && <p className="muted">{S.common.noMatch}</p>}
       </div>
       <button type="button" className="btn primary" style={{ width: '100%' }} data-testid="tally-save" disabled={total === 0 || saving} onClick={save}>
         {S.tally.save} · {S.tally.count(total)}

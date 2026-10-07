@@ -32,6 +32,7 @@ export const TL = {
     recordedToast: (what: string) => `Naitala: ${what}`,
     addedToast: (name: string) => `Naidagdag: ${name}`,
     notSaved: 'Hindi na-save. Subukan ulit.',
+    noMatch: 'Walang tugmang paninda. Ang bago ay idinadagdag sa Paninda → ＋ Idagdag.',
     days: (n: number) => `${n} araw`,
   },
 
@@ -516,6 +517,7 @@ export const EN: Strings = {
     recordedToast: (what: string) => `Recorded: ${what}`,
     addedToast: (name: string) => `Added: ${name}`,
     notSaved: 'Not saved. Please try again.',
+    noMatch: 'No product matches. New products are added in Products → ＋ Add.',
     days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
   },
 

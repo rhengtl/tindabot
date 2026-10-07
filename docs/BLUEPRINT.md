@@ -136,6 +136,9 @@ gains *Katulong (AI)*, *Kasama sa tindahan* (household) and the product CSV impo
 - **Paninda (P1):** by urgency then name; slow/dead/dormant/unclear notes; Idagdag via bundled
   catalog (search, categories, free name) → pack size, sell price (optional), *ilan ang natira?*
   (optional COUNT). Detail: state, timeline with Burahin/Ibalik/I-edit, Nasira (ADJUST), Itigil.
+  Searching the store's own products (Paninda, Bumili, Benta) also matches the catalog's words for
+  a product, so "coke" finds *Coca-Cola 1.5L* there as it did in the catalog; a search with no
+  result says so (final audit, 2026-10-07).
 - **Bumili (P1):** *"Kanina: …"* strip → product → qty (box/pack toggle) → total ₱ (prefilled from
   last cost; sanity prompt if unit cost ≥ sell price or > 5× catalog hint) → *natira bago dinagdag*
   (optional, linked COUNT) → date *Ngayon / Kahapon / ibang araw* → confirmation

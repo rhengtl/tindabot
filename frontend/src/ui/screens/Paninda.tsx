@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { type DomainEvent, type Lang, type Product, type ProductState, type PurchaseEvent, activeEvents, compareEvents, supplierPrices, templates, toLocalDate, ulid } from '../../domain'
+import { productMatches } from '../../catalog/catalog'
 import { useApp } from '../../state/store'
 import { Dot, Sheet, fmtNum, useToast, useWrite } from '../components'
 import { useLang, useStrings } from '../i18n'
@@ -47,7 +48,7 @@ export function Paninda({ onAdd, onBakit, onBumili, onBilang }: { onAdd: () => v
   const rows = useMemo(() => {
     const lineU = new Map(list?.lines.map((l) => [l.product_id, l.urgency as U]) ?? [])
     return products
-      .filter((p) => p.archived === showArchived && p.name.toLowerCase().includes(q.toLowerCase()))
+      .filter((p) => p.archived === showArchived && productMatches(p.name, q))
       .map((p) => ({ p, st: states.get(p.id), u: urgencyOf(states.get(p.id), lineU.get(p.id)) }))
       .sort((a, b) => URGENCY_ORDER[a.u] - URGENCY_ORDER[b.u] || a.p.name.localeCompare(b.p.name))
   }, [products, states, list, q, showArchived])
@@ -61,7 +62,8 @@ export function Paninda({ onAdd, onBakit, onBumili, onBilang }: { onAdd: () => v
         </button>
       </div>
       <input className="search" aria-label={S.paninda.search} placeholder={S.paninda.search} value={q} onChange={(e) => setQ(e.target.value)} />
-      {rows.length === 0 && !showArchived && (
+      {rows.length === 0 && q.trim() !== '' && <p className="muted">{S.common.noMatch}</p>}
+      {rows.length === 0 && !showArchived && q.trim() === '' && (
         <div className="empty">
           <div className="ico">📦</div>
           <div className="bold">{S.bahay.empty}</div>
