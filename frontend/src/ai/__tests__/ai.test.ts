@@ -323,6 +323,15 @@ describe('chat loop', () => {
     expect(a.unverifiedInText).toBe(true) // ₱999.50 matches no verified figure
     expect(a.looked).toEqual(['get_product'])
   })
+  it("a product name or the owner's own number in the answer is not flagged as unverified", async () => {
+    const c2 = { ...c, products: [...c.products, P('p9', 'Coca-Cola 1.5L')] }
+    const call: ChatCall = async () => ({ kind: 'answer', text: 'Ang Coca-Cola 1.5L: bilangin mo muna. Tungkol sa 2.5 case na tanong mo, wala sa listahan ko.', figures: [] })
+    const a = await ask('may 2.5 case pa ba ng Coca-Cola 1.5L?', c2, call)
+    expect(a.unverifiedInText).toBe(false)
+    const b = await ask('Coca-Cola 1.5L?', c2, async () => ({ kind: 'answer', text: 'Mga 7.5 bote pa ang Coca-Cola 1.5L.', figures: [] }))
+    expect(b.unverifiedInText).toBe(true) // 7.5 came from nowhere
+  })
+
   it('gives up after round 3 instead of looping', async () => {
     let n = 0
     const call: ChatCall = async () => {
@@ -337,5 +346,8 @@ describe('chat loop', () => {
     expect(checkFigures([{ label: 't', value: 2340, source: 'snapshot.list.total_known_cost' }], {}, snap)[0]!.verified).toBe(true)
     expect(checkFigures([{ label: 't', value: 2600, source: 'snapshot.list.total_known_cost' }], {}, snap)[0]!.verified).toBe(false)
     expect(numbersInText('Dalhin ₱2,340 at 1.5 araw; 3 case')).toEqual([2340, 1.5])
+    // numbers inside product names are not figures (first live test: "Coca-Cola 1.5L" raised a false alarm)
+    expect(numbersInText('Ang Coca-Cola 1.5L ay may 20 bote; coca-cola 1.5l ulit.', ['Coca-Cola 1.5L'])).toEqual([])
+    expect(numbersInText('Coke ₱12.50', ['Coke'])).toEqual([12.5])
   })
 })

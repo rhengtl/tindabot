@@ -58,10 +58,18 @@ export function checkFigures(figures: Array<{ label: string; value: number; sour
   })
 }
 
-/** Peso amounts and decimals written in the answer text. Whole numbers are left alone (dates, counts in words). */
-export function numbersInText(text: string): number[] {
+/**
+ * Peso amounts and decimals written in the answer text. Whole numbers are left alone (dates, counts in
+ * words), and so are numbers that are part of a product name ("Coca-Cola 1.5L") or of the owner's own
+ * question — they are not figures the model produced.
+ */
+export function numbersInText(text: string, ignore: string[] = []): number[] {
   const out: number[] = []
-  for (const m of text.matchAll(/₱\s?([\d,]+(?:\.\d+)?)|(\d+\.\d+)/g)) {
+  let scrubbed = text
+  for (const phrase of [...ignore].sort((a, b) => b.length - a.length)) {
+    if (phrase.trim()) scrubbed = scrubbed.replace(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ')
+  }
+  for (const m of scrubbed.matchAll(/₱\s?([\d,]+(?:\.\d+)?)|(\d+\.\d+)/g)) {
     const n = Number((m[1] ?? m[2] ?? '').replace(/,/g, ''))
     if (Number.isFinite(n)) out.push(n)
   }
@@ -80,7 +88,9 @@ export async function ask(question: string, ctx: AssistantContext, call: ChatCal
     if (reply.kind === 'answer') {
       const figures = checkFigures(reply.figures, results, snapshot)
       const ok = figures.filter((f) => f.verified).map((f) => f.value)
-      const unverifiedInText = numbersInText(reply.text).some((x) => !ok.some((v) => sameNumber(x, v)))
+      const asked = numbersInText(question)
+      const names = ctx.products.map((p) => p.name)
+      const unverifiedInText = numbersInText(reply.text, names).some((x) => !ok.some((v) => sameNumber(x, v)) && !asked.some((v) => v === x))
       return { text: reply.text, figures, unverifiedInText, looked }
     }
     if (round === MAX_ROUND) break // the proxy forces `answer` at round 3; a tool request here is a protocol error

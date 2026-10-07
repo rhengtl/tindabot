@@ -47,13 +47,14 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
   const total = p ? (Number(packs) || 0) * p.pack_size + (Number(loose) || 0) : 0
   const hasPacks = !!p && p.pack_size > 1
 
-  function next() {
+  /** `counted` = products counted so far, this one included (state would still hold the old value). */
+  function next(counted = done) {
     setPacks('')
     setLoose('')
     setField('loose')
     setId(ulid())
     if (idx + 1 >= queue.length) {
-      toast(S.bilang.done(done))
+      toast(S.bilang.done(counted))
       onClose()
     } else setIdx(idx + 1)
   }
@@ -63,8 +64,8 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
     // A count that did not reach the database must not be counted as done, and must not move the
     // queue on: the person stays on this product with the failure toast in front of them.
     if (!(await write(() => recordCount(id, p.id, total, { kind: 'ngayon' })))) return
-    setDone((d) => d + 1)
-    next()
+    setDone(done + 1)
+    next(done + 1)
   }
 
   return (
@@ -103,7 +104,7 @@ export function BilangSheet({ open, onClose, only }: { open: boolean; onClose: (
           <NumberPad value={field === 'packs' ? packs : loose} onChange={field === 'packs' ? setPacks : setLoose} />
 
           <div className="row">
-            <button type="button" className="btn secondary" onClick={next}>
+            <button type="button" className="btn secondary" onClick={() => next()}>
               {S.bilang.laktawan}
             </button>
             <button type="button" className="btn primary grow" onClick={save} disabled={packs === '' && loose === ''}>
