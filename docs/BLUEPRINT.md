@@ -5,7 +5,7 @@ rule in §C, §E, or §F must be raised and approved before implementation — d
 validated formula because a UI scenario looks inconvenient.
 
 Locked decisions: full store companion (inventory + utang + cash counts + expenses) · local-first ·
-Google sign-in for backup (P3) · Supabase + tiny FastAPI for AI · TypeScript · cash tracking is
+Google sign-in for backup (P3) · Supabase + a small server-side AI proxy · TypeScript · cash tracking is
 **recorded counts only, no inferred revenue**.
 
 ---
@@ -31,7 +31,7 @@ does not chase daily engagement; it earns opens by being right at the moment of 
 ```
 Phone (PWA): React + TypeScript + Vite + vite-plugin-pwa
   UI (screens, Zustand)  ←  domain/ (pure TS, no IO, Vitest)  ←  Dexie (IndexedDB)
-  Supabase JS client (auth + sync, P3)          FastAPI proxy (/ai/parse, /ai/chat, P3–P4)
+  Supabase JS client (auth + sync, P3)          AI proxy: Vercel function POST /api/ai (P3–P4)
 ```
 
 | Layer | Owns | Never does |
@@ -40,14 +40,14 @@ Phone (PWA): React + TypeScript + Vite + vite-plugin-pwa
 | Dexie | Local persistence, sync cursors/markers, device id | Business logic |
 | UI | Screens, derived state in memory | Math |
 | Supabase | Identity, durable storage, RLS isolation, sync | Derivation, AI |
-| FastAPI | Gemini key, JWT check, rate limit, schema-bound Gemini calls | Data storage, business rules |
+| AI proxy | Gemini key, caller check, rate limit, schema-bound Gemini calls | Data storage, business rules |
+| Gemini | Photo/text → drafts; answers from snapshot + client tools | Arithmetic, saving, deciding |
 
 *Decided 2026-10-01:* the AI proxy is a **Vercel function** (`frontend/api/ai.ts`, `POST /api/ai`)
-in the same project as the static app, not a FastAPI service. Its row above applies unchanged: it
-holds the Gemini key (server-only setting), checks the caller (the caller's own Supabase token
-through `ai_quota_hit()`, which also enforces the rate limit), makes schema-bound Gemini calls, and
-stores nothing.
-| Gemini | Photo/text → drafts; answers from snapshot + client tools | Arithmetic, saving, deciding |
+in the same project as the static app, replacing the FastAPI service planned originally. It holds
+the Gemini key (server-only setting), checks the caller (the caller's own Supabase token through
+`ai_quota_hit()`, which also enforces the rate limit), makes schema-bound Gemini calls, and stores
+nothing.
 
 Derivation **always recomputes a product/customer from its full active event list** — never
 incrementally. `navigator.storage.persist()` is requested on first launch.
@@ -529,7 +529,6 @@ Gemini key in Vercel and migration 0002 applied (docs/DEPLOYMENT.md §7).
 Reused (adapted): urgency colours, Taglish stockout strings, persona prompt, `peso()`, markdown
 bubble, sample CSV → demo events, Vite/React scaffold. Discarded: `backend/main.py`,
 `backend/forecaster.py`, wizard components, `SummaryCard`, Prophet/pandas deps, notebooks.
-Branch `rebuild`; `main` stays runnable until P1's done-when.
 
 ## I. Validated scenarios (test goldens)
 

@@ -56,7 +56,8 @@ frontend/src/catalog/      bundled PH sari-sari catalog
 frontend/src/ui/           screens (Bahay, Paninda, Bumili, Bilang, Bakit, Listahan, Pera, Iba pa, Onboarding);
                            strings.ts = Taglish (default) + English, switched at runtime via i18n.ts / Iba pa
 supabase/migrations/       0001 P3a schema, triggers, RLS; 0002 (P4/P5, additions only) AI rate limit + household invites
-supabase/scripts/          manual cleanup of automated-test data (run in the SQL editor only)
+supabase/scripts/          SQL for the online tests, run by hand in the SQL editor: cleanup of test-user data,
+                           and the optional slow-insert helper for the live race test
 ```
 
 ## Cloud backup (P3a)

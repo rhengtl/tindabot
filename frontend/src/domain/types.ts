@@ -126,7 +126,6 @@ export type FinanceEvent = UtangEvent | BayadEvent | ExpenseEvent | CashCountEve
 /** Every non-VOID event. */
 export type ActiveEvent = StockEvent | FinanceEvent
 export type DomainEvent = ActiveEvent | VoidEvent
-export type EventType = DomainEvent['type']
 
 // ---------- Derived state (memory only) ----------
 
@@ -275,10 +274,4 @@ export interface BudgetResult {
   /** max(0, total_known_cost − budget) */
   kulang: number
   spent: number
-}
-
-export interface TripContext {
-  today: LocalDate
-  next_trip: LocalDate
-  following: LocalDate
 }

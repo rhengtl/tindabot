@@ -16,9 +16,9 @@
 // Triggers: sign-in, launch, foreground, online, after local writes (debounced), manual.
 // Errors back off 10 s → 1 min → 5 min until the next foreground/online/manual trigger.
 
-import type { Customer, Product, Store } from '../domain'
+import type { Customer, Product } from '../domain'
 import * as repo from '../db/repo'
-import { type AuthApi, type CloudApi, type CloudErrorCode, type CloudUser, CloudError, type JoinResult } from './api'
+import { type CloudApi, type CloudErrorCode, type CloudUser, CloudError, type JoinResult } from './api'
 import { type ClaimDecision, decideClaim } from './claim'
 import {
   EVENT_PUSH_BATCH,
@@ -708,11 +708,6 @@ export class SyncEngine {
     }
     return changed
   }
-}
-
-/** Wires auth changes into the engine. Returns an unsubscribe. */
-export function connectAuth(auth: AuthApi, engine: SyncEngine): () => void {
-  return auth.onChange((user) => engine.setUser(user))
 }
 
 export type { StoreRow }

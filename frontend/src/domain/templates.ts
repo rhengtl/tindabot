@@ -67,16 +67,6 @@ export function pesoEstimate(v: number): string {
   return '~' + peso(Math.round(v / 10) * 10)
 }
 
-export function fmtQty(units: number, unitLabel: string): string {
-  const n = Math.round(units)
-  return `${n} ${unitLabel}`
-}
-
-export function fmtPacks(packs: number, packLabel: string, packSize: number, unitLabel: string): string {
-  if (packSize === 1) return `${packs} ${unitLabel}`
-  return `${packs} ${packLabel} (${packs * packSize} ${unitLabel})`
-}
-
 // ---------- Tier B reasons ----------
 
 export interface TierBReasonInput {

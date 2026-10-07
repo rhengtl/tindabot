@@ -8,7 +8,7 @@ import { buildExport, mergeImport } from '../export'
 import { activeEvents, compareEvents } from '../order'
 import { packsFor } from '../rounding'
 import { median } from '../samples'
-import type { CountEvent, DomainEvent, PurchaseEvent, VoidEvent } from '../types'
+import type { DomainEvent, PurchaseEvent, VoidEvent } from '../types'
 import { DEVICE_ID, PRODUCT_ID, STORE_ID, goldens, makeProduct, makeStore, run, runScenario, scenarios, shuffled, toEvents } from './helpers'
 
 const byId = (id: string) => scenarios.find((s) => s.id === id)!
