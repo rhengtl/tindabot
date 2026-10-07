@@ -1,7 +1,4 @@
 # Python
-backend/.venv/
-backend/__pycache__/
-backend/*.pyc
 **/__pycache__/
 **/*.pyc
 **/*.pyo
@@ -9,7 +6,6 @@ backend/*.pyc
 .pytest_cache/
 
 # Environment & secrets
-backend/.env
 .env
 .env.local
 .env.*.local
