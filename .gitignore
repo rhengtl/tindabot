@@ -1,32 +1,33 @@
-# Python
-**/__pycache__/
-**/*.pyc
-**/*.pyo
-*.egg-info/
-.pytest_cache/
-
-# Environment & secrets
+# Environment files: secrets and per-machine settings. Only the documented examples are tracked.
 .env
-.env.local
-.env.*.local
-frontend/.env.local
-frontend/.env.*.local
+.env.*
+!.env.example
+!.env.*.example
+
+# Dependencies and build output
+node_modules/
+frontend/dist/
+frontend/dev-dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Test and tool output
+coverage/
+*.log
+
+# Python (tools/ reference model)
+__pycache__/
+*.py[co]
+
+# Supabase CLI local state (created by `supabase link`)
 supabase/.temp/
 supabase/.branches/
 
-# Node / React
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+# Vercel CLI project link
+.vercel/
 
-# OS
+# OS and editors
 .DS_Store
 Thumbs.db
-
-# IDE
 .vscode/
 .idea/
-
-# PWA build output
-frontend/dev-dist/

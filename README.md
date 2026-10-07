@@ -1,103 +1,180 @@
 # TindaBot
 
-A smart *listahan* for sari-sari store owners. Before every supplier trip it answers
-*ano ang bibilhin, ilan, kailan, at magkano ang dadalhin* — from what the owner bought and what
-they saw on the shelf. Local-first PWA; no account or internet needed.
+A smart *listahan* (shopping and utang list) for **sari-sari store owners** in the Philippines.
+Before every trip to the supplier it answers *ano ang bibilhin, ilan, kailan, at magkano ang
+dadalhin*: what to buy, how many, when, and how much money to bring. It works it out from what the
+owner already knows: what they bought and what they saw left on the shelf.
 
-The approved specification is [docs/BLUEPRINT.md](docs/BLUEPRINT.md). Business rules live only in
-`frontend/src/domain/` and must not be changed without updating the blueprint.
+TindaBot is an installable web app (PWA) built for Android phones. It works **offline and without
+an account**; cloud backup and an AI helper are optional extras. The interface is in Taglish by
+default, with an English switch.
 
-## Run
+## Features
+
+**Stock and the shopping list**
+- *Home* is the list for the next supplier trip: what to buy now, what can wait, and roughly how much
+  money to bring, with an optional budget ("I have ₱…") that fits the list to the cash on hand.
+- Every line has a *bakit* (why) sheet that explains the number in one sentence. Uncertain numbers
+  are shown as a range or an estimate, and the app asks for a count when its data is stale.
+- Record what you **bought** (by pack or piece, with the price and supplier), **count** what is left
+  (a quick count mode goes through products one by one), and optionally **tally sales** with taps.
+- A bundled catalog of common sari-sari products (search by everyday names such as "coke" or
+  "canton"), your own products, CSV import of a product list, and per-supplier price memory.
+
+**Utang and money**
+- Customers and their utang, payments, expenses and cash counts; a weekly report of what was recorded,
+  kept separate from estimates of sales and profit.
+
+**Your data**
+- Everything is stored on the device. JSON export and import for backup or moving to a new phone.
+- Several stores on one phone, and a demo store to try the app.
+- Optional **Google sign-in with cloud backup and sync** across devices, and **household sharing**: the
+  owner gives a one-time invite code so another person's phone records into the same store.
+
+**AI helper (optional, needs sign-in and internet)**
+- Turn a **receipt photo** or a typed or dictated note into entries you review and edit; nothing is
+  saved until you press save, and photos are not stored.
+- **Ask TindaBot** questions about your store. The answers use figures looked up on your phone, and
+  any number that could not be checked against your data is marked as unverified. A daily briefing
+  works offline.
+
+## Requirements
+
+- **To use:** a modern browser. It is built and tested for Android (Chrome-based browsers); it also
+  runs on desktop browsers. iOS has not been tested.
+- **To build:** Node.js 22 or newer (developed on Node 24) and npm.
+- **Optional:** a Supabase project and a Google OAuth client (cloud backup), a Gemini API key and a
+  host for the serverless function (AI helper), Python 3 (to regenerate the test reference data).
+
+## Quick start
+
+```bash
+git clone <repository-url>
+cd tindabot/frontend
+npm ci
+npm run dev                       # http://localhost:5173
+```
+
+That is the complete app, local-only. For the production build with the service worker (offline
+start, installable):
+
+```bash
+npm run build
+npm run preview                   # http://localhost:4173
+```
+
+## Configuration
+
+No configuration is needed to run the app. Cloud backup and the AI helper are switched on by
+environment variables. Copy [`frontend/.env.example`](frontend/.env.example) to `frontend/.env.local`
+(git-ignored):
+
+| Variable | Used for | Public? |
+|---|---|---|
+| `VITE_SUPABASE_URL` | cloud backup: your Supabase project URL | yes, it is in the browser bundle |
+| `VITE_SUPABASE_ANON_KEY` | cloud backup: the publishable / anon key | yes, Row Level Security protects the data |
+| `GEMINI_API_KEY` | AI helper | **no**, server-only secret |
+| `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` | AI helper, optional model choice | server-only |
+
+The full setup (Supabase, Google sign-in, database migrations, Gemini, deployment) is in
+[docs/SETUP.md](docs/SETUP.md).
+
+## Using it
+
+1. Open the app and pick a language. Name the store, choose your usual restock days (or "when
+   needed"), and add products from the catalog. You can also try the demo store first.
+2. Use the **＋** button to record what happens: *Bought*, *Count*, *Utang*, *Payment*, *Expense*,
+   *Cash*, *Sales*, and with the AI *Receipt*, *Write* and *Ask*.
+3. Before going to the supplier, open *Home*. Share the list or set a budget.
+4. On a phone, use the browser's *Add to Home screen* / *Install* to get an app icon.
+5. Back up regularly with More → *Export*, or sign in with Google under More → *Cloud backup*.
+
+## Development
 
 ```bash
 cd frontend
-npm install
-npm run dev        # http://localhost:5173
-npm test           # 428 offline tests: domain vs reference oracles (incl. the sales tally), supplier prices, product CSV, briefing, AI proxy + drafts + phone-side assistant tools, household sync, grouped-derivation equivalence, Dexie markers, schema upgrades, unopenable-storage, failed-write, import validation and interrupted-import handling, sheet back-button history, auth event mapping, build-env exposure, leaving the demo, several stores (switch/add/delete), sync engine (in-memory cloud incl. multi-store), OAuth redirect errors, cloud-unavailable handling, language/strings, export/backup, sheet drag
 npm run typecheck
-npm run build && npx vite preview   # production build with service worker (offline)
+npm test                          # the whole suite
+npx vitest run --exclude "**/online.test.ts"   # offline tests only
+npm run build
 ```
 
-`npm test` runs every `*.test.ts`, and that includes the online integration suite whenever
-`frontend/.env.test.local` exists (`TINDABOT_TEST_USERS=1` + the test-project settings): on such a
-machine `npm test` talks to the real Supabase project and signs in as the `tindabot-test-*`
-accounts. To stay offline, or to run the online suite on purpose:
+- The tests cover the business rules against an independent reference model, the local database,
+  the sync engine (against an in-memory cloud), the AI proxy and drafts, and the UI wording.
+- `src/sync/__tests__/online.test.ts` runs against a real Supabase project and **skips itself**
+  unless `frontend/.env.test.local` exists (see [`frontend/.env.test.example`](frontend/.env.test.example)
+  and [docs/SETUP.md §7](docs/SETUP.md)).
+- **Reference model:** `tools/` holds an independent Python implementation of the formulas that
+  generates the expected numbers the TypeScript tests check. After changing a scenario or a rule:
 
-```bash
-npx vitest run --exclude "**/online.test.ts"        # offline only (428 tests)
-npx vitest run src/sync/__tests__/online.test.ts    # online suite, deliberately (needs .env.test.local)
-```
+  ```bash
+  python tools/make_scenarios.py      # → frontend/src/domain/__tests__/scenarios.json
+  python tools/reference_model.py     # → frontend/src/domain/__tests__/goldens.json
+  python tools/finance_reference.py   # → frontend/src/domain/__tests__/finance_scenarios.json
+  ```
 
-## Reference oracle
+- **Specification:** [docs/BLUEPRINT.md](docs/BLUEPRINT.md) is the source of truth for every rule the
+  app applies. A change to a business rule starts there, then the reference model, then the code.
 
-`tools/reference_model.py` is an independent Python implementation of the blueprint's formulas.
-It generates the golden numbers the TypeScript tests assert against:
-
-```bash
-python tools/make_scenarios.py     # writes frontend/src/domain/__tests__/scenarios.json
-python tools/reference_model.py    # writes frontend/src/domain/__tests__/goldens.json
-python tools/finance_reference.py  # P2 (§E6): writes frontend/src/domain/__tests__/finance_scenarios.json
-```
-
-Change a scenario or a rule → regenerate goldens → run `npm test`.
-
-## Layout
+## Architecture
 
 ```
-docs/BLUEPRINT.md          source of truth
-tools/                     reference oracle + scenario generator
-frontend/src/domain/       pure TS: events, total order, Tier A/B, list, rounding, export
-frontend/src/db/           Dexie persistence (write-once events, storage-only sync markers)
-frontend/src/sync/         P3a cloud backup: env (fails closed), codec, claim rules, engine, supabase-js wrapper
-frontend/src/ai/           P3b/P4 phone side: proxy client, parse drafts, assistant tools + chat loop
-frontend/api/ai.ts         the AI proxy (Vercel function): caller check, rate limit, schema-bound Gemini calls
-frontend/src/state/        Zustand store, demo seed
-frontend/src/catalog/      bundled PH sari-sari catalog
-frontend/src/ui/           screens (Bahay, Paninda, Bumili, Bilang, Bakit, Listahan, Pera, Iba pa, Onboarding);
-                           strings.ts = Taglish (default) + English, switched at runtime via i18n.ts / Iba pa
-supabase/migrations/       0001 P3a schema, triggers, RLS; 0002 (P4/P5, additions only) AI rate limit + household invites
-supabase/scripts/          SQL for the online tests, run by hand in the SQL editor: cleanup of test-user data,
-                           and the optional slow-insert helper for the live race test
+frontend/
+  src/domain/    pure TypeScript business rules: events, ordering, stock estimates, shopping list,
+                 profit, utang and cash (no I/O, fully unit-tested)
+  src/db/        local storage in IndexedDB (Dexie); entries are write-once events
+  src/state/     app state (Zustand) and the demo store
+  src/sync/      optional cloud backup: Supabase auth and a push/pull sync engine
+  src/ai/        phone side of the AI helper: request client, drafts, assistant tools
+  src/ui/        screens, Taglish and English wording
+  src/catalog/   bundled product catalog
+  api/ai.ts      the AI proxy, a serverless function: checks the caller, rate-limits, calls Gemini
+supabase/
+  migrations/    database schema, Row Level Security, sync and household functions
+  scripts/       SQL for maintaining the online test suite (run by hand)
+tools/           Python reference model for the test data
+docs/            specification, setup guide, validation log
 ```
 
-## Cloud backup (P3a)
+- **Local-first.** Every entry is an append-only event on the device. All numbers are recomputed from
+  those events, so nothing depends on being online.
+- **Cloud backup** stores the same events in Supabase. Access is enforced by Row Level Security per
+  store membership; clients can insert and read but never delete.
+- **The AI never decides or saves.** It drafts entries for the owner to confirm, and answers questions
+  only with figures looked up on the phone. The Gemini key stays in the serverless function.
 
-Optional. Without `frontend/.env.local` the app runs exactly as before (no sign-in, no sync).
-A phone can hold several stores (Iba pa → *Mga tindahan*: switch, add, delete, try the demo), and
-an account backs up all of them. Deleting a store removes it from the phone and archives it in the
-cloud. Rules: BLUEPRINT §E7.
-Setup steps and what goes where: [docs/P3A-SETUP.md](docs/P3A-SETUP.md). Only the project URL
-and the anon key ever reach the frontend; RLS is the security boundary.
+## Deployment
 
-P1 (local-only listahan) and P2 (utang/cash) are implemented and device-validated. P3a (Google
-sign-in + cloud backup/sync) is implemented, integration-tested against the online project and
-validated on the phone (restore, push, offline queue, a paused/unavailable cloud, sign-out; see
-[docs/P1-DEVICE-VALIDATION.md](docs/P1-DEVICE-VALIDATION.md)). The real Google round trip — consent
-screen, callback, PKCE exchange, signed-in session, sign-out with local data intact — was verified
-manually on the desktop localhost preview build with the `local_only` demo store current, so no
-cloud rows were created. Claiming and uploading a store under a Google identity was verified on
-2026-09-29 on the same kind of preview. First deployed to Vercel (with the existing Supabase project) on
-2026-09-29. Hosted load, offline start, updates, Google sign-in and two-device sync are verified.
-The installed app on the test phone was verified on 2026-09-30: standalone launch from the icon,
-persistence across close/reopen, back, and Google sign-in/out from inside it. See
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Known device limitation: on the validation
-phone (realme C55 / Brave 1.95) the browser refuses *file* shares (`NotAllowedError`), so the export
-falls back to a download; that download works — a real export file was produced and read back on the
-phone on 2026-09-28 — but Brave asks where to save it, and a web page cannot see how that prompt
-ends. `last_backup_at` therefore means "the export was handed over", never "the file is provably on
-disk", and the app says so in words.
+The app is a static Vite build plus one serverless function, set up for Vercel (root directory
+`frontend`). Without the function and the environment variables it still deploys as a fully working
+local-only app. Steps and checks: [docs/SETUP.md §6](docs/SETUP.md).
 
-## Katulong and Abot (P3b / P4 / P5, built 2026-10-01)
+## Limitations
 
-- **Receipt camera and "Isulat"** — a receipt photo, or a typed/dictated note, becomes editable
-  drafts (purchases and counts); nothing is saved until *I-save*. The photo is never stored.
-- **Tanong kay TindaBot** — questions answered by Gemini from tools that run on the phone; each
-  number is checked against the tool result it came from, and anything unchecked is labelled
-  *hindi verified*. An offline, deterministic briefing sits on top.
-- **Household** — the owner shares a store with a one-time invite code; both phones record into the
-  same store. Settings and deleting stay with the owner.
-- **Sales tally, supplier price memory, product CSV import** — local, offline.
+- **The numbers are only as good as the entries.** Purchases alone give pattern-based estimates;
+  counts make them accurate. The specific limitations are listed in
+  [docs/BLUEPRINT.md §J](docs/BLUEPRINT.md) and explained in the app's *bakit* sheets.
+- **Data lives in the browser.** Clearing site data removes it. Browsers may not guarantee persistent
+  storage (especially in a tab rather than an installed app), so export regularly or use cloud backup.
+- **Export on some browsers:** where the browser refuses to share a file (seen on Brave for
+  Android), the export falls back to a download, and the app cannot confirm that the file was saved.
+- **AI helper:** needs internet, sign-in, and Gemini quota; each account is limited to 30 requests per
+  minute and 300 per day.
+- **Google sign-in:** while the Google consent screen is in *Testing* mode, only listed test users can
+  sign in.
+- **Supabase free plan:** an idle project is paused after about a week. The app keeps working and
+  syncs again after the project is resumed.
+- No push notifications. Pesos only; the catalog is Philippine products.
 
-The AI needs a signed-in account, the owner's `GEMINI_API_KEY` in Vercel, and migration 0002
-applied (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §7). Without them everything else works and
-the app says the AI is not set up. Push notifications were left out by decision (BLUEPRINT §G).
+More detail on what was tested, and on which devices, is in
+[docs/VALIDATION-LOG.md](docs/VALIDATION-LOG.md).
+
+## Contributing
+
+Bug reports and suggestions are welcome as GitHub issues. Pull requests are not being accepted at
+this time. Please do not post keys, passwords or personal data in an issue.
+
+## License
+
+[MIT](LICENSE) © 2026 RhenGTL. Product names in the bundled catalog are trademarks of their
+respective owners and are used only to identify the products.

@@ -1,8 +1,12 @@
 {
   "name": "tindabot-frontend",
   "private": true,
+  "license": "MIT",
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

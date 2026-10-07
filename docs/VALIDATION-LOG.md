@@ -1,8 +1,15 @@
-# P1 device validation — 2026-09-14
+# Validation log
+
+A dated record of how each phase was checked on real devices and on the hosted deployment, kept
+as evidence alongside the automated tests. "The owner" is the project maintainer; every cloud test
+used dedicated `tindabot-test-*@example.com` accounts or a throwaway local store. Findings that
+still affect users are summarised under *Limitations* in the README.
+
+## P1 device validation (2026-09-14)
 
 Environment: Android Emulator 36.4.10 · AVD `Medium_Phone_API_36.1` (1080×2400 @420dpi) ·
 Android 16 (API 36.1, `google_apis_playstore` x86_64 image) · Chrome 134.0.6998.135 ·
-production build served by `vite preview` on the LAN (192.168.1.6:4173) and mapped into the
+production build served by `vite preview` on the local network and mapped into the
 device via `adb reverse` so `http://localhost:4173` is a secure context. Driven with Playwright
 over CDP (`adb forward tcp:9222 localabstract:chrome_devtools_remote`) plus adb/uiautomator for
 Chrome's native UI (install dialog, launcher, airplane mode, force-stop).
@@ -634,3 +641,86 @@ Two-device sync was then checked by the owner: signed in on the PC browser and d
 there; the phone picked that up as described above.
 
 Push notifications are out of scope (BLUEPRINT §G).
+
+## Hosted deployment checks (2026-09-29 → 2026-09-30)
+
+None of these can be verified locally. The checklist is kept as written; results follow it.
+
+1. Production URL on desktop: loads over HTTPS, no console errors, service worker registered,
+   offline reload works, and response headers for `sw.js` / `index.html` revalidate.
+2. **Production OAuth:**
+   - Google sign-in from the production origin returns to it with a clean address bar, and the
+     card shows signed in.
+   - Expect the claim behaviour of BLUEPRINT §E7.
+   - Sign-out keeps local data.
+3. Phone (Brave on the test phone; Chrome stays disabled):
+   - install (Add to Home screen / WebAPK) and launch standalone;
+   - offline launch;
+   - `navigator.storage.persisted()` for the installed app;
+   - back button in standalone mode;
+   - **Google sign-in started from the installed app** — whether the OAuth return lands back in
+     the app or in a browser tab (verified 2026-09-30: it lands in the app; see the results below).
+4. Update path: redeploy a changed build, and an open app picks it up on its next reload.
+5. Cloud Card on the deployed build is not "not available" (catches the configuration pitfall in SETUP.md §4).
+
+### Results, 2026-09-29 (`tindabot.vercel.app`, commit `179e6fe`)
+
+**What was deployed.** The hosted `index-B5a79SV4.js` is byte-identical to a local build of that
+commit. `index.html`, `sw.js` and `icon.svg` differ only in line endings (Vercel builds on Linux).
+`/`, `index.html`, `sw.js`, `manifest.webmanifest` and `registerSW.js` are served with
+`Cache-Control: public, max-age=0, must-revalidate`, over HSTS. Unknown paths return 404.
+
+**Desktop** (Edge 154, throwaway profile, demo store) — all PASS:
+- HTTPS load; app shell; no page or console errors.
+- Cloud available: *Sign in with Google*, not the local-only fallback.
+- No off-origin requests before sign-in.
+- Service worker active and controlling; manifest valid; the browser reports no installability
+  errors.
+- Offline reload starts the app.
+- Update: an open tab on the first deployment got the redeploy on its **second** reload. The
+  first reload installed the new worker and swapped the cached bundle; the demo data was kept and
+  the old bundle evicted.
+- `persisted()` is `false` in a tab.
+- **Real Google sign-in from the hosted origin:**
+  - It returned to `tindabot.vercel.app` with a clean address bar and a Google-provider session;
+    the card showed *Signed in* and *Demo — not synced*.
+  - The demo was not bound, and no cloud store was created: the account still has only the
+    archived *Google claim check*.
+  - Sign-out removed the session; local data was identical, also after a reload.
+- The redirect allow-list entry for the domain is therefore confirmed in practice.
+
+**Cloud sync on the hosted origin** (test account A only; two fresh headless browser profiles as
+two devices; store `test-hosted-mumo8ew0`) — all PASS:
+- Device 1 uploaded, and its rows equal the cloud's.
+- Device 2 (demo) signed in and pulled the store, switching to it.
+- One entry on each device, then syncs: 4 events on both devices and in the cloud, identical ids,
+  no duplicates, nothing pending.
+- Test account B got nothing reading A's store, and HTTP 403 inserting into it or archiving it.
+- Both devices were closed, then the store was archived. A is back to no active store (233
+  archived `test-…` stores); the cleanup script can remove it later.
+
+**Phone** (realme C55, Brave; Chrome still disabled; hosted origin only — the `localhost`
+validation data was not touched):
+
+| Check | Result |
+|---|---|
+| HTTPS load, app shell, cloud available, SW active/controlling, manifest valid, no installability errors, offline reload, no off-origin requests, no errors | PASS |
+| `persisted()` in a tab | `false` (recorded; unchanged from before) |
+| Back button (tab): the first back dismisses the keyboard, the next closes the sheet, the app stays, and the entry is handed back; root back leaves the page | PASS |
+| Install | Brave's *Install and create shortcut → Install* → the launcher's *Add to Home screen* → *Add*. Android lists the shortcut as **pinned**: Brave web-app mode, display standalone, scope = the hosted origin. No WebAPK package. |
+| Icon on the home screen | First attempt: **not found** by the owner, although the realme launcher (15.4.30) listed the shortcut as pinned and Brave holds `INSTALL_SHORTCUT`. Resolved 2026-09-30: in the launcher's *Add to Home screen* dialog, **touch and hold the icon and drag it onto the home screen** instead of tapping *Add*. Then it is visible. |
+| Icon artwork | **Defect found and fixed** (commit `a2875b7`): `icon-192.png` and `icon-512.png` had been plain orange squares (2 colours) without the 🏪 of `icon.svg`, so the launcher showed a plain tile. They were re-rendered from `icon.svg` (same design and names; no manifest or code change) and redeployed, and the shortcut was removed and re-added. The owner confirmed the icon now looks right. |
+
+**Installed app, launched by tapping the real icon** (2026-09-30, after the icon fix) — all observed:
+
+| Check | Result |
+|---|---|
+| Launch | PASS: Android's foreground activity is Brave's `WebappActivity` (web-app task), not a tab |
+| Standalone | PASS: `display-mode: standalone` true; no address bar or Brave toolbar in the window; the status bar takes the theme colour; origin `https://tindabot.vercel.app`, current bundle |
+| Service worker | PASS: controls the page |
+| `persisted()` | `false` on the first launch; **`true`** after a full close (swiped from Recents) and reopen from the icon. The app requests persistence at every start, and Brave granted it for the installed app. |
+| Close / reopen | PASS: new web-app task, freshly loaded; store, product/customer/event counts and event ids, language and onboarding identical to the baseline; no storage-error or local-only fallback |
+| Back | PASS: the first back dismisses the keyboard; the next closes the sheet and the app stays; this holds on a repeat; closing a sheet with its own control hands its entry back. **Root back:** from a fresh start it closes the app to the home screen. Immediately after the sheet test (one forward history entry left from the sheet), the first root back instead reloaded the app at its start screen, and the next one closed it. That reload is Brave web-app behaviour; its cause was not established. No data was involved. |
+| Google sign-in started in the app | PASS (owner's Google account, demo store): the owner saw the return land **in the TindaBot app itself**. Afterwards: standalone page, no `code`/error/fragment, provider `google`, demo not bound, no sync error, cloud still only the archived *Google claim check*, no Google/Supabase pages left open. The session also survived Brave being stopped by Android and the app being reopened from the icon. |
+| Sign-out in the app | PASS: session removed; data identical (event ids included), also after a reload |
+| Real Google sign-in in a Brave tab | PASS: returned to the hosted origin with a clean address and a Google session; demo not uploaded; account still only the archived store; sign-out kept local data, also after a reload |

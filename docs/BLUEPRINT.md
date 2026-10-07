@@ -522,7 +522,7 @@ household by invite code (§E7), supplier price memory and CSV import (§E5), th
 **Push notifications are out of scope by decision:** they need extra server keys and a scheduled
 job, and the validation phone's home-screen app is a Brave shortcut that may not receive web push;
 the app keeps earning opens at the moment of buying (§A) instead. The AI parts need the owner's
-Gemini key in Vercel and migration 0002 applied (docs/DEPLOYMENT.md §7).
+Gemini key in Vercel and migration 0002 applied (docs/SETUP.md §5).
 
 ## H. Migration / reuse
 
