@@ -96,3 +96,20 @@ export function savable(rows: DraftRow[], products: Map<string, Product>): Array
   }
   return out
 }
+
+/**
+ * A supplier as read from a receipt or note, mapped onto a name the owner already uses when it is
+ * clearly the same one ("PUREGOLD PRICE CLUB" → "Puregold"): same name ignoring case/spaces, or one
+ * contains the other as whole words. Otherwise the name stays as read. Keeps supplier price memory
+ * (§E5) from splitting one supplier into several.
+ */
+export function matchSupplier(seen: string | null, known: string[]): string | null {
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9ñ]+/g, ' ').trim()
+  if (!seen || !norm(seen)) return seen
+  const s = norm(seen)
+  const exact = known.find((k) => norm(k) === s)
+  if (exact) return exact
+  const words = (x: string) => ` ${x} `
+  const hits = known.filter((k) => norm(k) && (words(s).includes(words(norm(k))) || words(norm(k)).includes(words(s))))
+  return hits.length === 1 ? hits[0]! : seen
+}

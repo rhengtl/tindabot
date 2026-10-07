@@ -486,6 +486,9 @@ Never          sync never deletes anything locally; the destructive local paths 
   Gemini refusals (429/500/503) are retried, then sent to the other model, in any round; a model
   that is too slow is abandoned for the other one too. Receipts/notes use the main model first,
   assistant questions the light model first (decided 2026-10-07 after phone tests).
+  The reply language is the app's language, whatever the question's. A supplier read from a
+  receipt that clearly is one the owner already uses ("PUREGOLD PRICE CLUB" → "Puregold") is mapped to
+  it, and the review lets the owner edit the supplier before saving.
   Ilista by voice uses the browser's speech recognition when present and otherwise the keyboard's
   own mic. The briefing card sits at the top of *Tanong kay TindaBot* and works offline.
 

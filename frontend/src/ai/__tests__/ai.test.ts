@@ -8,7 +8,7 @@ import { type ActiveEvent, type Customer, type CustomerState, type Product, type
 import { DEVICE_ID, STORE_ID, makeStore } from '../../domain/__tests__/helpers'
 import { AiError, callAi } from '../client'
 import { type ChatCall, ask, checkFigures, numbersInText } from '../chat'
-import { rowUnits, savable, toRows } from '../drafts'
+import { matchSupplier, rowUnits, savable, toRows } from '../drafts'
 import { type AssistantContext, MAX_RESULT_BYTES, buildSnapshot, findByName, runTool } from '../tools'
 
 // ------------------------------------------------------------------------------------------------
@@ -200,6 +200,22 @@ describe('AI proxy (api/ai.ts)', () => {
     expect((await handle(req({ op: 'chat', history, snapshot: {}, round: 4 }), ENV, f)).status).toBe(400)
   })
 
+  it("the reply language follows the app language, with that language's own words in the rules", async () => {
+    const answer = { candidates: [{ content: { parts: [{ functionCall: { name: 'answer', args: { text: 'ok', figures: [] } } }] } }] }
+    const sys = async (lang: string) => {
+      const { f, seen } = fakeFetch({ gemini: answer })
+      await handle(req({ op: 'chat', history: [{ role: 'user', text: 'Ilan pa ang coke?' }], snapshot: {}, round: 0, lang }), ENV, f)
+      return JSON.parse(String(seen[1]!.init.body)).systemInstruction.parts[0].text as string
+    }
+    const en = await sys('en')
+    expect(en).toContain('Reply ONLY in English')
+    expect(en).toContain('"not in my list"')
+    expect(en).not.toMatch(/wala sa listahan|tantiya|bilangin|Bumili/)
+    const tl = await sys('tl')
+    expect(tl).toContain('Reply ONLY in Taglish')
+    expect(tl).toContain('"wala sa listahan ko"')
+  })
+
   it('chat replies: tool calls before round 3, plain text becomes an answer without figures', () => {
     const call = [{ functionCall: { name: 'get_shopping_list', args: {} }, thoughtSignature: 'S' }]
     expect(readChatParts(call, 0)).toEqual({ kind: 'tools', calls: [{ name: 'get_shopping_list', args: {}, sig: 'S' }] })
@@ -257,6 +273,19 @@ describe('parse drafts → rows → what gets saved', () => {
     expect(savable(rows, byId).map((s) => [s.row.name_seen, s.units])).toEqual([['coke', 24], ['kopiko', 7]])
     expect(rowUnits({ ...rows[0]!, qty: 0 }, coke)).toBeNull() // a purchase of nothing
     expect(rowUnits({ ...rows[1]!, qty: 0 }, kopiko)).toBe(0) // a count of zero is a real count
+  })
+})
+
+describe('supplier names from receipts', () => {
+  const known = ['Puregold', 'Alfamart', 'Tindahan ni Mang Ben']
+  it('maps a printed name onto the one the owner uses, only when it is clearly the same', () => {
+    expect(matchSupplier('PUREGOLD PRICE CLUB', known)).toBe('Puregold')
+    expect(matchSupplier('alfamart', known)).toBe('Alfamart')
+    expect(matchSupplier('Mang Ben', known)).toBe('Tindahan ni Mang Ben')
+    expect(matchSupplier('Puregolden Store', known)).toBe('Puregolden Store') // not a whole-word match
+    expect(matchSupplier('SM Hypermarket', known)).toBe('SM Hypermarket')
+    expect(matchSupplier('Puregold Alfamart Plaza', known)).toBe('Puregold Alfamart Plaza') // ambiguous: left as read
+    expect(matchSupplier(null, known)).toBeNull()
   })
 })
 

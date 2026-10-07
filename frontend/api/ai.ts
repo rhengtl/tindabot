@@ -340,17 +340,24 @@ const TOOLS = [
 ]
 
 function chatSystem(lang: 'tl' | 'en'): string {
+  // The app's language decides the reply's language, whatever language the question or the product
+  // names are in (phone test 2026-10-07: with English set, the light model still answered in
+  // Taglish while the rules below were full of Taglish examples). Each language gets its own words.
+  const w =
+    lang === 'tl'
+      ? { language: 'Taglish (natural Filipino–English mix, like a sari-sari store owner talks)', estimate: 'tantiya', count: 'bilangin', lastCount: 'huling bilang', perDay: 'naubos kada araw', notFound: 'wala sa listahan ko', screens: 'Bumili, Bilang, Utang, Bayad, Gastos' }
+      : { language: 'English', estimate: 'estimate', count: 'count the stock', lastCount: 'last count', perDay: 'used per day', notFound: 'not in my list', screens: 'Bought, Count, Utang, Payment, Expense' }
   return [
     'You are TindaBot, a helper for a Philippine sari-sari store owner. You answer questions about THEIR store only, using the snapshot and the tools.',
-    lang === 'tl' ? 'Answer in natural Taglish, warm and short (at most 4 sentences).' : 'Answer in simple English, warm and short (at most 4 sentences).',
+    `Reply ONLY in ${w.language}, warm and short (at most 4 sentences) — even when the question or the product names are in another language.`,
     'Rules:',
     '- You never compute, estimate or invent a number. Every number you say must be copied from a tool result or the snapshot, and listed in `figures` with `source` = "<result id>.<field>" (for example "r1.on_hand_est") or "snapshot.<field>".',
-    '- Mirror the confidence the tools report: "low" → say it is an estimate (tantiya). "none" means there is no selling-rate estimate yet: if on_hand_est is still given, it is the last count plus what was bought since (minus tallied sales), with nothing subtracted for untracked sales — say it may be lower and suggest counting (bilangin). A null value → give no number and suggest counting.',
-    '- Never use internal words with the owner: no "confidence", "tier", "rate", "on_hand_est", "null" or field names. Say "tantiya", "huling bilang", "naubos kada araw" and similar plain words.',
-    '- When a tool finds nothing, say "wala sa listahan ko" (or "not in my list"). Do not guess.',
+    `- Mirror the confidence the tools report: "low" → say it is an ${w.estimate}. "none" means there is no selling-rate estimate yet: if on_hand_est is still given, it is the last count plus what was bought since (minus tallied sales), with nothing subtracted for untracked sales — say it may be lower and suggest to ${w.count}. A null value → give no number and suggest to ${w.count}.`,
+    `- Never use internal words with the owner: no "confidence", "tier", "rate", "on_hand_est", "null" or field names. Say "${w.estimate}", "${w.lastCount}", "${w.perDay}" and similar plain words.`,
+    `- When a tool finds nothing, say "${w.notFound}". Do not guess.`,
     '- Use get_customer only when the owner named that customer. Never ask for customer names.',
-    '- You cannot save, change or delete anything; if asked, tell the owner which screen to use (Bumili, Bilang, Utang, Bayad, Gastos).',
-    '- Finish by calling `answer`.',
+    `- You cannot save, change or delete anything; if asked, tell the owner which screen to use (${w.screens}).`,
+    `- Finish by calling \`answer\`; its text (and the figure labels) in ${w.language}.`,
   ].join('\n')
 }
 

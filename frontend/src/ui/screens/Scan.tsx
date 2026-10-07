@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AiError, callAi } from '../../ai/client'
-import { type DraftRow, isParseReply, parseProducts, rowUnits, savable, toRows } from '../../ai/drafts'
-import { templates, toLocalDate, ulid } from '../../domain'
+import { type DraftRow, isParseReply, matchSupplier, parseProducts, rowUnits, savable, toRows } from '../../ai/drafts'
+import { activeEvents, recentSuppliers, templates, toLocalDate, ulid } from '../../domain'
 import { type DateChoice, useApp } from '../../state/store'
 import { Segment, Sheet, useToast, useWrite } from '../components'
 import { useStrings } from '../i18n'
@@ -35,6 +35,7 @@ function speechRecognition(): SpeechCtor | null {
 
 export function ScanSheet({ open, mode, onClose }: { open: boolean; mode: ScanMode; onClose: () => void }) {
   const products = useApp((s) => s.products)
+  const events = useApp((s) => s.events)
   const lang = useApp((s) => s.lang)
   const aiToken = useApp((s) => s.aiToken)
   const signedIn = useApp((s) => !!s.cloud.sync.user)
@@ -67,6 +68,7 @@ export function ScanSheet({ open, mode, onClose }: { open: boolean; mode: ScanMo
   const active = useMemo(() => products.filter((p) => !p.archived), [products])
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
   const toSave = rows ? savable(rows, byId) : []
+  const suppliers = useMemo(() => recentSuppliers(activeEvents(events), 30), [events])
 
   async function read(input: { image?: { mime: string; data: string }; text?: string }) {
     setBusy(true)
@@ -76,7 +78,7 @@ export function ScanSheet({ open, mode, onClose }: { open: boolean; mode: ScanMo
       const reply = await callAi<unknown>({ op: 'parse', ...input, products: list, lang }, aiToken)
       if (!isParseReply(reply)) throw new AiError('failed')
       const r = toRows(reply, productIds)
-      setRows(r.rows)
+      setRows(r.rows.map((x) => ({ ...x, supplier: matchSupplier(x.supplier, suppliers) })))
       setUnreadable(r.unreadable)
       setIds(Object.fromEntries(r.rows.map((x) => [x.key, ulid()]))) // write-once ids for this review
     } catch (e) {
@@ -193,16 +195,32 @@ export function ScanSheet({ open, mode, onClose }: { open: boolean; mode: ScanMo
                     <input aria-label={S.scan.total} type="number" inputMode="decimal" min={0} placeholder={S.scan.total} value={r.total_cost ?? ''} onChange={(e) => patch(r.key, { total_cost: e.target.value === '' ? null : Number(e.target.value) })} style={{ maxWidth: 100 }} />
                   )}
                 </div>
+                {r.kind === 'purchase' && (
+                  <input
+                    aria-label={S.scan.supplier}
+                    data-testid="draft-supplier"
+                    list="known-suppliers"
+                    maxLength={60}
+                    placeholder={S.scan.supplier}
+                    value={r.supplier ?? ''}
+                    onChange={(e) => patch(r.key, { supplier: e.target.value || null })}
+                    style={{ width: '100%', marginTop: 6 }}
+                  />
+                )}
                 {p && units !== null && (
                   <div className="muted small" style={{ marginTop: 4 }}>
                     = {units} {p.unit_label}
                     {r.kind === 'purchase' && r.total_cost !== null && units > 0 && ` · ${templates.peso(r.total_cost / units)} / ${p.unit_label}`}
-                    {r.supplier && ` · ${r.supplier}`}
                   </div>
                 )}
               </div>
             )
           })}
+          <datalist id="known-suppliers">
+            {suppliers.map((x) => (
+              <option key={x} value={x} />
+            ))}
+          </datalist>
           {unreadable.length > 0 && (
             <div className="card flag small">
               {S.scan.unreadable} {unreadable.join(', ')}

@@ -575,3 +575,46 @@ Verified:
   - "Subukan ang demo" reopens the same demo.
 
   No overflow and no page errors. The leaving-the-demo flows were also checked in English.
+
+## P3b / P4 / P5 on the validation phone (2026-10-01 → 2026-10-07)
+
+Installed app (Brave home-screen shortcut, realme C55), signed in with the owner's Google account,
+in a store named "Testing" that the owner created for this and deletes afterwards. Driven over adb
+DevTools; the AI calls went to real Gemini through the deployed `/api/ai`.
+
+Verified on the phone:
+- **Supplier prices:** Coca-Cola bought at Puregold ₱600 and Alfamart ₱648 per case. The product shows
+  Puregold ₱50 / Alfamart ₱54 per bote, and in Bumili the Puregold chip prefilled ₱600 instead of the
+  latest ₱648.
+- **Tally:** 3 Lucky Me sales; stock 30 → 27; *bakit* shows the tallied sales.
+- **CSV import:** 2 products added (a `natira` became a count); importing again added none.
+- **Utang and money:** utang ₱150, payment ₱50, expense ₱30, cash count ₱1,000; the Utang list and the
+  weekly report agree (bought ₱1,248 = ₱600 + ₱648).
+- **Isulat (note):** read in 14–21 s. "natira 15 Century Tuna" became a count; an ambiguous
+  "Coca-Cola" (the store has two Coke products) stayed unticked until a product was picked; the
+  picked row saved as 2 case = 24 bote, ₱1,200, Puregold.
+- **Resibo (photo):** a 3-line receipt image read in 19 s; every line matched the right product,
+  pack quantity and total (Kopiko 20 sachet ₱160, Lucky Me 24 pack ₱336, Coke Mismo 12 bote ₱216).
+- **Tanong:** after the fixes below, answers in 3–4 s and correct: Coca-Cola left (the latest count),
+  Test Suki's balance ₱100, Puregold cheaper than Alfamart (₱50 vs ₱54).
+- **Household:** the phone made an invite code; test account B joined, saw the store, recorded a sale
+  that reached the phone on sync, and could neither rename nor archive the store. The owner removed
+  B from the phone; B then saw nothing of the store and the used code was refused.
+
+Found on the phone and fixed:
+- **Bilang skipped a product** (since P1): the queue re-sorted after every saved count, so "Susunod"
+  skipped one product and showed another twice. The order is now fixed when the sheet opens; checked
+  on the phone with 5 products, each counted once. Its closing toast also said one fewer than counted.
+- **Assistant timeouts:** the main Gemini model ("thinking") kept the answer round past the time limit,
+  and a busy model could not hand a later round to another model. Rounds are now self-contained, a
+  slow or busy model hands over to the other, and questions use the light model first.
+- **Assistant wording:** internal words ("confidence") reached the owner, a decimal inside a product
+  name ("1.5L") raised a false "hindi verified", and replies ignored the app's language. Fixed in the
+  prompt and in the figure check.
+- **Supplier names from receipts:** "PUREGOLD PRICE CLUB" was saved apart from the owner's "Puregold".
+  A read supplier that clearly is a known one is now mapped to it, and the review has an editable
+  supplier field.
+
+Not verified here: sign-in and sync on a second device of the owner's (needs the owner's Google
+sign-in on another browser or phone); sync itself was exercised by the household test and by the
+phone's own backups (nothing pending). Push notifications are out of scope (BLUEPRINT §G).
