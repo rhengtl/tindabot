@@ -142,6 +142,20 @@ keeps only the time of each call, for two days, to enforce the limit.
   so updates reach installed apps on their next reload.
 - Add the production address to the Supabase redirect URLs (section 2.5).
 
+**Custom domain.** Add it in Vercel (Project → Settings → Domains) and create the DNS record Vercel
+shows (for a subdomain, a `CNAME` to the target Vercel displays). With Cloudflare DNS, set that record
+to **DNS only** (grey cloud), so Vercel can issue the certificate and serve the site directly. Keep the
+`*.vercel.app` address working (do not make it redirect) if anyone already uses it. Then in Supabase,
+set the Site URL to the custom domain and add `https://<custom-domain>/**` to the redirect URLs,
+keeping the `vercel.app` and localhost entries. Nothing in the code needs to change: sign-in returns to
+the address it started from, and the AI function is called on the same address.
+
+Every address is a separate site to the browser: data stored on the phone, the installed app and the
+service worker belong to the address they came from. Opening the new address starts empty; signing in
+there pulls the account's stores from the cloud (both addresses then sync like two devices). Entries
+that exist only on the phone (the demo, or anything not yet backed up) stay on the old address; move
+them with More → Export there and Import on the new one.
+
 *Checks after deploying:* the page loads over HTTPS and works offline after a reload; More → Cloud
 backup offers *Sign in with Google*; `POST /api/ai` without a token answers `401 {"error":"auth"}`;
 a signed-in question in *Ask TindaBot* gets an answer.
