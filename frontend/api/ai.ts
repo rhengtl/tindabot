@@ -9,18 +9,24 @@
 // Self-contained on purpose (no imports): it is deployed as-is by Vercel next to the static app.
 // Server-only settings, never VITE_-prefixed and never sent to the browser:
 //   GEMINI_API_KEY   required
-//   GEMINI_MODEL     optional, default `gemini-flash-latest`
-//   GEMINI_FALLBACK_MODEL  optional, default `gemini-flash-lite-latest` (`none` = no fallback). Receipts
+//   GEMINI_MODEL     optional, default `gemini-3.8-flash`
+//   GEMINI_FALLBACK_MODEL  optional, default `gemini-3.5-flash-lite` (`none` = no fallback). Receipts
 //                    and notes use the main model first and this one when the main model is busy or too
 //                    slow; assistant questions use this one first and the main model as the backup.
+//                    Both defaults are stable models on the Gemini API free tier (checked 2026-10-13).
 //   SUPABASE_URL / SUPABASE_ANON_KEY   optional; default to the app's VITE_SUPABASE_* (the public
 //                    project URL and anon key — the caller's own token does the authorizing)
 
 export type Env = Record<string, string | undefined>
 type Fetch = typeof fetch
 
-const DEFAULT_MODEL = 'gemini-flash-latest'
-const DEFAULT_FALLBACK_MODEL = 'gemini-flash-lite-latest'
+// Pinned stable models, not the `-latest` aliases: an alias is swapped to every new release, and a new
+// release can change what a request may contain (Gemini 3.8 Flash deprecated `temperature`).
+const DEFAULT_MODEL = 'gemini-3.8-flash'
+const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite'
+/** used only when a model id is unknown to Gemini (404, e.g. a retired version): the same role's alias */
+const MAIN_ALIAS = 'gemini-flash-latest'
+const LIGHT_ALIAS = 'gemini-flash-lite-latest'
 /** waits before the 2nd and 3rd attempt on one model when Gemini says 429 / 500 / 503 */
 const RETRY_DELAYS_MS = [1200, 3000]
 /** everything for one request must fit in the function's 60 s (vercel.json), with room to answer */
@@ -106,6 +112,20 @@ interface GeminiContent {
 const modelId = (v: string | undefined) => (v && /^[a-z0-9.-]+$/.test(v) ? v : null)
 
 /**
+ * Per-model request settings. No `temperature` anywhere: Gemini 3 models are tuned for the default and
+ * Google warns that lower values can make them loop (3.8 Flash deprecates the parameter). Assistant
+ * rounds on a Gemini 3 Flash model think `low`: they pick a lookup or copy figures from one, and the
+ * default (`medium`) is what kept answers past the time limit on the phone (2026-10-07). Flash-Lite
+ * keeps its own default (`minimal`), and receipts keep the model's default — reading them is where
+ * thinking pays. Other model families get no thinking setting (2.5 models reject `thinkingLevel`).
+ */
+export function requestFor(body: Record<string, unknown>, model: string, op: 'parse' | 'chat'): Record<string, unknown> {
+  if (op !== 'chat' || !/^gemini-3(\.\d+)?-flash(-preview)?$/.test(model)) return body
+  const generationConfig = { ...((body.generationConfig as Record<string, unknown> | undefined) ?? {}), thinkingConfig: { thinkingLevel: 'low' } }
+  return { ...body, generationConfig }
+}
+
+/**
  * One schema-bound Gemini call. Temporary refusals (429 rate limit, 500/503 overloaded) are retried
  * twice after a short wait; if the main model still refuses, the fallback model gets the same
  * chances (its quota is separate). Chat rounds are self-contained (see toContents), so any round may
@@ -123,7 +143,7 @@ async function gemini(
   // Receipts and notes: the main model reads best. Questions: the lighter model first — on the first
   // live tests the main (thinking) model kept the answer round past the time limit, while a short
   // tool-backed answer is well within the light model's reach; the main model stays the backup.
-  const pair = [main, ...(fallback && fallback !== main ? [fallback] : [])]
+  const pair = [{ id: main, alias: MAIN_ALIAS }, ...(fallback && fallback !== main ? [{ id: fallback, alias: LIGHT_ALIAS }] : [])]
   const models = opts.op === 'chat' ? pair.slice().reverse() : pair
   // A first model that has not answered by then is abandoned for the second one, which then gets the
   // rest of the budget; the last model always gets everything that is left.
@@ -131,21 +151,22 @@ async function gemini(
   const sleep = opts.sleep ?? realSleep
   const deadline = Date.now() + BUDGET_MS
   let last = 0
-  for (const model of models) {
+  for (let m = 0; m < models.length; m++) {
+    let model = models[m]!.id
+    const isLast = m === models.length - 1
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       if (attempt > 0) {
         const wait = RETRY_DELAYS_MS[attempt - 1]!
         if (Date.now() + wait > deadline - 8_000) break
         await sleep(wait)
       }
-      const isLast = model === models[models.length - 1]
       const limit = Math.min(UPSTREAM_TIMEOUT_MS, deadline - Date.now(), isLast ? Infinity : firstCutMs)
       let res: Response
       try {
         res = await fetchImpl(`${GEMINI_BASE}/${model}:generateContent`, {
           method: 'POST',
           headers: { 'x-goog-api-key': env.GEMINI_API_KEY!, 'content-type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify(requestFor(body, model, opts.op)),
           signal: AbortSignal.timeout(Math.max(1_000, limit)),
         })
       } catch {
@@ -159,8 +180,14 @@ async function gemini(
         last = res.status
         continue
       }
-      if (res.status === 404 && model !== models[models.length - 1]) {
-        last = 404 // this model id is unknown (e.g. a retired alias): try the next one
+      if (res.status === 404 && model !== models[m]!.alias) {
+        last = 404 // this model id is unknown (e.g. a retired version): the same role's alias, right away
+        model = models[m]!.alias
+        attempt--
+        continue
+      }
+      if (res.status === 404 && !isLast) {
+        last = 404 // the alias is unknown too: the other model
         break
       }
       if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
@@ -283,7 +310,7 @@ async function opParse(body: Record<string, unknown>, env: Env, fetchImpl: Fetch
   parts.push({ text: parsePrompt(ps, body.image !== undefined) })
   const out = await gemini(env, fetchImpl, {
     contents: [{ role: 'user', parts }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: PARSE_SCHEMA, temperature: 0 },
+    generationConfig: { responseMimeType: 'application/json', responseSchema: PARSE_SCHEMA },
   }, { sleep, op: 'parse' })
   if (out instanceof Response) return out
   const text = out.parts.filter((p) => !p.thought && typeof p.text === 'string').map((p) => p.text).join('')
@@ -444,7 +471,6 @@ async function opChat(body: Record<string, unknown>, env: Env, fetchImpl: Fetch,
     contents,
     tools: [{ functionDeclarations: TOOLS }],
     toolConfig: { functionCallingConfig: last ? { mode: 'ANY', allowedFunctionNames: ['answer'] } : { mode: 'ANY' } },
-    generationConfig: { temperature: 0.2 },
   }, { sleep, op: 'chat' })
   if (out instanceof Response) return out
   const r = readChatParts(out.parts, round as number, out.model)

@@ -33,7 +33,8 @@ default, with an English switch.
 
 **AI helper (optional, needs sign-in and internet)**
 - Turn a **receipt photo** or a typed or dictated note into entries you review and edit; nothing is
-  saved until you press save, and photos are not stored.
+  saved until you press save. TindaBot does not keep the photos; they are sent to Google's Gemini API
+  to be read.
 - **Ask TindaBot** questions about your store. The answers use figures looked up on your phone, and
   any number that could not be checked against your data is marked as unverified. A daily briefing
   works offline.
@@ -159,7 +160,8 @@ local-only app. Steps and checks: [docs/SETUP.md §6](docs/SETUP.md).
 - **Export on some browsers:** where the browser refuses to share a file (seen on Brave for
   Android), the export falls back to a download, and the app cannot confirm that the file was saved.
 - **AI helper:** needs internet, sign-in, and Gemini quota; each account is limited to 30 requests per
-  minute and 300 per day.
+  minute and 300 per day. On the Gemini API free tier, Google may use what is sent (receipt photos,
+  notes, questions) to improve its products; see [docs/SETUP.md §5](docs/SETUP.md).
 - **Google sign-in:** while the Google consent screen is in *Testing* mode, only listed test users can
   sign in.
 - **Supabase free plan:** an idle project is paused after about a week. The app keeps working and

@@ -495,6 +495,12 @@ Never          sync never deletes anything locally; the destructive local paths 
   it, and the review lets the owner edit the supplier before saving.
   Ilista by voice uses the browser's speech recognition when present and otherwise the keyboard's
   own mic. The briefing card sits at the top of *Tanong kay TindaBot* and works offline.
+  *Models (decided 2026-10-13, after Google's Gemini 3.8 changes):* the proxy defaults to pinned
+  stable free-tier models, `gemini-3.8-flash` (main) and `gemini-3.5-flash-lite` (light), instead of
+  the `-latest` aliases, which change model on every release; an unknown id (404) falls back to the
+  same role's alias. Requests carry no `temperature`; assistant rounds on a Gemini 3 Flash model use
+  `thinkingLevel: low`. The receipt screen says the photo is sent to Google Gemini and not kept by
+  TindaBot (on Gemini's free tier Google may use it).
 
 ## G. Roadmap
 

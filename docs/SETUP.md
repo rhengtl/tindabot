@@ -98,8 +98,8 @@ Google*.
    | Variable | Required | Meaning |
    |---|---|---|
    | `GEMINI_API_KEY` | yes | the Gemini key (secret) |
-   | `GEMINI_MODEL` | no | main model; default `gemini-flash-latest` |
-   | `GEMINI_FALLBACK_MODEL` | no | light model; default `gemini-flash-lite-latest`; `none` turns it off |
+   | `GEMINI_MODEL` | no | main model; default `gemini-3.8-flash` |
+   | `GEMINI_FALLBACK_MODEL` | no | light model; default `gemini-3.5-flash-lite`; `none` turns it off |
 
 3. Migration `0002` must be applied: the function checks each caller's own Supabase session through
    `ai_quota_hit()`, which also enforces the limit of 30 calls per minute and 300 per day per account.
@@ -109,7 +109,21 @@ Locally, put the variables in `frontend/.env.local`. `npm run dev` then serves `
 
 Receipts and notes go to the main model first; questions go to the light model first. A model that
 is busy (429/500/503) is retried and then replaced by the other one, and a model that is too slow is
-abandoned for the other one. The function never stores or logs what is sent to it; the database
+abandoned for the other one.
+
+The defaults are pinned, stable models that are on the Gemini API free tier (checked against Google's
+pricing and models pages on 2026-10-13). If Google retires one (the API answers 404), the function
+uses the same role's `gemini-flash-latest` / `gemini-flash-lite-latest` alias instead. Requests set no
+`temperature` (Gemini 3 models are tuned for the default). Assistant questions on a Gemini 3 Flash
+model use `low` thinking for speed; receipts keep the model's default. If you set `GEMINI_MODEL` to a
+Gemini 2.5 model, note that Google now offers those only to projects that used them before.
+
+**Privacy:** photos and notes are sent to Google's Gemini API to be read, and assistant questions send
+a small summary of the store (its name, product names, shopping-list totals, total utang owed and the
+last cash count) plus the figures looked up for that question; a customer's name only when the
+question names that customer. TindaBot keeps
+none of it. On the Gemini **free tier**, Google may use what is sent to improve its products; a paid
+(billing-enabled) project is not used that way. Check Google's current terms for your tier. The function never stores or logs what is sent to it; the database
 keeps only the time of each call, for two days, to enforce the limit.
 
 ## 6. Deploy to Vercel

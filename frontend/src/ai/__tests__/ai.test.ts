@@ -67,7 +67,7 @@ describe('AI proxy (api/ai.ts)', () => {
     expect(JSON.stringify(quota!.init.headers)).not.toContain('test-key-not-real')
     expect((gem!.init.headers as Record<string, string>)['x-goog-api-key']).toBe('test-key-not-real')
     expect(JSON.stringify(gem!.init.headers)).not.toContain('abc.def.ghi')
-    expect(gem!.url).toContain('/gemini-flash-latest:generateContent')
+    expect(gem!.url).toContain('/gemini-3.8-flash:generateContent')
     const body = JSON.parse(String(gem!.init.body))
     expect(body.generationConfig.responseMimeType).toBe('application/json')
     expect(body.contents[0].parts[1].text).toContain('0\tCoke Mismo\t1 case = 12 bote')
@@ -132,28 +132,28 @@ describe('AI proxy (api/ai.ts)', () => {
 
     // a question: light model first; one refusal is retried on the same model
     seq.push(503, 200)
-    expect(await (await handle(req(chat), ENV, flaky, noSleep)).json()).toEqual({ kind: 'tools', calls: [{ name: 'get_shopping_list', args: {}, sig: 'S1', model: 'gemini-flash-lite-latest' }] })
-    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-lite-latest'])
+    expect(await (await handle(req(chat), ENV, flaky, noSleep)).json()).toEqual({ kind: 'tools', calls: [{ name: 'get_shopping_list', args: {}, sig: 'S1', model: 'gemini-3.5-flash-lite' }] })
+    expect(used()).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite'])
 
     // the light model refuses three times → the main model
     urls.length = 0
     seq.push(429, 429, 429, 200)
     const out = await (await handle(req(chat), ENV, flaky, noSleep)).json()
-    expect(out.calls[0].model).toBe('gemini-flash-latest')
-    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest'])
+    expect(out.calls[0].model).toBe('gemini-3.8-flash')
+    expect(used()).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'])
 
     // a later round of the same question can switch too (rounds carry no model-specific state)
     urls.length = 0
     seq.push(503, 503, 503, 200)
     const round1 = { ...chat, round: 1, history: [chat.history[0], { role: 'model', calls: out.calls }, { role: 'tool', results: [{ name: 'get_shopping_list', id: 'r1', result: {} }] }] }
     expect((await handle(req(round1), ENV, flaky, noSleep)).status).toBe(200)
-    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest'])
+    expect(used()).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'])
 
     // too slow (the first live failure: no answer before the time limit) → the other model, not an error
     urls.length = 0
     seq.push('hang', 200)
     expect((await handle(req(round1), ENV, flaky, noSleep)).status).toBe(200)
-    expect(used()).toEqual(['gemini-flash-lite-latest', 'gemini-flash-latest'])
+    expect(used()).toEqual(['gemini-3.5-flash-lite', 'gemini-3.8-flash'])
     // ...but the last model timing out is reported, with 408 for diagnosis
     urls.length = 0
     seq.push('hang', 'hang')
@@ -163,18 +163,57 @@ describe('AI proxy (api/ai.ts)', () => {
     urls.length = 0
     seq.push(200)
     await handle(req({ op: 'parse', text: 'bumili 1 case coke', products: PRODUCTS }), ENV, flaky, noSleep)
-    expect(used()).toEqual(['gemini-flash-latest'])
+    expect(used()).toEqual(['gemini-3.8-flash'])
 
-    // an unknown model id (e.g. a retired alias) goes straight to the other one
+    // an unknown model id (a retired version): the same role's `-latest` alias, then the other model
     urls.length = 0
     seq.push(404, 200)
     expect((await handle(req(chat), ENV, flaky, noSleep)).status).toBe(200)
-    expect(urls.length).toBe(2)
+    expect(used()).toEqual(['gemini-3.5-flash-lite', 'gemini-flash-lite-latest'])
+    urls.length = 0
+    seq.push(404, 404, 200)
+    expect((await handle(req(chat), ENV, flaky, noSleep)).status).toBe(200)
+    expect(used()).toEqual(['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.8-flash'])
+    urls.length = 0
+    seq.push(404, 404)
+    expect(await (await handle(req({ op: 'parse', text: 'x', products: PRODUCTS }), { ...ENV, GEMINI_FALLBACK_MODEL: 'none' }, flaky, noSleep)).json()).toEqual({ error: 'not_configured', upstream: 404 })
+    expect(used()).toEqual(['gemini-3.8-flash', 'gemini-flash-latest'])
     // GEMINI_FALLBACK_MODEL=none: the main model only, for questions too
     urls.length = 0
     seq.push(429, 429, 429)
     expect((await handle(req(chat), { ...ENV, GEMINI_FALLBACK_MODEL: 'none' }, flaky, noSleep)).status).toBe(503)
-    expect(used()).toEqual(['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest'])
+    expect(used()).toEqual(['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.8-flash'])
+  })
+
+  it('request settings: no temperature anywhere; question rounds on a Gemini 3 Flash model think "low"; receipts, Flash-Lite and other families keep the model default', async () => {
+    const bodies: Array<{ model: string; body: Record<string, any> }> = []
+    const answer = { candidates: [{ content: { parts: [{ functionCall: { name: 'answer', args: { text: 'ok', figures: [] } } }] } }] }
+    const record = (status: number[]) =>
+      (async (url: string, init: RequestInit) => {
+        if (url.includes('ai_quota_hit')) return new Response('true')
+        bodies.push({ model: url.split('/models/')[1]!.split(':')[0]!, body: JSON.parse(String(init.body)) })
+        const st = status.shift() ?? 200
+        return new Response(JSON.stringify(st === 200 ? (url.includes('flash') ? answer : {}) : {}), { status: st })
+      }) as unknown as typeof fetch
+    const chat = { op: 'chat', history: [{ role: 'user', text: 'ilan pa coke?' }], snapshot: {}, round: 0 }
+    const parse = { op: 'parse', text: 'bumili 1 case coke', products: PRODUCTS }
+
+    // a question: Flash-Lite answers with its own thinking default; busy → 3.8 Flash thinks "low"
+    await handle(req(chat), ENV, record([503, 503, 503, 200]), noSleep)
+    expect(bodies.map((b) => b.model)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'])
+    expect(bodies.slice(0, 3).every((b) => b.body.generationConfig === undefined)).toBe(true)
+    expect(bodies[3]!.body.generationConfig).toEqual({ thinkingConfig: { thinkingLevel: 'low' } })
+    // a receipt: the schema only — the model's own thinking default, no sampling settings
+    bodies.length = 0
+    await handle(req(parse), ENV, record([200]), noSleep)
+    expect(Object.keys(bodies[0]!.body.generationConfig).sort()).toEqual(['responseMimeType', 'responseSchema'])
+    // other families (e.g. a 2.5 model set by the owner) never get thinkingLevel, which they reject
+    bodies.length = 0
+    await handle(req(chat), { ...ENV, GEMINI_MODEL: 'gemini-2.5-flash', GEMINI_FALLBACK_MODEL: 'none' }, record([200]), noSleep)
+    expect(bodies[0]!.model).toBe('gemini-2.5-flash')
+    expect(bodies[0]!.body.generationConfig).toBeUndefined()
+    // nothing ever sends temperature / topP / topK
+    expect(JSON.stringify(bodies)).not.toMatch(/temperature|topP|topK/)
   })
 
   it('chat: round 3 forces `answer`; earlier lookups go back as plain text (no model-specific signatures); unknown tools are rejected', async () => {
