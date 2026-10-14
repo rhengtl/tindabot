@@ -9,6 +9,8 @@ TindaBot is an installable web app (PWA) built for Android phones. It works **of
 an account**; cloud backup and an AI helper are optional extras. The interface is in Taglish by
 default, with an English switch.
 
+Live at **https://tindabot.rhengtl.tech** · Case study: [rhengtl.tech/projects/tindabot](https://rhengtl.tech/projects/tindabot)
+
 ## Features
 
 **Stock and the shopping list**
